@@ -1,0 +1,63 @@
+%% Fig. 1 - Source to consumer data pipeline
+%% Pizza shop, Bangkok, single location
+flowchart LR
+  subgraph SRC["SOURCES"]
+    direction TB
+    S1["POS / QR<br/>orders API"]
+    S2["Grab · LINE MAN<br/>ShopeeFood · Robinhood<br/>portal exports"]
+    S3["Stock count<br/>form"]
+    S4["Supplier PO<br/>sheet"]
+    S5["Shift &amp;<br/>timeclock"]
+  end
+
+  subgraph RAW["1 · RAW / BRONZE"]
+    direction TB
+    R1["Immutable append<br/>schema-on-read<br/>+ ingest_ts, source_file"]
+  end
+
+  subgraph STG["2 · STAGING / SILVER"]
+    direction TB
+    T1["Parse · cast · UTC→Asia/Bangkok<br/>Dedup on natural key<br/>Conform channel + item names<br/>Currency to THB"]
+    T2["Data quality gates<br/>not-null · uniqueness<br/>referential · row-count drift"]
+  end
+
+  subgraph CORE["3 · CORE WAREHOUSE / GOLD"]
+    direction TB
+    C1["Conformed dimensions<br/>SCD2 where price/role changes"]
+    C2["Fact tables<br/>declared grain, surrogate keys"]
+  end
+
+  subgraph MART["4 · MARTS"]
+    direction TB
+    M1["mart_sales_daily"]
+    M2["mart_ingredient_usage_daily"]
+    M3["mart_delivery_sla"]
+    M4["mart_customer_rfm"]
+    M5["mart_labor_vs_sales"]
+  end
+
+  subgraph OUT["CONSUMERS"]
+    direction TB
+    O1["Manager dashboard"]
+    O2["Demand forecast model"]
+    O3["Reorder suggestion"]
+    O4["Customer segmentation"]
+  end
+
+  S1 -->|"5 min micro-batch"| RAW
+  S2 -->|"daily T+1"| RAW
+  S3 -->|"daily close"| RAW
+  S4 -->|"on receipt"| RAW
+  S5 -->|"daily"| RAW
+
+  RAW --> T1 --> T2 --> CORE
+  C1 --> C2
+  CORE --> MART
+  M1 --> O1
+  M1 --> O2
+  M2 --> O3
+  M2 --> O1
+  M3 --> O1
+  M4 --> O4
+  M5 --> O1
+  O2 -.->|"forecast written back<br/>as fct_forecast"| CORE

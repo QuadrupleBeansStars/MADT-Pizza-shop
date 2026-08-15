@@ -1,0 +1,49 @@
+%% Fig. 4 - ER model: people and shifts (star schema)
+%% FCT_ORDER_EVENT and FCT_INVENTORY_COUNT are shared facts, shown abridged here.
+%% Full definitions live in 02-er-sales-orders.mmd and 03-er-inventory-supply.mmd
+erDiagram
+  DIM_STAFF ||--o{ FCT_SHIFT : works
+  DIM_ROLE ||--o{ DIM_STAFF : "holds"
+  DIM_DATE ||--o{ FCT_SHIFT : "on day"
+  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
+  DIM_STAFF ||--o{ FCT_INVENTORY_COUNT : "counted by"
+
+  DIM_STAFF {
+    int staff_sk PK
+    string staff_nk UK
+    string staff_name
+    int role_sk FK
+    string employment_type "full_time, part_time"
+    decimal hourly_wage_thb
+    date hire_date
+    date valid_from "SCD2 - wage and role change"
+    date valid_to
+    boolean is_current
+  }
+  DIM_ROLE {
+    int role_sk PK
+    string role_name "pizzaiolo, cashier, rider, prep, manager"
+    boolean is_kitchen
+  }
+  FCT_SHIFT {
+    bigint shift_sk PK
+    int staff_sk FK
+    int date_sk FK
+    timestamp clock_in_ts
+    timestamp clock_out_ts
+    decimal hours_worked
+    decimal labour_cost_thb
+    string shift_type "open, mid, close"
+  }
+  FCT_ORDER_EVENT {
+    bigint order_event_sk PK
+    bigint order_sk FK
+    int staff_sk FK
+    string event_type
+    timestamp event_ts
+  }
+  FCT_INVENTORY_COUNT {
+    bigint count_sk PK
+    int counted_by_staff_sk FK
+    decimal variance_qty
+  }

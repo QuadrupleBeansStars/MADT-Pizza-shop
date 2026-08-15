@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Exported diagram renders (regenerate from diagrams/*.mmd)
+*.png
+*.svg
+!docs/**/*.svg

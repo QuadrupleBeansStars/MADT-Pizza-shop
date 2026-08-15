@@ -1,0 +1,116 @@
+%% Fig. 2 - ER model: sales and orders (star schema)
+%% Grain:
+%%   FCT_ORDER       - one row per order (any channel)
+%%   FCT_ORDER_LINE  - one row per menu item per order
+%%   FCT_ORDER_EVENT - one row per status transition per order
+%%   FCT_PAYMENT     - one row per tender per order
+erDiagram
+  DIM_DATE ||--o{ FCT_ORDER : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_ORDER : "placed by (own channels only)"
+  FCT_ORDER ||--|{ FCT_ORDER_LINE : contains
+  FCT_ORDER ||--o{ FCT_ORDER_EVENT : "tracked by"
+  FCT_ORDER ||--|{ FCT_PAYMENT : "settled by"
+  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by"
+  DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : applied
+  DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
+  DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
+  DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
+  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
+
+  DIM_DATE {
+    int date_sk PK
+    date calendar_date
+    int day_of_week
+    boolean is_weekend
+    boolean is_thai_holiday
+    string month_name
+  }
+  DIM_CHANNEL {
+    int channel_sk PK
+    string channel_code UK "QR_DINEIN, GRAB, LINEMAN, SHOPEE, ROBINHOOD, PHONE"
+    string channel_type "dine_in or delivery"
+    boolean is_own_channel
+    decimal commission_rate_pct
+  }
+  DIM_CUSTOMER {
+    int customer_sk PK
+    string customer_nk UK "membership or phone hash"
+    date first_order_date
+    string signup_source
+    boolean is_member
+  }
+  DIM_MENU_ITEM {
+    int menu_item_sk PK
+    string menu_item_nk "stable business key"
+    string item_name
+    string category "pizza, chicken, side, drink"
+    string size_code
+    decimal base_price_thb
+    date valid_from "SCD2"
+    date valid_to "SCD2"
+    boolean is_current
+  }
+  BRG_CHANNEL_MENU_ITEM {
+    int channel_menu_sk PK
+    int channel_sk FK
+    int menu_item_sk FK
+    string platform_item_id "aggregator's own id"
+    decimal channel_price_thb "uplifted platform price"
+    boolean is_listed
+  }
+  DIM_PROMOTION {
+    int promotion_sk PK
+    string promo_code
+    string promo_type "percent, fixed, bogo, free_delivery"
+    string funded_by "shop or platform"
+    date start_date
+    date end_date
+  }
+  FCT_ORDER {
+    bigint order_sk PK
+    string external_order_id "platform natural key"
+    int channel_sk FK
+    int date_sk FK
+    int customer_sk FK "null for aggregator orders"
+    timestamp order_ts
+    decimal gross_amount_thb
+    decimal discount_amount_thb
+    decimal delivery_fee_thb
+    decimal commission_amount_thb
+    decimal net_revenue_thb
+    string order_status
+    boolean is_cancelled
+  }
+  FCT_ORDER_LINE {
+    bigint order_line_sk PK
+    bigint order_sk FK
+    int menu_item_sk FK
+    int quantity
+    decimal unit_price_thb "price at time of order"
+    decimal line_discount_thb
+    decimal line_net_thb
+    string modifiers_json "extra cheese, no chili"
+  }
+  FCT_ORDER_EVENT {
+    bigint order_event_sk PK
+    bigint order_sk FK
+    string event_type "placed, accepted, prep_start, prep_complete, courier_pickup, delivered, cancelled"
+    timestamp event_ts
+    int staff_sk FK
+    int duration_from_prev_sec
+  }
+  FCT_PAYMENT {
+    bigint payment_sk PK
+    bigint order_sk FK
+    string tender_type "cash, promptpay_qr, card, platform_settled"
+    decimal amount_thb
+    timestamp paid_ts
+    date settlement_date "platform payouts lag"
+  }
+  FCT_ORDER_PROMOTION {
+    bigint order_promo_sk PK
+    bigint order_sk FK
+    int promotion_sk FK
+    decimal discount_amount_thb
+  }

@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pizza Shop Data Model</title>
+<style>
+  :root {
+    --paper:   #F4F4EE;
+    --surface: #FCFCF8;
+    --plate:   #FCFCF8;
+    --ink:     #1B1D19;
+    --ink-2:   #5B6057;
+    --rule:    #DCDCD1;
+    --ember:   #B03A16;
+    --basil:   #45674A;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --font-ui: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --step:  clamp(1rem, 0.9rem + 0.3vw, 1.075rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #131512;
+      --surface: #1B1E19;
+      --ink:     #E9EAE2;
+      --ink-2:   #9BA094;
+      --rule:    #2E322B;
+      --ember:   #E07242;
+      --basil:   #85A889;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #131512;
+    --surface: #1B1E19;
+    --ink:     #E9EAE2;
+    --ink-2:   #9BA094;
+    --rule:    #2E322B;
+    --ember:   #E07242;
+    --basil:   #85A889;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--step);
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 1.15rem;
+    max-width: 100%;
+  }
+  main > * { grid-column: 2; min-width: 0; }
+  .wide {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 1180px;
+    justify-self: center;
+  }
+
+  /* ---- masthead ---- */
+  header.masthead {
+    grid-column: 1 / -1;
+    max-width: 1180px;
+    justify-self: center;
+    width: 100%;
+    padding: 4.5rem 0 2.25rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 2.5rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: clamp(1.9rem, 1.2rem + 2.6vw, 3.1rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+  }
+  .standfirst {
+    font-size: 1.12rem;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 2rem;
+    margin-top: 1.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-2);
+    text-transform: uppercase;
+  }
+  .meta-strip b { color: var(--ink); font-weight: 600; }
+
+  /* ---- headings ---- */
+  h2 {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 3.25rem 0 0.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+  }
+  h2 .num {
+    color: var(--ember);
+    font-variant-numeric: tabular-nums;
+  }
+  h3 {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 2rem 0 0.15rem;
+    color: var(--basil);
+  }
+  p { margin: 0.55rem 0; }
+  strong { font-weight: 700; }
+  a { color: var(--ember); }
+
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: color-mix(in srgb, var(--ink) 7%, transparent);
+    padding: 0.1em 0.34em;
+    border-radius: 2px;
+  }
+
+  ul, ol { margin: 0.55rem 0; padding-left: 1.25rem; }
+  li { margin: 0.3rem 0; }
+  li::marker { color: var(--ink-2); }
+
+  /* ---- diagram plate ---- */
+  figure {
+    margin: 1.5rem 0 0.5rem;
+    background: var(--plate);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  figure .scroll { overflow-x: auto; padding: 1.5rem 1rem; }
+  figure .mermaid { color: #1B1D19; }
+  figcaption {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #5B6057;
+    border-top: 1px solid var(--rule);
+    padding: 0.65rem 1rem;
+    background: color-mix(in srgb, #1B1D19 4%, var(--plate));
+  }
+
+  /* ---- tables ---- */
+  .table-wrap { overflow-x: auto; margin: 1.25rem 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: var(--font-ui);
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    font-weight: 600;
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0.5rem 0.9rem 0.5rem 0;
+    white-space: nowrap;
+  }
+  td {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.55rem 0.9rem 0.55rem 0;
+    vertical-align: top;
+    line-height: 1.45;
+  }
+  td:first-child { font-family: var(--font-mono); font-size: 0.8rem; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* ---- callout ---- */
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ember);
+    padding: 0.9rem 1.15rem;
+    margin: 1.4rem 0;
+    font-size: 0.95rem;
+  }
+  .note p:first-child { margin-top: 0; }
+  .note p:last-child { margin-bottom: 0; }
+  .note .label {
+    font-family: var(--font-mono);
+    font-size: 0.67rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ember);
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  /* ---- decision cards ---- */
+  .decisions { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin: 1.5rem 0; }
+  .decision { background: var(--surface); padding: 1.1rem 1.25rem; }
+  .decision h4 {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    margin: 0 0 0.4rem;
+    letter-spacing: 0.01em;
+  }
+  .decision h4 span { color: var(--ember); margin-right: 0.5rem; font-variant-numeric: tabular-nums; }
+  .decision p { margin: 0.35rem 0 0; font-size: 0.94rem; color: var(--ink-2); }
+  .decision p b { color: var(--ink); }
+
+  footer {
+    grid-column: 1 / -1;
+    max-width: 1180px;
+    justify-self: center;
+    width: 100%;
+    margin-top: 4rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+</style>
+</head>
+<body>
+
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">Data platform design — single-location pizza shop, Bangkok</p>
+  <h1>Made to order,<br>measured to order.</h1>
+  <p class="standfirst">A source-to-dashboard data pipeline and warehouse model for an owner-operated pizza shop selling across dine-in QR, phone, and four delivery aggregators. Built around one question the manager actually asks every morning: what will I sell today, and what do I need to have in the fridge for it?</p>
+  <div class="meta-strip">
+    <span><b>Persona</b> · store manager, 1 location</span>
+    <span><b>Channels</b> · QR dine-in, Grab, LINE MAN, ShopeeFood, Robinhood</span>
+    <span><b>Forecast grain</b> · item × day × channel</span>
+    <span><b>Timezone</b> · Asia/Bangkok</span>
+  </div>
+</header>
+
+<h2><span class="num">01</span> Scope and assumptions</h2>
+
+<p>One store, so there is no <code>dim_store</code> — location is a constant, not a dimension. Everything below is modelled at the grain a single manager can act on: a day, a menu item, a channel, an ingredient, a shift.</p>
+
+<ul>
+  <li><strong>Forecast grain is menu item × business day × channel.</strong> This is the load-bearing assumption: it decides that the sales mart is a daily item-level table, not a revenue-only table, and it is what makes ingredient forecasting possible downstream.</li>
+  <li><strong>Business day ≠ calendar day.</strong> The shop trades past midnight, so a business day runs 10:00–02:00 Asia/Bangkok. Every fact carries both <code>order_ts_utc</code> and <code>business_date_sk</code>.</li>
+  <li><strong>Aggregator orders are anonymous.</strong> Grab, LINE MAN, ShopeeFood and Robinhood do not hand over customer identity. Membership and segmentation are therefore <em>own-channel only</em> — see decision 04.</li>
+  <li><strong>Stock is not "order minus 10%".</strong> Consumption is <em>derived</em> from a recipe, then <em>reconciled</em> against physical counts. The 10% is the variance you measure, not a rule you hard-code — see decision 02.</li>
+</ul>
+
+<h2><span class="num">02</span> Source systems</h2>
+
+<p>Five source families, three very different ingestion cadences. The cadence differences are the reason a raw landing layer exists at all.</p>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>Source</th><th>What it gives</th><th>Format / access</th><th>Cadence</th><th>Natural key</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>POS / QR ordering</td><td>Dine-in and walk-in orders, lines, payments, kitchen status</td><td>App DB or POS API</td><td>Near real-time (5&nbsp;min micro-batch)</td><td><code>pos_order_id</code></td></tr>
+    <tr><td>Aggregators ×4</td><td>Platform orders, lines, promo, commission, courier timestamps</td><td>Merchant-portal CSV export or partner API</td><td>Daily (T+1, some settle T+7)</td><td><code>(platform, platform_order_id)</code></td></tr>
+    <tr><td>Inventory counts</td><td>Physical stock on hand by ingredient</td><td>Tablet form / Google Sheet</td><td>Daily close + weekly full count</td><td><code>(count_session_id, ingredient_id)</code></td></tr>
+    <tr><td>Purchasing</td><td>Supplier POs, goods receipts, unit cost</td><td>Sheet or supplier invoice entry</td><td>On delivery (2–3× / week)</td><td><code>po_line_id</code></td></tr>
+    <tr><td>Staff &amp; shifts</td><td>Roster, clock-in/out, role, wage rate</td><td>Scheduling app / sheet</td><td>Daily</td><td><code>(staff_id, shift_start)</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <span class="label">Why this matters for the pipeline</span>
+  <p>POS is streaming-ish and trustworthy; aggregator data is late, batched, schema-drifting, and arrives once per platform with four different column names for "order total". Everything downstream of staging must not care which of the five it came from — that is the whole job of the conform layer.</p>
+</div>
+
+<h2><span class="num">03</span> Pipeline architecture</h2>
+
+<p>A four-layer medallion pipeline. The layers <em>are</em> a sequence, so they are numbered; each one has exactly one contract with the next.</p>
+
+<figure class="wide">
+  <div class="scroll">
+<pre class="mermaid">
+flowchart LR
+  subgraph SRC["SOURCES"]
+    direction TB
+    S1["POS / QR<br/>orders API"]
+    S2["Grab · LINE MAN<br/>ShopeeFood · Robinhood<br/>portal exports"]
+    S3["Stock count<br/>form"]
+    S4["Supplier PO<br/>sheet"]
+    S5["Shift &amp;<br/>timeclock"]
+  end
+
+  subgraph RAW["1 · RAW / BRONZE"]
+    direction TB
+    R1["Immutable append<br/>schema-on-read<br/>+ ingest_ts, source_file"]
+  end
+
+  subgraph STG["2 · STAGING / SILVER"]
+    direction TB
+    T1["Parse · cast · UTC→Asia/Bangkok<br/>Dedup on natural key<br/>Conform channel + item names<br/>Currency to THB"]
+    T2["Data quality gates<br/>not-null · uniqueness<br/>referential · row-count drift"]
+  end
+
+  subgraph CORE["3 · CORE WAREHOUSE / GOLD"]
+    direction TB
+    C1["Conformed dimensions<br/>SCD2 where price/role changes"]
+    C2["Fact tables<br/>declared grain, surrogate keys"]
+  end
+
+  subgraph MART["4 · MARTS"]
+    direction TB
+    M1["mart_sales_daily"]
+    M2["mart_ingredient_usage_daily"]
+    M3["mart_delivery_sla"]
+    M4["mart_customer_rfm"]
+    M5["mart_labor_vs_sales"]
+  end
+
+  subgraph OUT["CONSUMERS"]
+    direction TB
+    O1["Manager dashboard"]
+    O2["Demand forecast model"]
+    O3["Reorder suggestion"]
+    O4["Customer segmentation"]
+  end
+
+  S1 -->|"5 min micro-batch"| RAW
+  S2 -->|"daily T+1"| RAW
+  S3 -->|"daily close"| RAW
+  S4 -->|"on receipt"| RAW
+  S5 -->|"daily"| RAW
+
+  RAW --> T1 --> T2 --> CORE
+  C1 --> C2
+  CORE --> MART
+  M1 --> O1
+  M1 --> O2
+  M2 --> O3
+  M2 --> O1
+  M3 --> O1
+  M4 --> O4
+  M5 --> O1
+  O2 -.->|"forecast written back<br/>as fct_forecast"| CORE
+</pre>
+  </div>
+  <figcaption>Fig. 1 — Source to consumer. Dotted edge: model output re-enters the warehouse so forecast accuracy can itself be measured.</figcaption>
+</figure>
+
+<h3>Layer contracts</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Layer</th><th>Guarantee</th><th>Deliberately not done here</th></tr></thead>
+  <tbody>
+    <tr><td>1 · Raw</td><td>Nothing is ever lost or edited. Every row keeps <code>source_system</code>, <code>ingest_ts</code>, <code>source_file</code>, raw payload.</td><td>No typing, no dedup, no joins.</td></tr>
+    <tr><td>2 · Staging</td><td>One row per real-world event. Types cast, timestamps in Asia/Bangkok, channel and item names conformed, duplicates removed.</td><td>No business aggregation, no KPI logic.</td></tr>
+    <tr><td>3 · Core</td><td>Star schema. Every fact has a declared grain and only surrogate keys. History preserved via SCD2.</td><td>No presentation shaping, no channel-specific hacks.</td></tr>
+    <tr><td>4 · Mart</td><td>One table per question, pre-aggregated, dashboard- and model-ready.</td><td>No re-derivation of business rules — those live in core.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2><span class="num">04</span> ER model — sales and orders</h2>
+
+<p>Grain declarations, stated because they are the thing that makes or breaks a star schema:</p>
+<ul>
+  <li><code>FCT_ORDER</code> — one row per order (any channel).</li>
+  <li><code>FCT_ORDER_LINE</code> — one row per menu item per order.</li>
+  <li><code>FCT_ORDER_EVENT</code> — one row per status transition per order.</li>
+  <li><code>FCT_PAYMENT</code> — one row per tender per order (split payments are normal).</li>
+</ul>
+
+<figure class="wide">
+  <div class="scroll">
+<pre class="mermaid">
+erDiagram
+  DIM_DATE ||--o{ FCT_ORDER : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_ORDER : "placed by (own channels only)"
+  FCT_ORDER ||--|{ FCT_ORDER_LINE : contains
+  FCT_ORDER ||--o{ FCT_ORDER_EVENT : "tracked by"
+  FCT_ORDER ||--|{ FCT_PAYMENT : "settled by"
+  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by"
+  DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : applied
+  DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
+  DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
+  DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
+  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
+
+  DIM_DATE {
+    int date_sk PK
+    date calendar_date
+    int day_of_week
+    boolean is_weekend
+    boolean is_thai_holiday
+    string month_name
+  }
+  DIM_CHANNEL {
+    int channel_sk PK
+    string channel_code UK "QR_DINEIN, GRAB, LINEMAN, SHOPEE, ROBINHOOD, PHONE"
+    string channel_type "dine_in or delivery"
+    boolean is_own_channel
+    decimal commission_rate_pct
+  }
+  DIM_CUSTOMER {
+    int customer_sk PK
+    string customer_nk UK "membership or phone hash"
+    date first_order_date
+    string signup_source
+    boolean is_member
+  }
+  DIM_MENU_ITEM {
+    int menu_item_sk PK
+    string menu_item_nk "stable business key"
+    string item_name
+    string category "pizza, chicken, side, drink"
+    string size_code
+    decimal base_price_thb
+    date valid_from "SCD2"
+    date valid_to "SCD2"
+    boolean is_current
+  }
+  BRG_CHANNEL_MENU_ITEM {
+    int channel_menu_sk PK
+    int channel_sk FK
+    int menu_item_sk FK
+    string platform_item_id "aggregator's own id"
+    decimal channel_price_thb "uplifted platform price"
+    boolean is_listed
+  }
+  DIM_PROMOTION {
+    int promotion_sk PK
+    string promo_code
+    string promo_type "percent, fixed, bogo, free_delivery"
+    string funded_by "shop or platform"
+    date start_date
+    date end_date
+  }
+  FCT_ORDER {
+    bigint order_sk PK
+    string external_order_id "platform natural key"
+    int channel_sk FK
+    int date_sk FK
+    int customer_sk FK "null for aggregator orders"
+    timestamp order_ts
+    decimal gross_amount_thb
+    decimal discount_amount_thb
+    decimal delivery_fee_thb
+    decimal commission_amount_thb
+    decimal net_revenue_thb
+    string order_status
+    boolean is_cancelled
+  }
+  FCT_ORDER_LINE {
+    bigint order_line_sk PK
+    bigint order_sk FK
+    int menu_item_sk FK
+    int quantity
+    decimal unit_price_thb "price at time of order"
+    decimal line_discount_thb
+    decimal line_net_thb
+    string modifiers_json "extra cheese, no chili"
+  }
+  FCT_ORDER_EVENT {
+    bigint order_event_sk PK
+    bigint order_sk FK
+    string event_type "placed, accepted, prep_start, prep_complete, courier_pickup, delivered, cancelled"
+    timestamp event_ts
+    int staff_sk FK
+    int duration_from_prev_sec
+  }
+  FCT_PAYMENT {
+    bigint payment_sk PK
+    bigint order_sk FK
+    string tender_type "cash, promptpay_qr, card, platform_settled"
+    decimal amount_thb
+    timestamp paid_ts
+    date settlement_date "platform payouts lag"
+  }
+  FCT_ORDER_PROMOTION {
+    bigint order_promo_sk PK
+    bigint order_sk FK
+    int promotion_sk FK
+    decimal discount_amount_thb
+  }
+</pre>
+  </div>
+  <figcaption>Fig. 2 — Sales star. <code>BRG_CHANNEL_MENU_ITEM</code> is what lets a Grab listing and a QR listing of the same pizza roll up to one item.</figcaption>
+</figure>
+
+<h2><span class="num">05</span> ER model — inventory and supply</h2>
+
+<p>This is the half of the model that answers "what do I need to order". It works by comparing two independently-derived numbers.</p>
+
+<figure class="wide">
+  <div class="scroll">
+<pre class="mermaid">
+erDiagram
+  DIM_MENU_ITEM ||--|{ BRG_RECIPE : "made from"
+  DIM_INGREDIENT ||--o{ BRG_RECIPE : "used in"
+  DIM_INGREDIENT ||--o{ FCT_INVENTORY_MOVEMENT : "moves"
+  DIM_INGREDIENT ||--o{ FCT_INVENTORY_COUNT : "counted"
+  DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
+  DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
+  DIM_SUPPLIER ||--o{ DIM_INGREDIENT : "preferred source"
+  FCT_PURCHASE_ORDER ||--|{ FCT_PURCHASE_ORDER_LINE : contains
+  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "goods receipt"
+  DIM_DATE ||--o{ FCT_INVENTORY_MOVEMENT : "on day"
+  DIM_DATE ||--o{ FCT_INVENTORY_COUNT : "on day"
+
+  DIM_INGREDIENT {
+    int ingredient_sk PK
+    string ingredient_nk UK
+    string ingredient_name "mozzarella, 00 flour, pepperoni"
+    string category "dairy, dry_good, protein, produce, packaging"
+    string base_uom "gram, ml, piece"
+    decimal shelf_life_days
+    decimal reorder_point_qty
+    decimal safety_stock_qty
+    int default_supplier_sk FK
+  }
+  BRG_RECIPE {
+    int recipe_sk PK
+    int menu_item_sk FK
+    int ingredient_sk FK
+    decimal qty_per_unit "in ingredient base_uom"
+    decimal yield_loss_pct "trim and prep loss"
+    date valid_from "SCD2 - recipes change"
+    date valid_to
+  }
+  DIM_SUPPLIER {
+    int supplier_sk PK
+    string supplier_name
+    string contact_phone
+    int lead_time_days
+    int min_order_value_thb
+    string delivery_days "Mon,Thu"
+  }
+  FCT_PURCHASE_ORDER {
+    bigint po_sk PK
+    int supplier_sk FK
+    int order_date_sk FK
+    int received_date_sk FK
+    decimal total_cost_thb
+    string po_status
+  }
+  FCT_PURCHASE_ORDER_LINE {
+    bigint po_line_sk PK
+    bigint po_sk FK
+    int ingredient_sk FK
+    decimal qty_ordered
+    decimal qty_received
+    decimal unit_cost_thb "cost at time of purchase"
+  }
+  FCT_INVENTORY_MOVEMENT {
+    bigint movement_sk PK
+    int ingredient_sk FK
+    int date_sk FK
+    timestamp movement_ts
+    string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
+    decimal qty_delta "signed, base_uom"
+    bigint source_ref_sk "order_line_sk or po_line_sk"
+    decimal unit_cost_thb
+  }
+  FCT_INVENTORY_COUNT {
+    bigint count_sk PK
+    int ingredient_sk FK
+    int date_sk FK
+    decimal qty_counted
+    decimal qty_expected "system theoretical on-hand"
+    decimal variance_qty "counted minus expected"
+    decimal variance_value_thb
+    int counted_by_staff_sk FK
+  }
+</pre>
+  </div>
+  <figcaption>Fig. 3 — Inventory star. Theoretical usage flows in from <code>FCT_ORDER_LINE</code> via <code>BRG_RECIPE</code>; physical truth flows in from <code>FCT_INVENTORY_COUNT</code>; the gap between them is the number the manager gets paid to shrink.</figcaption>
+</figure>
+
+<h2><span class="num">06</span> ER model — people and shifts</h2>
+
+<p>Staff data only earns its place if it joins to something. Here it joins twice: to shifts (labour cost per hour) and to order events (who was on the pass when tickets ran late).</p>
+
+<figure class="wide">
+  <div class="scroll">
+<pre class="mermaid">
+erDiagram
+  DIM_STAFF ||--o{ FCT_SHIFT : works
+  DIM_ROLE ||--o{ DIM_STAFF : "holds"
+  DIM_DATE ||--o{ FCT_SHIFT : "on day"
+  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
+  DIM_STAFF ||--o{ FCT_INVENTORY_COUNT : "counted by"
+
+  DIM_STAFF {
+    int staff_sk PK
+    string staff_nk UK
+    string staff_name
+    int role_sk FK
+    string employment_type "full_time, part_time"
+    decimal hourly_wage_thb
+    date hire_date
+    date valid_from "SCD2 - wage and role change"
+    date valid_to
+    boolean is_current
+  }
+  DIM_ROLE {
+    int role_sk PK
+    string role_name "pizzaiolo, cashier, rider, prep, manager"
+    boolean is_kitchen
+  }
+  FCT_SHIFT {
+    bigint shift_sk PK
+    int staff_sk FK
+    int date_sk FK
+    timestamp clock_in_ts
+    timestamp clock_out_ts
+    decimal hours_worked
+    decimal labour_cost_thb
+    string shift_type "open, mid, close"
+  }
+  FCT_ORDER_EVENT {
+    bigint order_event_sk PK
+    bigint order_sk FK
+    int staff_sk FK
+    string event_type
+    timestamp event_ts
+  }
+  FCT_INVENTORY_COUNT {
+    bigint count_sk PK
+    int counted_by_staff_sk FK
+    decimal variance_qty
+  }
+</pre>
+  </div>
+  <figcaption>Fig. 4 — People star. <code>FCT_ORDER_EVENT</code> and <code>FCT_INVENTORY_COUNT</code> repeat here as shared facts; they are defined in full in figures 2 and 3.</figcaption>
+</figure>
+
+<h2><span class="num">07</span> Modelling decisions worth defending</h2>
+
+<div class="decisions">
+  <div class="decision">
+    <h4><span>01</span> Multi-channel order provenance</h4>
+    <p>Every order carries <code>channel_sk</code> plus the platform's own <code>external_order_id</code>. Dedup and idempotent reload both key on <b>(channel_sk, external_order_id)</b>, so re-running yesterday's Grab export cannot double-count revenue. Without this pair, reconciling four platforms against one P&amp;L is guesswork.</p>
+  </div>
+  <div class="decision">
+    <h4><span>02</span> Recipe-driven stock, not a fixed percentage</h4>
+    <p>Stock does not decrease by "order ±10%". <code>BRG_RECIPE</code> gives grams-per-pizza, so <b>theoretical usage</b> is derived from order lines. <code>FCT_INVENTORY_COUNT</code> supplies <b>actual on-hand</b>. Variance = theoretical − actual, and that variance is the waste/shrinkage KPI. The 10% is an output of the system, not an input to it.</p>
+  </div>
+  <div class="decision">
+    <h4><span>03</span> Price is stored twice, on purpose</h4>
+    <p><code>FCT_ORDER_LINE.unit_price_thb</code> is an immutable snapshot — a receipt reprinted in 2027 must show 2026's price. <code>DIM_MENU_ITEM</code> is SCD2 with <code>valid_from</code>/<code>valid_to</code> so you can still ask "what did margin look like before the March price rise". Snapshot answers <em>what happened</em>; SCD2 answers <em>what was true</em>.</p>
+  </div>
+  <div class="decision">
+    <h4><span>04</span> Membership only exists on own channels</h4>
+    <p>Aggregators do not release customer identity, so <code>FCT_ORDER.customer_sk</code> is <b>nullable and mostly null</b>. RFM segmentation is scoped to QR and phone orders and the dashboard must label it that way. Drawing a customer FK off every order would make the segmentation story fiction.</p>
+  </div>
+  <div class="decision">
+    <h4><span>05</span> Delivery timing is an event log, not columns</h4>
+    <p><code>FCT_ORDER_EVENT</code> records each transition, so any duration is a difference between two rows — prep time, pickup wait, total lead time — without schema changes. Coverage is honestly uneven: QR gives full kitchen granularity, aggregators typically give accepted/pickup/delivered only. The event model degrades gracefully; a fixed-column model does not.</p>
+  </div>
+  <div class="decision">
+    <h4><span>06</span> Payment, promotion and commission are separate from the order</h4>
+    <p>Split tenders (half PromptPay, half cash) need their own rows. Platform-funded vs shop-funded promotions land on completely different lines of the P&amp;L. And <code>commission_amount_thb</code> is what turns gross revenue into the only number that matters — <b>net revenue the shop actually banks</b>, which differs by up to 30% between channels.</p>
+  </div>
+</div>
+
+<h2><span class="num">08</span> Marts, dashboard and ML</h2>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Mart</th><th>Grain</th><th>Built from</th><th>Serves</th></tr></thead>
+  <tbody>
+    <tr><td>mart_sales_daily</td><td>business date × channel × menu item</td><td>FCT_ORDER + FCT_ORDER_LINE + dims</td><td>Sales dashboard; training set for the demand forecast</td></tr>
+    <tr><td>mart_ingredient_usage_daily</td><td>business date × ingredient</td><td>FCT_ORDER_LINE × BRG_RECIPE, vs FCT_INVENTORY_COUNT</td><td>Waste %, variance alerts, reorder suggestions</td></tr>
+    <tr><td>mart_delivery_sla</td><td>order</td><td>FCT_ORDER_EVENT pivoted to durations</td><td>Prep-time and lead-time distributions by channel and hour</td></tr>
+    <tr><td>mart_customer_rfm</td><td>customer (own channels)</td><td>FCT_ORDER where customer_sk not null</td><td>Segmentation, win-back campaigns via LINE</td></tr>
+    <tr><td>mart_labor_vs_sales</td><td>business date × hour</td><td>FCT_SHIFT + FCT_ORDER</td><td>Labour cost %, understaffed-hour detection</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>The closed loop</h3>
+<p>The forecast is the piece that makes the whole warehouse pay for itself, and it only works because of the chain of grains chosen above:</p>
+<p><code>mart_sales_daily</code> → forecast units per <b>item × day × channel</b> → multiply through <code>BRG_RECIPE</code> → forecast <b>grams per ingredient</b> → subtract current on-hand from <code>FCT_INVENTORY_MOVEMENT</code>, add <code>safety_stock_qty</code>, respect supplier <code>lead_time_days</code> and <code>delivery_days</code> → <b>a purchase order the manager can approve with one tap.</b></p>
+<p>Forecasts are written back as <code>fct_forecast</code> (grain: item × day × channel × forecast run) so predicted-vs-actual error is itself a table you can chart. A model you cannot score is a model you cannot trust.</p>
+
+<h3>Dashboard, top screen</h3>
+<ul>
+  <li><strong>Net revenue by channel</strong> — gross minus commission minus shop-funded promos. Almost never what the platform app tells you.</li>
+  <li><strong>Today vs forecast</strong>, live, with the gap called out.</li>
+  <li><strong>Items at risk</strong> — ingredients where projected demand exceeds on-hand before the next delivery day.</li>
+  <li><strong>Variance watch</strong> — ingredients whose theoretical-vs-counted gap breaches its threshold.</li>
+  <li><strong>Prep time p50 / p90 by hour</strong> — where the kitchen breaks, not just that it did.</li>
+</ul>
+
+<h2><span class="num">09</span> Data quality rules</h2>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Risk</th><th>Where it bites</th><th>Rule</th></tr></thead>
+  <tbody>
+    <tr><td>Double ingestion</td><td>Aggregator export re-downloaded</td><td>Merge key <code>(channel_sk, external_order_id)</code>; upsert, never append</td></tr>
+    <tr><td>Late-arriving orders</td><td>01:40 order in yesterday's file</td><td>Assign <code>business_date_sk</code> by 10:00–02:00 window, reprocess a 3-day trailing partition</td></tr>
+    <tr><td>Schema drift</td><td>Platform renames a CSV column</td><td>Raw layer stores payload as-is; staging fails loudly on unmapped columns rather than silently nulling</td></tr>
+    <tr><td>Unmapped menu item</td><td>New platform-only bundle</td><td><code>BRG_CHANNEL_MENU_ITEM</code> miss routes to a quarantine table + alert; revenue is never dropped</td></tr>
+    <tr><td>Cancelled / refunded orders</td><td>Inflated sales and phantom stock usage</td><td><code>is_cancelled</code> excluded from usage derivation; kept in the fact for cancel-rate analysis</td></tr>
+    <tr><td>Recipe changed mid-period</td><td>Variance suddenly explodes</td><td><code>BRG_RECIPE</code> is SCD2; usage joins on the recipe valid at order time</td></tr>
+  </tbody>
+</table>
+</div>
+
+<footer>Pizza shop data platform · ER model + pipeline · assumption: forecast grain = item × day × channel</footer>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  // Match Mermaid's theme to the page's, which follows the OS setting.
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    && document.documentElement.dataset.theme !== 'light';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: dark ? 'dark' : 'neutral',
+    securityLevel: 'loose',
+    flowchart: { curve: 'basis' }
+  });
+</script>
+</body>
+</html>
