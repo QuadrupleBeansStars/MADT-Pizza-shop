@@ -19,9 +19,10 @@ ER model at each layer, and the decisions worth defending in a review.
 
 **Reading it.** The diagrams below render directly on GitHub, and in VS Code (Markdown Preview),
 Obsidian, Typora and Notion. For the styled version, clone the repo and open
-`docs/data-platform.html` in a browser — GitHub shows `.html` as raw source, so the link only works
-locally. The `.mmd` files paste straight into [mermaid.live](https://mermaid.live) if you need
-PNG/SVG exports for slides.
+`docs/data-platform.html` in a browser — GitHub shows `.html` as raw source, so that file only
+works locally, and it needs an internet connection on first load because it pulls Mermaid from a
+CDN. The `.mmd` files paste straight into [mermaid.live](https://mermaid.live) if you need PNG/SVG
+exports for slides.
 
 ---
 

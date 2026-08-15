@@ -747,17 +747,24 @@ erDiagram
 
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>
+<!-- Mermaid 11 ships ESM as its entry point; the .min.js build assigns to an
+     esbuild-internal namespace rather than window.mermaid, so import it. -->
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
   // Match Mermaid's theme to the page's, which follows the OS setting.
   const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
     && document.documentElement.dataset.theme !== 'light';
+
+  // Module scripts are deferred, so DOMContentLoaded may already have fired —
+  // run explicitly instead of relying on startOnLoad.
   mermaid.initialize({
-    startOnLoad: true,
+    startOnLoad: false,
     theme: dark ? 'dark' : 'neutral',
     securityLevel: 'loose',
     flowchart: { curve: 'basis' }
   });
+  await mermaid.run({ querySelector: 'pre.mermaid' });
 </script>
 </body>
 </html>
