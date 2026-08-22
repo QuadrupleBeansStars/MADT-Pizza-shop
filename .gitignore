@@ -8,3 +8,6 @@
 .vscode/
 .idea/
 *.swp
+
+# Finder-made archives of the renders
+*.zip
