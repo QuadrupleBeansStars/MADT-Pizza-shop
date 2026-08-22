@@ -13,8 +13,12 @@ erDiagram
     string staff_nk UK
     string staff_name
     int role_sk FK
-    string employment_type "full_time, part_time"
+    string employment_type "full_time, part_time, daily"
     decimal hourly_wage_thb
+    boolean is_ot_eligible "salaried managers usually are not"
+    decimal daily_regular_hours "8 - OT accrues beyond this"
+    decimal ot_multiplier "1.5 weekday default"
+    decimal holiday_ot_multiplier "3.0 default"
     date hire_date
     date valid_from "SCD2 - wage and role change"
     date valid_to
@@ -31,8 +35,15 @@ erDiagram
     int date_sk FK
     timestamp clock_in_ts
     timestamp clock_out_ts
-    decimal hours_worked
-    decimal labour_cost_thb
+    decimal hours_worked "regular_hours + ot_hours"
+    decimal regular_hours "up to daily_regular_hours"
+    decimal ot_hours "beyond the threshold, or holiday work"
+    decimal ot_multiplier_applied "snapshot - rate at the time"
+    decimal regular_cost_thb
+    decimal ot_cost_thb "ot_hours x wage x multiplier"
+    decimal labour_cost_thb "regular_cost + ot_cost"
+    boolean is_holiday_shift "from DIM_DATE.is_thai_holiday"
+    boolean is_ot_approved "manager sign-off, unapproved OT is a finding"
     string shift_type "open, mid, close"
   }
   FCT_ORDER_EVENT {

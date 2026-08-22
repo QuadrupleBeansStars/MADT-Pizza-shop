@@ -1,0 +1,66 @@
+%% Fig. 5 - ER model: promotion rules (definition side)
+%% Fig. 2 shows what a promotion DID (the discount that landed on a line).
+%% This shows what a promotion IS - its conditions and its rewards, stored as
+%% rows so a new mechanic never needs a schema change.
+%% ---
+%% Grain:
+%%   BRG_PROMOTION_CONDITION - one row per condition per promotion
+%%   BRG_PROMOTION_REWARD    - one row per reward per promotion
+erDiagram
+  DIM_PROMOTION ||--o{ BRG_PROMOTION_CONDITION : "qualifies on"
+  DIM_PROMOTION ||--o{ BRG_PROMOTION_REWARD : "gives"
+  DIM_PROMOTION ||--o{ FCT_ORDER_LINE_PROMOTION : "applied as"
+  DIM_MENU_ITEM ||--o{ BRG_PROMOTION_CONDITION : "targeted by"
+  DIM_MENU_ITEM ||--o{ BRG_PROMOTION_REWARD : "given as"
+  DIM_CHANNEL ||--o{ BRG_PROMOTION_CONDITION : "restricted to"
+
+  DIM_PROMOTION {
+    int promotion_sk PK
+    string promo_code
+    string promo_name
+    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
+    string funded_by "shop or platform"
+    string stacking_group "which promos may combine"
+    int priority "resolution order when several qualify"
+    date start_date
+    date end_date
+  }
+  BRG_PROMOTION_CONDITION {
+    int condition_sk PK
+    int promotion_sk FK
+    string condition_type "sku, category, channel, min_basket_thb, min_qty, day_of_week, time_window, customer_segment"
+    string operator "in, not_in, gte, lte, between"
+    string target_kind "menu_item, category, channel, none"
+    int target_sk FK "menu_item_sk or channel_sk, null for value tests"
+    decimal value_num "500 for min basket, 2 for min qty"
+    string value_text "Mon,Tue or 14:00-17:00"
+    int condition_group "AND within a group, OR across groups"
+  }
+  BRG_PROMOTION_REWARD {
+    int reward_sk PK
+    int promotion_sk FK
+    string reward_type "percent_off, fixed_off, fixed_price, free_item"
+    string target_kind "menu_item, category, cheapest_qualifying, whole_basket"
+    int target_sk FK "null when target_kind is not an item"
+    decimal reward_value "20 for 20 percent, 99 for a fixed price"
+    int max_qty "cap - at most 2 free pizzas"
+    decimal max_discount_thb "cap in baht"
+  }
+  DIM_MENU_ITEM {
+    int menu_item_sk PK "the SKU - item x size"
+    string item_name
+    string category
+    string size_code
+  }
+  DIM_CHANNEL {
+    int channel_sk PK
+    string channel_code
+  }
+  FCT_ORDER_LINE_PROMOTION {
+    bigint order_line_promo_sk PK
+    bigint order_line_sk FK
+    int promotion_sk FK
+    decimal discount_amount_thb
+    string allocation_method "explicit or pro_rata"
+    boolean is_reward_line
+  }

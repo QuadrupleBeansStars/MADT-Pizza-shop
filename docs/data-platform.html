@@ -414,8 +414,10 @@ erDiagram
   FCT_ORDER ||--|{ FCT_ORDER_LINE : contains
   FCT_ORDER ||--o{ FCT_ORDER_EVENT : "tracked by"
   FCT_ORDER ||--|{ FCT_PAYMENT : "settled by"
-  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by"
+  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by (basket-level)"
   DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : applied
+  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_PROMOTION : "discounted by (SKU-level)"
+  DIM_PROMOTION ||--o{ FCT_ORDER_LINE_PROMOTION : applied
   DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
   DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
   DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
@@ -465,8 +467,11 @@ erDiagram
   DIM_PROMOTION {
     int promotion_sk PK
     string promo_code
-    string promo_type "percent, fixed, bogo, free_delivery"
+    string promo_name
+    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
     string funded_by "shop or platform"
+    string stacking_group "which promos may combine"
+    int priority "resolution order when several qualify"
     date start_date
     date end_date
   }
@@ -515,14 +520,99 @@ erDiagram
     bigint order_promo_sk PK
     bigint order_sk FK
     int promotion_sk FK
-    decimal discount_amount_thb
+    decimal discount_amount_thb "basket-level total"
+  }
+  FCT_ORDER_LINE_PROMOTION {
+    bigint order_line_promo_sk PK
+    bigint order_line_sk FK "the SKU-level grain"
+    bigint order_sk FK "degenerate, saves a join"
+    int promotion_sk FK
+    decimal discount_amount_thb "allocated to this line"
+    string allocation_method "explicit or pro_rata"
+    boolean is_reward_line "true if this line IS the free item"
   }
 </pre>
   </div>
   <figcaption>Fig. 2 — Sales star. <code>BRG_CHANNEL_MENU_ITEM</code> is what lets a Grab listing and a QR listing of the same pizza roll up to one item.</figcaption>
 </figure>
 
-<h2><span class="num">05</span> ER model — inventory and supply</h2>
+<h2><span class="num">05</span> ER model — promotion rules</h2>
+
+<p>Promotions used to attach to the <strong>order</strong> only: one <code>discount_amount_thb</code> per order, and a <code>promo_type</code> label like <code>bogo</code> with nothing to say <em>of what</em>. No line knew it had been discounted, so item margin and menu engineering were computed against undiscounted revenue — wrong for exactly the items being promoted.</p>
+
+<p>The fix separates the promotion's <strong>definition</strong> (what qualifies, what you get — stored as rows in <code>BRG_PROMOTION_CONDITION</code> and <code>BRG_PROMOTION_REWARD</code>) from its <strong>application</strong> (<code>FCT_ORDER_LINE_PROMOTION</code>, grained at order line × promotion, which is the SKU-level answer).</p>
+
+<p><strong>By SKU:</strong> <code>DIM_MENU_ITEM</code> already carries <code>size_code</code>, so it is at SKU grain — targeting by SKU needs a reference to it, not a new dimension. <strong>By condition:</strong> each condition is a row — a <code>condition_type</code>, an <code>operator</code>, and either a <code>target_sk</code> or a plain <code>value_num</code>. Rows sharing a <code>condition_group</code> are ANDed; separate groups are ORed. A new mechanic becomes rows, never a migration.</p>
+
+<figure class="wide">
+  <div class="scroll">
+<pre class="mermaid">
+erDiagram
+  DIM_PROMOTION ||--o{ BRG_PROMOTION_CONDITION : "qualifies on"
+  DIM_PROMOTION ||--o{ BRG_PROMOTION_REWARD : "gives"
+  DIM_PROMOTION ||--o{ FCT_ORDER_LINE_PROMOTION : "applied as"
+  DIM_MENU_ITEM ||--o{ BRG_PROMOTION_CONDITION : "targeted by"
+  DIM_MENU_ITEM ||--o{ BRG_PROMOTION_REWARD : "given as"
+  DIM_CHANNEL ||--o{ BRG_PROMOTION_CONDITION : "restricted to"
+
+  DIM_PROMOTION {
+    int promotion_sk PK
+    string promo_code
+    string promo_name
+    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
+    string funded_by "shop or platform"
+    string stacking_group "which promos may combine"
+    int priority "resolution order when several qualify"
+    date start_date
+    date end_date
+  }
+  BRG_PROMOTION_CONDITION {
+    int condition_sk PK
+    int promotion_sk FK
+    string condition_type "sku, category, channel, min_basket_thb, min_qty, day_of_week, time_window, customer_segment"
+    string operator "in, not_in, gte, lte, between"
+    string target_kind "menu_item, category, channel, none"
+    int target_sk FK "menu_item_sk or channel_sk, null for value tests"
+    decimal value_num "500 for min basket, 2 for min qty"
+    string value_text "Mon,Tue or 14:00-17:00"
+    int condition_group "AND within a group, OR across groups"
+  }
+  BRG_PROMOTION_REWARD {
+    int reward_sk PK
+    int promotion_sk FK
+    string reward_type "percent_off, fixed_off, fixed_price, free_item"
+    string target_kind "menu_item, category, cheapest_qualifying, whole_basket"
+    int target_sk FK "null when target_kind is not an item"
+    decimal reward_value "20 for 20 percent, 99 for a fixed price"
+    int max_qty "cap - at most 2 free pizzas"
+    decimal max_discount_thb "cap in baht"
+  }
+  DIM_MENU_ITEM {
+    int menu_item_sk PK "the SKU - item x size"
+    string item_name
+    string category
+    string size_code
+  }
+  DIM_CHANNEL {
+    int channel_sk PK
+    string channel_code
+  }
+  FCT_ORDER_LINE_PROMOTION {
+    bigint order_line_promo_sk PK
+    bigint order_line_sk FK
+    int promotion_sk FK
+    decimal discount_amount_thb
+    string allocation_method "explicit or pro_rata"
+    boolean is_reward_line
+  }
+</pre>
+  </div>
+  <figcaption>Fig. 5 — Promotion rules. Conditions and rewards are rows, so "buy 2 pizzas, get the cheapest garlic bread free, Mon–Thu, dine-in only" is four condition rows and one reward row.</figcaption>
+</figure>
+
+<p><strong>Two rules the pipeline must enforce,</strong> because the schema alone cannot. Order-level discounts (free delivery, basket percent-off) have no natural line, so staging allocates them pro-rata and stamps <code>allocation_method</code>. And for every order, <code>SUM(FCT_ORDER_LINE_PROMOTION.discount)</code> must equal <code>SUM(FCT_ORDER_PROMOTION.discount)</code> — a data quality test, not a hope.</p>
+
+<h2><span class="num">06</span> ER model — inventory and supply</h2>
 
 <p>This is the half of the model that answers "what do I need to order". It works by comparing two independently-derived numbers.</p>
 
@@ -611,7 +701,7 @@ erDiagram
   <figcaption>Fig. 3 — Inventory star. Theoretical usage flows in from <code>FCT_ORDER_LINE</code> via <code>BRG_RECIPE</code>; physical truth flows in from <code>FCT_INVENTORY_COUNT</code>; the gap between them is the number the manager gets paid to shrink.</figcaption>
 </figure>
 
-<h2><span class="num">06</span> ER model — people and shifts</h2>
+<h2><span class="num">07</span> ER model — people and shifts</h2>
 
 <p>Staff data only earns its place if it joins to something. Here it joins twice: to shifts (labour cost per hour) and to order events (who was on the pass when tickets ran late).</p>
 
@@ -630,8 +720,12 @@ erDiagram
     string staff_nk UK
     string staff_name
     int role_sk FK
-    string employment_type "full_time, part_time"
+    string employment_type "full_time, part_time, daily"
     decimal hourly_wage_thb
+    boolean is_ot_eligible "salaried managers usually are not"
+    decimal daily_regular_hours "8 - OT accrues beyond this"
+    decimal ot_multiplier "1.5 weekday default"
+    decimal holiday_ot_multiplier "3.0 default"
     date hire_date
     date valid_from "SCD2 - wage and role change"
     date valid_to
@@ -648,8 +742,15 @@ erDiagram
     int date_sk FK
     timestamp clock_in_ts
     timestamp clock_out_ts
-    decimal hours_worked
-    decimal labour_cost_thb
+    decimal hours_worked "regular_hours + ot_hours"
+    decimal regular_hours "up to daily_regular_hours"
+    decimal ot_hours "beyond the threshold, or holiday work"
+    decimal ot_multiplier_applied "snapshot - rate at the time"
+    decimal regular_cost_thb
+    decimal ot_cost_thb "ot_hours x wage x multiplier"
+    decimal labour_cost_thb "regular_cost + ot_cost"
+    boolean is_holiday_shift "from DIM_DATE.is_thai_holiday"
+    boolean is_ot_approved "manager sign-off, unapproved OT is a finding"
     string shift_type "open, mid, close"
   }
   FCT_ORDER_EVENT {
@@ -669,7 +770,23 @@ erDiagram
   <figcaption>Fig. 4 — People star. <code>FCT_ORDER_EVENT</code> and <code>FCT_INVENTORY_COUNT</code> repeat here as shared facts; they are defined in full in figures 2 and 3.</figcaption>
 </figure>
 
-<h2><span class="num">07</span> Modelling decisions worth defending</h2>
+<h3>Overtime</h3>
+
+<p><code>hours_worked</code> alone cannot cost a shift, because not every hour costs the same. OT is split into its own measures rather than folded into a blended rate:</p>
+
+<ul>
+  <li><strong><code>regular_hours</code> and <code>ot_hours</code> are separate columns.</strong> Labour cost % is meaningless if a 1.5× hour is counted as a 1.0× hour, and "how much OT did we burn last month" comes before any other labour question.</li>
+  <li><strong><code>ot_multiplier_applied</code> is snapshotted onto the fact.</strong> Same argument as <code>unit_price_thb</code> on the order line — policy changes must not silently rewrite what last quarter's overtime cost. <code>DIM_STAFF</code> holds the current default; the fact holds what was actually used.</li>
+  <li><strong><code>is_ot_eligible</code> sits on <code>DIM_STAFF</code>.</strong> Salaried managers typically accrue no OT; without the flag their long days inflate the figure and hide the OT that is real.</li>
+  <li><strong><code>is_ot_approved</code> sits on the fact.</strong> Approved and unapproved overtime cost the same money but mean different things — one is a staffing decision, the other is a finding.</li>
+</ul>
+
+<div class="note">
+  <span class="label">Caveat — grain</span>
+  <p>OT is legally a <em>daily</em> concept, while <code>FCT_SHIFT</code> is grained per shift. If someone works two shifts in one business day the threshold spans both, so the split must be computed at staff × business_date and then allocated back to shifts. The multipliers shown (1.5× weekday, 3.0× holiday) are the common Thai defaults and should be confirmed against the Labour Protection Act before anyone runs payroll off this.</p>
+</div>
+
+<h2><span class="num">08</span> Modelling decisions worth defending</h2>
 
 <div class="decisions">
   <div class="decision">
@@ -698,7 +815,7 @@ erDiagram
   </div>
 </div>
 
-<h2><span class="num">08</span> Marts, dashboard and ML</h2>
+<h2><span class="num">09</span> Marts, dashboard and ML</h2>
 
 <div class="table-wrap">
 <table>
@@ -708,7 +825,8 @@ erDiagram
     <tr><td>mart_ingredient_usage_daily</td><td>business date × ingredient</td><td>FCT_ORDER_LINE × BRG_RECIPE, vs FCT_INVENTORY_COUNT</td><td>Waste %, variance alerts, reorder suggestions</td></tr>
     <tr><td>mart_delivery_sla</td><td>order</td><td>FCT_ORDER_EVENT pivoted to durations</td><td>Prep-time and lead-time distributions by channel and hour</td></tr>
     <tr><td>mart_customer_rfm</td><td>customer (own channels)</td><td>FCT_ORDER where customer_sk not null</td><td>Segmentation, win-back campaigns via LINE</td></tr>
-    <tr><td>mart_labor_vs_sales</td><td>business date × hour</td><td>FCT_SHIFT + FCT_ORDER</td><td>Labour cost %, understaffed-hour detection</td></tr>
+    <tr><td>mart_labor_vs_sales</td><td>business date × hour</td><td>FCT_SHIFT + FCT_ORDER</td><td>Labour cost %, OT cost and OT share, understaffed-hour detection</td></tr>
+    <tr><td>mart_promotion_performance</td><td>promotion × business date × menu item</td><td>FCT_ORDER_LINE_PROMOTION × BRG_PROMOTION_REWARD</td><td>Discount spend per SKU, incremental units, margin after discount</td></tr>
   </tbody>
 </table>
 </div>
@@ -727,7 +845,7 @@ erDiagram
   <li><strong>Prep time p50 / p90 by hour</strong> — where the kitchen breaks, not just that it did.</li>
 </ul>
 
-<h2><span class="num">09</span> Data quality rules</h2>
+<h2><span class="num">10</span> Data quality rules</h2>
 
 <div class="table-wrap">
 <table>
@@ -739,6 +857,10 @@ erDiagram
     <tr><td>Unmapped menu item</td><td>New platform-only bundle</td><td><code>BRG_CHANNEL_MENU_ITEM</code> miss routes to a quarantine table + alert; revenue is never dropped</td></tr>
     <tr><td>Cancelled / refunded orders</td><td>Inflated sales and phantom stock usage</td><td><code>is_cancelled</code> excluded from usage derivation; kept in the fact for cancel-rate analysis</td></tr>
     <tr><td>Recipe changed mid-period</td><td>Variance suddenly explodes</td><td><code>BRG_RECIPE</code> is SCD2; usage joins on the recipe valid at order time</td></tr>
+    <tr><td>Discount allocated but not reconciled</td><td>Item margin quietly invented</td><td>Assert line-level discount sums to order-level per order; fail the batch, do not warn</td></tr>
+    <tr><td>Promo with no qualifying condition</td><td>Discount applies to everything</td><td>Reject a <code>DIM_PROMOTION</code> with zero condition rows unless the mechanic is <code>free_delivery</code></td></tr>
+    <tr><td>Overtime split across two shifts</td><td>Daily threshold missed, OT under-reported</td><td>Compute the regular/OT split at staff × business_date, then allocate to shifts</td></tr>
+    <tr><td>OT booked for an ineligible role</td><td>Labour cost inflated by salaried managers</td><td>Reject <code>ot_hours &gt; 0</code> where <code>is_ot_eligible</code> is false</td></tr>
   </tbody>
 </table>
 </div>

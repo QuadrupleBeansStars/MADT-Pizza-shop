@@ -4,6 +4,7 @@
 %%   FCT_ORDER_LINE  - one row per menu item per order
 %%   FCT_ORDER_EVENT - one row per status transition per order
 %%   FCT_PAYMENT     - one row per tender per order
+%%   FCT_ORDER_LINE_PROMOTION - one row per order line per promotion
 erDiagram
   DIM_DATE ||--o{ FCT_ORDER : "business day"
   DIM_CHANNEL ||--o{ FCT_ORDER : "sold via"
@@ -11,8 +12,10 @@ erDiagram
   FCT_ORDER ||--|{ FCT_ORDER_LINE : contains
   FCT_ORDER ||--o{ FCT_ORDER_EVENT : "tracked by"
   FCT_ORDER ||--|{ FCT_PAYMENT : "settled by"
-  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by"
+  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by (basket-level)"
   DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : applied
+  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_PROMOTION : "discounted by (SKU-level)"
+  DIM_PROMOTION ||--o{ FCT_ORDER_LINE_PROMOTION : applied
   DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
   DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
   DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
@@ -62,8 +65,11 @@ erDiagram
   DIM_PROMOTION {
     int promotion_sk PK
     string promo_code
-    string promo_type "percent, fixed, bogo, free_delivery"
+    string promo_name
+    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
     string funded_by "shop or platform"
+    string stacking_group "which promos may combine"
+    int priority "resolution order when several qualify"
     date start_date
     date end_date
   }
@@ -112,5 +118,14 @@ erDiagram
     bigint order_promo_sk PK
     bigint order_sk FK
     int promotion_sk FK
-    decimal discount_amount_thb
+    decimal discount_amount_thb "basket-level total"
+  }
+  FCT_ORDER_LINE_PROMOTION {
+    bigint order_line_promo_sk PK
+    bigint order_line_sk FK "the SKU-level grain"
+    bigint order_sk FK "degenerate, saves a join"
+    int promotion_sk FK
+    decimal discount_amount_thb "allocated to this line"
+    string allocation_method "explicit or pro_rata"
+    boolean is_reward_line "true if this line IS the free item"
   }
