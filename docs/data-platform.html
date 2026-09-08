@@ -421,6 +421,8 @@ erDiagram
   DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
   DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
   DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
+  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_MODIFIER : "customised by"
+  DIM_MODIFIER ||--o{ FCT_ORDER_LINE_MODIFIER : "applied as"
   DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
 
   DIM_DATE {
@@ -498,7 +500,22 @@ erDiagram
     decimal unit_price_thb "price at time of order"
     decimal line_discount_thb
     decimal line_net_thb
-    string modifiers_json "extra cheese, no chili"
+  }
+  DIM_MODIFIER {
+    int modifier_sk PK
+    string modifier_nk UK
+    string modifier_name "extra cheese, no chili, thin crust"
+    string modifier_type "add, remove, substitute"
+    string applies_to_category "pizza, chicken, drink"
+    decimal default_price_delta_thb
+    boolean is_active
+  }
+  FCT_ORDER_LINE_MODIFIER {
+    bigint order_line_modifier_sk PK
+    bigint order_line_sk FK
+    int modifier_sk FK
+    int quantity "double extra cheese is qty 2"
+    decimal price_delta_thb "snapshot, not joined"
   }
   FCT_ORDER_EVENT {
     bigint order_event_sk PK
@@ -535,6 +552,20 @@ erDiagram
   </div>
   <figcaption>Fig. 2 — Sales star. <code>BRG_CHANNEL_MENU_ITEM</code> is what lets a Grab listing and a QR listing of the same pizza roll up to one item.</figcaption>
 </figure>
+
+<h3>Modifiers are rows, not JSON</h3>
+
+<p><code>FCT_ORDER_LINE</code> used to carry <code>modifiers_json</code> — a string holding <code>"extra cheese, no chili"</code>. That is a repeating group hidden inside a column, so no query can total extra-cheese sales without string matching. But the expensive part is not reporting, it is <strong>inventory</strong>.</p>
+
+<p>Theoretical usage is derived as <code>FCT_ORDER_LINE × BRG_RECIPE</code>, and <code>BRG_RECIPE</code> explodes a <em>menu item</em>. Extra cheese is roughly 40 g of mozzarella that no recipe knows about — physically consumed, never counted as usage, and therefore landing in variance as unexplained shrinkage. A JSON blob quietly corrupts the exact number this model exists to produce.</p>
+
+<ul>
+  <li><code>DIM_MODIFIER</code> — the catalogue, with <code>modifier_type</code> (add / remove / substitute).</li>
+  <li><code>FCT_ORDER_LINE_MODIFIER</code> — grain: order line × modifier, with <code>price_delta_thb</code> snapshotted.</li>
+  <li><code>BRG_MODIFIER_RECIPE</code> (figure 3) — what a modifier consumes, <strong>signed</strong>: extra cheese +40 g, no chili −5 g.</li>
+</ul>
+
+<p>Theoretical usage becomes the sum of two explosions rather than one. Without the third table the first two are just tidier reporting; with it, the variance number is finally honest.</p>
 
 <h2><span class="num">05</span> ER model — promotion rules</h2>
 
@@ -627,8 +658,12 @@ erDiagram
   DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
   DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
   DIM_SUPPLIER ||--o{ DIM_INGREDIENT : "preferred source"
+  DIM_SUPPLIER ||--o{ BRG_SUPPLIER_DELIVERY_DAY : "delivers on"
+  DIM_MODIFIER ||--o{ BRG_MODIFIER_RECIPE : "consumes"
+  DIM_INGREDIENT ||--o{ BRG_MODIFIER_RECIPE : "used in"
   FCT_PURCHASE_ORDER ||--|{ FCT_PURCHASE_ORDER_LINE : contains
-  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "goods receipt"
+  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "receipt"
+  FCT_INVENTORY_COUNT ||--o{ FCT_INVENTORY_MOVEMENT : "count adjustment"
   DIM_DATE ||--o{ FCT_INVENTORY_MOVEMENT : "on day"
   DIM_DATE ||--o{ FCT_INVENTORY_COUNT : "on day"
 
@@ -658,7 +693,20 @@ erDiagram
     string contact_phone
     int lead_time_days
     int min_order_value_thb
-    string delivery_days "Mon,Thu"
+  }
+  BRG_SUPPLIER_DELIVERY_DAY {
+    int supplier_delivery_day_sk PK
+    int supplier_sk FK
+    int day_of_week "1=Mon .. 7=Sun, one row per day"
+    time order_cutoff_time "order after this and it ships next delivery day"
+  }
+  BRG_MODIFIER_RECIPE {
+    int modifier_recipe_sk PK
+    int modifier_sk FK
+    int ingredient_sk FK
+    decimal qty_delta_per_unit "signed - extra cheese +40g, no chili -5g"
+    date valid_from "SCD2"
+    date valid_to
   }
   FCT_PURCHASE_ORDER {
     bigint po_sk PK
@@ -682,8 +730,11 @@ erDiagram
     int date_sk FK
     timestamp movement_ts
     string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
-    decimal qty_delta "signed, base_uom"
-    bigint source_ref_sk "order_line_sk or po_line_sk"
+    decimal qty_delta "signed, base_uom - CHECK sign matches movement_type"
+    bigint order_line_sk FK "set for theoretical_usage, else null"
+    bigint order_line_modifier_sk FK "set for modifier usage, else null"
+    bigint po_line_sk FK "set for receipt, else null"
+    bigint count_sk FK "set for count_adjustment, else null"
     decimal unit_cost_thb
   }
   FCT_INVENTORY_COUNT {
@@ -698,8 +749,25 @@ erDiagram
   }
 </pre>
   </div>
-  <figcaption>Fig. 3 — Inventory star. Theoretical usage flows in from <code>FCT_ORDER_LINE</code> via <code>BRG_RECIPE</code>; physical truth flows in from <code>FCT_INVENTORY_COUNT</code>; the gap between them is the number the manager gets paid to shrink.</figcaption>
+  <figcaption>Fig. 3 — Inventory star. Theoretical usage flows in from <code>FCT_ORDER_LINE</code> via <code>BRG_RECIPE</code> and from <code>FCT_ORDER_LINE_MODIFIER</code> via <code>BRG_MODIFIER_RECIPE</code>; physical truth flows in from <code>FCT_INVENTORY_COUNT</code>; the gap between them is the number the manager gets paid to shrink.</figcaption>
 </figure>
+
+<h3>Delivery days are a table, not a string</h3>
+
+<p><code>DIM_SUPPLIER.delivery_days</code> used to hold <code>"Mon,Thu"</code> — a list crammed into a scalar, and it breaks something specific. The reorder suggestion respects <code>lead_time_days</code> <strong>and</strong> <code>delivery_days</code>; you cannot compute "the next delivery date after today" from a comma-separated string without parsing text in SQL, and "which suppliers deliver on Tuesday" is not answerable at all.</p>
+
+<p><code>BRG_SUPPLIER_DELIVERY_DAY</code> is one row per supplier per weekday, carrying <code>order_cutoff_time</code> — "order by 16:00 or it ships the following delivery day" moves the recommended order date by a full day, and that date is the thing the manager acts on.</p>
+
+<h3>One reference column became four</h3>
+
+<p><code>FCT_INVENTORY_MOVEMENT.source_ref_sk</code> was a single <code>bigint</code> documented as "order_line_sk or po_line_sk". That is a <strong>polymorphic foreign key</strong>, and it is the most dangerous construct in the model: the database cannot declare a foreign key on it, so integrity is whatever the ETL remembers to do — and because the two key spaces overlap, joining a <code>po_line_sk</code> to <code>FCT_ORDER_LINE</code> does not raise an error, it returns the <strong>wrong rows</strong>, silently.</p>
+
+<p>It is now four explicit nullable foreign keys — <code>order_line_sk</code>, <code>order_line_modifier_sk</code>, <code>po_line_sk</code>, <code>count_sk</code> — with a CHECK that at most one is set and that it agrees with <code>movement_type</code>. Rows for <code>waste</code>, <code>spoilage</code> and <code>staff_meal</code> legitimately have all four null; those movements have no source document.</p>
+
+<div class="note">
+  <span class="label">The rejected alternative</span>
+  <p>A <code>ref_table</code> + <code>ref_id</code> pair of strings is more flexible and is the wrong trade here: it permanently gives up database-enforced referential integrity, which is the one thing the split was for. <code>qty_delta</code> stays a single signed <code>decimal</code> for the same reason it always was — stock on hand is <code>SUM(qty_delta)</code>, one expression with no term to forget — and the guard against a receipt booked as an outflow is a CHECK tying sign to <code>movement_type</code>, not a second column.</p>
+</div>
 
 <h2><span class="num">07</span> ER model — people and shifts</h2>
 
@@ -813,6 +881,18 @@ erDiagram
     <h4><span>06</span> Payment, promotion and commission are separate from the order</h4>
     <p>Split tenders (half PromptPay, half cash) need their own rows. Platform-funded vs shop-funded promotions land on completely different lines of the P&amp;L. And <code>commission_amount_thb</code> is what turns gross revenue into the only number that matters — <b>net revenue the shop actually banks</b>, which differs by up to 30% between channels.</p>
   </div>
+  <div class="decision">
+    <h4><span>07</span> A promotion's definition and its effect are different tables</h4>
+    <p>Conditions and rewards say what the promo <em>is</em>; <code>FCT_ORDER_LINE_PROMOTION</code> says what it <em>did</em>, at SKU grain. Storing conditions as rows rather than columns lets a new mechanic ship without a migration — and pushing the discount down to the line is what keeps <b>item margin from being fiction</b>.</p>
+  </div>
+  <div class="decision">
+    <h4><span>08</span> Overtime is measured, not averaged</h4>
+    <p><code>regular_hours</code> and <code>ot_hours</code> are separate on <code>FCT_SHIFT</code>, and the multiplier used is snapshotted alongside them. A blended labour rate would be simpler and would hide <b>the single most controllable cost line the manager has</b>.</p>
+  </div>
+  <div class="decision">
+    <h4><span>09</span> No list lives in a scalar, and no key is polymorphic</h4>
+    <p>Three fields broke this and all three were fixed: <code>modifiers_json</code>, <code>DIM_SUPPLIER.delivery_days</code>, and <code>FCT_INVENTORY_MOVEMENT.source_ref_sk</code>. The first two are 1NF violations that silently disable a join; the third is worse, because <b>an overloaded key returns wrong rows instead of failing</b>.</p>
+  </div>
 </div>
 
 <h2><span class="num">09</span> Marts, dashboard and ML</h2>
@@ -822,7 +902,7 @@ erDiagram
   <thead><tr><th>Mart</th><th>Grain</th><th>Built from</th><th>Serves</th></tr></thead>
   <tbody>
     <tr><td>mart_sales_daily</td><td>business date × channel × menu item</td><td>FCT_ORDER + FCT_ORDER_LINE + dims</td><td>Sales dashboard; training set for the demand forecast</td></tr>
-    <tr><td>mart_ingredient_usage_daily</td><td>business date × ingredient</td><td>FCT_ORDER_LINE × BRG_RECIPE, vs FCT_INVENTORY_COUNT</td><td>Waste %, variance alerts, reorder suggestions</td></tr>
+    <tr><td>mart_ingredient_usage_daily</td><td>business date × ingredient</td><td>FCT_ORDER_LINE × BRG_RECIPE + FCT_ORDER_LINE_MODIFIER × BRG_MODIFIER_RECIPE, vs FCT_INVENTORY_COUNT</td><td>Waste %, variance alerts, reorder suggestions</td></tr>
     <tr><td>mart_delivery_sla</td><td>order</td><td>FCT_ORDER_EVENT pivoted to durations</td><td>Prep-time and lead-time distributions by channel and hour</td></tr>
     <tr><td>mart_customer_rfm</td><td>customer (own channels)</td><td>FCT_ORDER where customer_sk not null</td><td>Segmentation, win-back campaigns via LINE</td></tr>
     <tr><td>mart_labor_vs_sales</td><td>business date × hour</td><td>FCT_SHIFT + FCT_ORDER</td><td>Labour cost %, OT cost and OT share, understaffed-hour detection</td></tr>
@@ -833,7 +913,7 @@ erDiagram
 
 <h3>The closed loop</h3>
 <p>The forecast is the piece that makes the whole warehouse pay for itself, and it only works because of the chain of grains chosen above:</p>
-<p><code>mart_sales_daily</code> → forecast units per <b>item × day × channel</b> → multiply through <code>BRG_RECIPE</code> → forecast <b>grams per ingredient</b> → subtract current on-hand from <code>FCT_INVENTORY_MOVEMENT</code>, add <code>safety_stock_qty</code>, respect supplier <code>lead_time_days</code> and <code>delivery_days</code> → <b>a purchase order the manager can approve with one tap.</b></p>
+<p><code>mart_sales_daily</code> → forecast units per <b>item × day × channel</b> → multiply through <code>BRG_RECIPE</code> → forecast <b>grams per ingredient</b> → subtract current on-hand from <code>FCT_INVENTORY_MOVEMENT</code>, add <code>safety_stock_qty</code>, respect supplier <code>lead_time_days</code> and <code>BRG_SUPPLIER_DELIVERY_DAY</code> (including <code>order_cutoff_time</code>) → <b>a purchase order the manager can approve with one tap.</b></p>
 <p>Forecasts are written back as <code>fct_forecast</code> (grain: item × day × channel × forecast run) so predicted-vs-actual error is itself a table you can chart. A model you cannot score is a model you cannot trust.</p>
 
 <h3>Dashboard, top screen</h3>
@@ -857,6 +937,9 @@ erDiagram
     <tr><td>Unmapped menu item</td><td>New platform-only bundle</td><td><code>BRG_CHANNEL_MENU_ITEM</code> miss routes to a quarantine table + alert; revenue is never dropped</td></tr>
     <tr><td>Cancelled / refunded orders</td><td>Inflated sales and phantom stock usage</td><td><code>is_cancelled</code> excluded from usage derivation; kept in the fact for cancel-rate analysis</td></tr>
     <tr><td>Recipe changed mid-period</td><td>Variance suddenly explodes</td><td><code>BRG_RECIPE</code> is SCD2; usage joins on the recipe valid at order time</td></tr>
+    <tr><td>Modifier with no recipe</td><td>Extra cheese vanishes into unexplained variance</td><td>Alert on any <code>DIM_MODIFIER</code> of type add/substitute with no <code>BRG_MODIFIER_RECIPE</code> row</td></tr>
+    <tr><td>Movement pointing at two sources</td><td>Wrong-table join returns plausible wrong rows</td><td>CHECK at most one of the four source FKs is non-null, and that it matches <code>movement_type</code></td></tr>
+    <tr><td>Supplier with no delivery day</td><td>Reorder date cannot be computed, PO never suggested</td><td>Reject a <code>DIM_SUPPLIER</code> with zero <code>BRG_SUPPLIER_DELIVERY_DAY</code> rows</td></tr>
     <tr><td>Discount allocated but not reconciled</td><td>Item margin quietly invented</td><td>Assert line-level discount sums to order-level per order; fail the batch, do not warn</td></tr>
     <tr><td>Promo with no qualifying condition</td><td>Discount applies to everything</td><td>Reject a <code>DIM_PROMOTION</code> with zero condition rows unless the mechanic is <code>free_delivery</code></td></tr>
     <tr><td>Overtime split across two shifts</td><td>Daily threshold missed, OT under-reported</td><td>Compute the regular/OT split at staff × business_date, then allocate to shifts</td></tr>

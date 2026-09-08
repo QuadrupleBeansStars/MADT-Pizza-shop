@@ -142,6 +142,7 @@ Grain declarations:
 - `FCT_ORDER_LINE` — one row per menu item per order
 - `FCT_ORDER_EVENT` — one row per status transition per order
 - `FCT_PAYMENT` — one row per tender per order (split payments are normal)
+- `FCT_ORDER_LINE_MODIFIER` — one row per modifier per order line
 
 ```mermaid
 erDiagram
@@ -158,6 +159,8 @@ erDiagram
   DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
   DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
   DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
+  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_MODIFIER : "customised by"
+  DIM_MODIFIER ||--o{ FCT_ORDER_LINE_MODIFIER : "applied as"
   DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
 
   DIM_DATE {
@@ -235,7 +238,22 @@ erDiagram
     decimal unit_price_thb "price at time of order"
     decimal line_discount_thb
     decimal line_net_thb
-    string modifiers_json "extra cheese, no chili"
+  }
+  DIM_MODIFIER {
+    int modifier_sk PK
+    string modifier_nk UK
+    string modifier_name "extra cheese, no chili, thin crust"
+    string modifier_type "add, remove, substitute"
+    string applies_to_category "pizza, chicken, drink"
+    decimal default_price_delta_thb
+    boolean is_active
+  }
+  FCT_ORDER_LINE_MODIFIER {
+    bigint order_line_modifier_sk PK
+    bigint order_line_sk FK
+    int modifier_sk FK
+    int quantity "double extra cheese is qty 2"
+    decimal price_delta_thb "snapshot, not joined"
   }
   FCT_ORDER_EVENT {
     bigint order_event_sk PK
@@ -272,6 +290,28 @@ erDiagram
 
 `BRG_CHANNEL_MENU_ITEM` is what lets a Grab listing and a QR listing of the same pizza roll up to
 one item.
+
+### Modifiers are rows, not JSON
+
+`FCT_ORDER_LINE` used to carry `modifiers_json` — a string holding `"extra cheese, no chili"`. That
+is a repeating group hidden inside a column, so no query can total extra-cheese sales without
+string matching. But the expensive part is not reporting, it is **inventory**.
+
+Theoretical usage is derived as `FCT_ORDER_LINE × BRG_RECIPE`, and `BRG_RECIPE` explodes a *menu
+item*. Extra cheese is roughly 40 g of mozzarella that no recipe knows about — physically consumed,
+never counted as usage, and therefore landing in variance as unexplained shrinkage. A JSON blob
+quietly corrupts the exact number this whole model exists to produce (section 1: "the 10% is the
+variance you measure").
+
+So modifiers get the same treatment as anything else that moves stock:
+
+- `DIM_MODIFIER` — the catalogue, with `modifier_type` (add / remove / substitute)
+- `FCT_ORDER_LINE_MODIFIER` — grain: order line × modifier, with `price_delta_thb` snapshotted
+- `BRG_MODIFIER_RECIPE` (figure 3) — what a modifier consumes, **signed**: extra cheese `+40 g`,
+  no chili `−5 g`
+
+Theoretical usage becomes the sum of two explosions rather than one. Without the third table the
+first two are just tidier reporting; with it, the variance number is finally honest.
 
 ### Promotions: what it looked like, and what changed
 
@@ -397,8 +437,12 @@ erDiagram
   DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
   DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
   DIM_SUPPLIER ||--o{ DIM_INGREDIENT : "preferred source"
+  DIM_SUPPLIER ||--o{ BRG_SUPPLIER_DELIVERY_DAY : "delivers on"
+  DIM_MODIFIER ||--o{ BRG_MODIFIER_RECIPE : "consumes"
+  DIM_INGREDIENT ||--o{ BRG_MODIFIER_RECIPE : "used in"
   FCT_PURCHASE_ORDER ||--|{ FCT_PURCHASE_ORDER_LINE : contains
-  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "goods receipt"
+  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "receipt"
+  FCT_INVENTORY_COUNT ||--o{ FCT_INVENTORY_MOVEMENT : "count adjustment"
   DIM_DATE ||--o{ FCT_INVENTORY_MOVEMENT : "on day"
   DIM_DATE ||--o{ FCT_INVENTORY_COUNT : "on day"
 
@@ -428,7 +472,20 @@ erDiagram
     string contact_phone
     int lead_time_days
     int min_order_value_thb
-    string delivery_days "Mon,Thu"
+  }
+  BRG_SUPPLIER_DELIVERY_DAY {
+    int supplier_delivery_day_sk PK
+    int supplier_sk FK
+    int day_of_week "1=Mon .. 7=Sun, one row per day"
+    time order_cutoff_time "order after this and it ships next delivery day"
+  }
+  BRG_MODIFIER_RECIPE {
+    int modifier_recipe_sk PK
+    int modifier_sk FK
+    int ingredient_sk FK
+    decimal qty_delta_per_unit "signed - extra cheese +40g, no chili -5g"
+    date valid_from "SCD2"
+    date valid_to
   }
   FCT_PURCHASE_ORDER {
     bigint po_sk PK
@@ -452,8 +509,11 @@ erDiagram
     int date_sk FK
     timestamp movement_ts
     string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
-    decimal qty_delta "signed, base_uom"
-    bigint source_ref_sk "order_line_sk or po_line_sk"
+    decimal qty_delta "signed, base_uom - CHECK sign matches movement_type"
+    bigint order_line_sk FK "set for theoretical_usage, else null"
+    bigint order_line_modifier_sk FK "set for modifier usage, else null"
+    bigint po_line_sk FK "set for receipt, else null"
+    bigint count_sk FK "set for count_adjustment, else null"
     decimal unit_cost_thb
   }
   FCT_INVENTORY_COUNT {
@@ -468,8 +528,43 @@ erDiagram
   }
 ```
 
-Theoretical usage flows in from `FCT_ORDER_LINE` via `BRG_RECIPE`; physical truth flows in from
+Theoretical usage flows in from `FCT_ORDER_LINE` via `BRG_RECIPE` **and** from
+`FCT_ORDER_LINE_MODIFIER` via `BRG_MODIFIER_RECIPE`; physical truth flows in from
 `FCT_INVENTORY_COUNT`; the gap between them is the number the manager gets paid to shrink.
+
+### Delivery days are a table, not a string
+
+`DIM_SUPPLIER.delivery_days` used to hold `"Mon,Thu"`. Same defect as `modifiers_json` — a list
+crammed into a scalar — and it breaks something specific. The closed loop in section 9 says the
+reorder suggestion respects `lead_time_days` **and** `delivery_days`; you cannot compute "the next
+delivery date after today" from a comma-separated string without parsing text in SQL, and "which
+suppliers deliver on Tuesday" is not answerable at all.
+
+`BRG_SUPPLIER_DELIVERY_DAY` is one row per supplier per weekday. It also carries
+`order_cutoff_time`, because "order by 16:00 or it ships the following delivery day" moves the
+recommended order date by a full day — and that date is the thing the manager acts on.
+
+### One reference column became four
+
+`FCT_INVENTORY_MOVEMENT.source_ref_sk` was a single `bigint` documented as "order_line_sk or
+po_line_sk". That is a **polymorphic foreign key**, and it is the most dangerous construct in the
+model:
+
+- the database cannot declare a foreign key on it, so integrity is whatever the ETL remembers to do;
+- the two key spaces overlap, so joining a `po_line_sk` to `FCT_ORDER_LINE` does not raise an
+  error — it returns the **wrong rows**, silently.
+
+It is now four explicit nullable foreign keys — `order_line_sk`, `order_line_modifier_sk`,
+`po_line_sk`, `count_sk` — with a CHECK that at most one is set and that it agrees with
+`movement_type`. Rows for `waste`, `spoilage` and `staff_meal` legitimately have all four null;
+those movements have no source document.
+
+The tempting alternative is a `ref_table` + `ref_id` pair of strings. It is more flexible, and it is
+the wrong trade here: it permanently gives up database-enforced referential integrity, which is the
+one thing the split was for. `qty_delta` stays a single signed `decimal` for the same reason it
+always was — stock on hand is `SUM(qty_delta)`, one expression with no term to forget — and the
+guard against a receipt booked as an outflow is a CHECK tying sign to `movement_type`, not a second
+column.
 
 ## 7 · ER model — people and shifts
 
@@ -601,12 +696,18 @@ See section 4.
 `FCT_SHIFT`, and the multiplier used is snapshotted alongside them. A blended labour rate would be
 simpler and would hide the single most controllable cost line the manager has.
 
+**09 · No list lives in a scalar, and no key is polymorphic.** Three fields broke this and all three
+were fixed: `modifiers_json`, `DIM_SUPPLIER.delivery_days`, and
+`FCT_INVENTORY_MOVEMENT.source_ref_sk`. The first two are 1NF violations that silently disable a
+join; the third is worse, because an overloaded key returns wrong rows instead of failing. Sections
+4 and 6 argue each one.
+
 ## 9 · Marts, dashboard and ML
 
 | Mart | Grain | Built from | Serves |
 |---|---|---|---|
 | `mart_sales_daily` | business date × channel × menu item | FCT_ORDER + FCT_ORDER_LINE + dims | Sales dashboard; training set for demand forecast |
-| `mart_ingredient_usage_daily` | business date × ingredient | FCT_ORDER_LINE × BRG_RECIPE, vs FCT_INVENTORY_COUNT | Waste %, variance alerts, reorder suggestions |
+| `mart_ingredient_usage_daily` | business date × ingredient | FCT_ORDER_LINE × BRG_RECIPE **+** FCT_ORDER_LINE_MODIFIER × BRG_MODIFIER_RECIPE, vs FCT_INVENTORY_COUNT | Waste %, variance alerts, reorder suggestions |
 | `mart_delivery_sla` | order | FCT_ORDER_EVENT pivoted to durations | Prep-time and lead-time distributions by channel and hour |
 | `mart_customer_rfm` | customer (own channels) | FCT_ORDER where customer_sk not null | Segmentation, win-back campaigns via LINE |
 | `mart_labor_vs_sales` | business date × hour | FCT_SHIFT + FCT_ORDER | Labour cost %, OT cost and OT share, understaffed-hour detection |
@@ -616,8 +717,8 @@ simpler and would hide the single most controllable cost line the manager has.
 
 `mart_sales_daily` → forecast units per **item × day × channel** → multiply through `BRG_RECIPE` →
 forecast **grams per ingredient** → subtract current on-hand from `FCT_INVENTORY_MOVEMENT`, add
-`safety_stock_qty`, respect supplier `lead_time_days` and `delivery_days` → **a purchase order the
-manager can approve with one tap.**
+`safety_stock_qty`, respect supplier `lead_time_days` and `BRG_SUPPLIER_DELIVERY_DAY` (including
+`order_cutoff_time`) → **a purchase order the manager can approve with one tap.**
 
 Forecasts are written back as `fct_forecast` (grain: item × day × channel × forecast run) so
 predicted-vs-actual error is itself a table you can chart. A model you cannot score is a model you
@@ -641,6 +742,9 @@ cannot trust.
 | Unmapped menu item | New platform-only bundle | `BRG_CHANNEL_MENU_ITEM` miss routes to a quarantine table + alert; revenue is never dropped |
 | Cancelled / refunded orders | Inflated sales and phantom stock usage | `is_cancelled` excluded from usage derivation; kept in the fact for cancel-rate analysis |
 | Recipe changed mid-period | Variance suddenly explodes | `BRG_RECIPE` is SCD2; usage joins on the recipe valid at order time |
+| Modifier with no recipe | Extra cheese vanishes into unexplained variance | Alert on any `DIM_MODIFIER` of type `add`/`substitute` with no `BRG_MODIFIER_RECIPE` row |
+| Movement pointing at two sources | Wrong-table join returns plausible wrong rows | CHECK at most one of the four source FKs is non-null, and that it matches `movement_type` |
+| Supplier with no delivery day | Reorder date cannot be computed, PO never suggested | Reject a `DIM_SUPPLIER` with zero `BRG_SUPPLIER_DELIVERY_DAY` rows |
 | Discount allocated but not reconciled | Item margin quietly invented | Assert `SUM(FCT_ORDER_LINE_PROMOTION.discount) = SUM(FCT_ORDER_PROMOTION.discount)` per order; fail the batch, don't warn |
 | Promo with no qualifying condition | Discount applies to everything | Reject a `DIM_PROMOTION` row with zero `BRG_PROMOTION_CONDITION` children unless the mechanic is `free_delivery` |
 | Overtime split across two shifts | Daily threshold missed, OT under-reported | Compute `regular_hours`/`ot_hours` at staff × business_date, then allocate to shifts |

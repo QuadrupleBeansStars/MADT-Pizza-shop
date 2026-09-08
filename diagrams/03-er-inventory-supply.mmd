@@ -1,5 +1,6 @@
 %% Fig. 3 - ER model: inventory and supply (star schema)
 %% Theoretical usage = FCT_ORDER_LINE x BRG_RECIPE
+%%                   + FCT_ORDER_LINE_MODIFIER x BRG_MODIFIER_RECIPE
 %% Actual on-hand    = FCT_INVENTORY_COUNT
 %% Variance          = theoretical - actual  <-- the waste/shrinkage KPI
 erDiagram
@@ -10,8 +11,12 @@ erDiagram
   DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
   DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
   DIM_SUPPLIER ||--o{ DIM_INGREDIENT : "preferred source"
+  DIM_SUPPLIER ||--o{ BRG_SUPPLIER_DELIVERY_DAY : "delivers on"
+  DIM_MODIFIER ||--o{ BRG_MODIFIER_RECIPE : "consumes"
+  DIM_INGREDIENT ||--o{ BRG_MODIFIER_RECIPE : "used in"
   FCT_PURCHASE_ORDER ||--|{ FCT_PURCHASE_ORDER_LINE : contains
-  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "goods receipt"
+  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "receipt"
+  FCT_INVENTORY_COUNT ||--o{ FCT_INVENTORY_MOVEMENT : "count adjustment"
   DIM_DATE ||--o{ FCT_INVENTORY_MOVEMENT : "on day"
   DIM_DATE ||--o{ FCT_INVENTORY_COUNT : "on day"
 
@@ -41,7 +46,20 @@ erDiagram
     string contact_phone
     int lead_time_days
     int min_order_value_thb
-    string delivery_days "Mon,Thu"
+  }
+  BRG_SUPPLIER_DELIVERY_DAY {
+    int supplier_delivery_day_sk PK
+    int supplier_sk FK
+    int day_of_week "1=Mon .. 7=Sun, one row per day"
+    time order_cutoff_time "order after this and it ships next delivery day"
+  }
+  BRG_MODIFIER_RECIPE {
+    int modifier_recipe_sk PK
+    int modifier_sk FK
+    int ingredient_sk FK
+    decimal qty_delta_per_unit "signed - extra cheese +40g, no chili -5g"
+    date valid_from "SCD2"
+    date valid_to
   }
   FCT_PURCHASE_ORDER {
     bigint po_sk PK
@@ -65,8 +83,11 @@ erDiagram
     int date_sk FK
     timestamp movement_ts
     string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
-    decimal qty_delta "signed, base_uom"
-    bigint source_ref_sk "order_line_sk or po_line_sk"
+    decimal qty_delta "signed, base_uom - CHECK sign matches movement_type"
+    bigint order_line_sk FK "set for theoretical_usage, else null"
+    bigint order_line_modifier_sk FK "set for modifier usage, else null"
+    bigint po_line_sk FK "set for receipt, else null"
+    bigint count_sk FK "set for count_adjustment, else null"
     decimal unit_cost_thb
   }
   FCT_INVENTORY_COUNT {

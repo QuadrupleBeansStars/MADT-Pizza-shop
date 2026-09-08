@@ -5,6 +5,7 @@
 %%   FCT_ORDER_EVENT - one row per status transition per order
 %%   FCT_PAYMENT     - one row per tender per order
 %%   FCT_ORDER_LINE_PROMOTION - one row per order line per promotion
+%%   FCT_ORDER_LINE_MODIFIER  - one row per modifier per order line
 erDiagram
   DIM_DATE ||--o{ FCT_ORDER : "business day"
   DIM_CHANNEL ||--o{ FCT_ORDER : "sold via"
@@ -19,6 +20,8 @@ erDiagram
   DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
   DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
   DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
+  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_MODIFIER : "customised by"
+  DIM_MODIFIER ||--o{ FCT_ORDER_LINE_MODIFIER : "applied as"
   DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
 
   DIM_DATE {
@@ -96,7 +99,22 @@ erDiagram
     decimal unit_price_thb "price at time of order"
     decimal line_discount_thb
     decimal line_net_thb
-    string modifiers_json "extra cheese, no chili"
+  }
+  DIM_MODIFIER {
+    int modifier_sk PK
+    string modifier_nk UK
+    string modifier_name "extra cheese, no chili, thin crust"
+    string modifier_type "add, remove, substitute"
+    string applies_to_category "pizza, chicken, drink"
+    decimal default_price_delta_thb
+    boolean is_active
+  }
+  FCT_ORDER_LINE_MODIFIER {
+    bigint order_line_modifier_sk PK
+    bigint order_line_sk FK
+    int modifier_sk FK
+    int quantity "double extra cheese is qty 2"
+    decimal price_delta_thb "snapshot, not joined"
   }
   FCT_ORDER_EVENT {
     bigint order_event_sk PK
