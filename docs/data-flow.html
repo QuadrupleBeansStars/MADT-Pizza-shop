@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pizza Shop Data Flow</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:   #F4F4EE;
+    --surface: #FCFCF8;
+    --ink:     #1B1D19;
+    --ink-2:   #5B6057;
+    --rule:    #DCDCD1;
+    --ember:   #B03A16;
+    --basil:   #45674A;
+    --zone:    #ECECE3;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --step:  clamp(1rem, 0.9rem + 0.3vw, 1.075rem);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--step);
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 1.15rem;
+  }
+  main > * { grid-column: 2; min-width: 0; }
+  .wide { grid-column: 1 / -1; width: 100%; max-width: 1180px; justify-self: center; }
+
+  header.masthead {
+    grid-column: 1 / -1;
+    max-width: 1180px; justify-self: center; width: 100%;
+    padding: 4rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ember); margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: var(--font-mono); font-weight: 600;
+    font-size: clamp(1.8rem, 1.2rem + 2.4vw, 2.9rem);
+    line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 1rem;
+  }
+  .standfirst { font-size: 1.12rem; color: var(--ink-2); max-width: 62ch; margin: 0; }
+  .meta-strip {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1.5rem;
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em;
+    color: var(--ink-2); text-transform: uppercase;
+  }
+  .meta-strip b { color: var(--ink); font-weight: 600; }
+
+  h2 {
+    font-family: var(--font-mono); font-size: 0.82rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ember); margin: 2.5rem 0 0.5rem;
+    padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-family: var(--font-mono); font-size: 0.92rem; font-weight: 600; margin: 1.4rem 0 0.2rem; }
+  p { margin: 0; }
+  p + p { margin-top: 0.85rem; }
+  code { font-family: var(--font-mono); font-size: 0.86em; background: var(--zone); padding: 0.05em 0.3em; border-radius: 3px; }
+
+  figure { margin: 0; }
+  figure.wide { padding: 1.25rem 0 0; }
+  .diagram-scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--ink); font-family: var(--font-mono); }
+  figcaption { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-2); margin-top: 0.75rem; max-width: 80ch; }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+  td.t { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; }
+  td.z { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+  .table-scroll { overflow-x: auto; }
+
+  .callout {
+    background: var(--surface); border-left: 3px solid var(--basil);
+    padding: 0.9rem 1.1rem; margin-top: 1rem;
+  }
+  .callout b { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--basil); }
+  .callout.q { border-left-color: var(--ember); }
+  .callout.q b { color: var(--ember); }
+
+  ul, ol { padding-left: 1.2rem; margin: 0.5rem 0 0; }
+  li + li { margin-top: 0.4rem; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+  .two > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; }
+  .two h3 { margin-top: 0; }
+  .lang { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-2); margin-top: 0.75rem; }
+  .lang a { color: var(--ember); }
+  @media (max-width: 640px) {
+    header.masthead { padding-top: 2.5rem; }
+    .two { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">MADT8102 · Chapter 4 · Data lake design</p>
+  <h1>Data flow: zone-based lake for the pizza shop</h1>
+  <p class="standfirst">
+    How data gets from the till, the delivery apps and the stock sheets into a weekly report,
+    which data lake pattern we chose from the lecture, and why it fits a one-shop business.
+  </p>
+  <div class="meta-strip">
+    <span>Pattern <b>Zone-based (slide 8)</b></span>
+    <span>Processing <b>Batch, nightly at 03:00</b></span>
+    <span>Ingestion <b>Every 5 min for POS, daily for the rest</b></span>
+    <span>Timezone <b>Asia/Bangkok</b></span>
+  </div>
+  <p class="lang">ฉบับภาษาไทย: <a href="data-flow.th.html">data-flow.th.html</a></p>
+</header>
+
+<h2>1 · The problem in one paragraph</h2>
+<p>
+  One pizza shop in Bangkok sells through its own QR menu, by phone, and on four delivery apps
+  (Grab, LINE MAN, ShopeeFood, Robinhood). Each of those systems keeps its own records in its own format.
+  The owner wants to answer questions like <em>which pizzas sell on Friday nights</em>,
+  <em>how much cheese do we need next week</em>, and <em>is labour cost in line with sales</em>.
+  Nobody can answer that from six separate apps. The data has to be brought together in one place,
+  cleaned up, and turned into tables a dashboard can read. That "one place" is the data lake.
+</p>
+
+<h2>2 · Two systems, not one</h2>
+<p>
+  The most common confusion is between the system that <em>runs</em> the shop and the system that <em>analyses</em> it.
+  They are different things and they run at different speeds.
+</p>
+<div class="two">
+  <div>
+    <h3>Operational (runs the shop)</h3>
+    <p>The POS app, the QR menu, Grab's app. A customer taps "order", the kitchen sees it in one second,
+    the receipt prints. This has to be instant and it already is. We do not touch it.</p>
+  </div>
+  <div>
+    <h3>Analytical (this design)</h3>
+    <p>A copy of what already happened, collected from all six systems and reshaped for reports.
+    Nobody is standing at the counter waiting for it. It can run every few minutes or once a night,
+    depending on when someone actually needs the answer.</p>
+  </div>
+</div>
+<div class="callout q">
+  <b>Does the customer wait 5 minutes?</b><br>
+  No. The order goes through the POS instantly, as it does today. "Every 5 minutes" is how often we <em>copy</em>
+  the orders that already finished into the data lake. If the copy job stopped for a day, the shop would keep
+  selling pizza; only the report would be a day behind.
+</div>
+
+<h2>3 · Real time or batch?</h2>
+<p>
+  The lecture's Lambda pattern exists for cases where someone needs an answer within seconds of the event.
+  So the first question is: <em>who needs what, and by when?</em>
+</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Question the owner asks</th><th>How often they look</th><th>Freshness needed</th></tr></thead>
+  <tbody>
+    <tr><td>What sold last week, by channel and item?</td><td>Monday morning</td><td>Yesterday's data is fine</td></tr>
+    <tr><td>How much of each ingredient should we order?</td><td>Nightly list, checked next morning</td><td>Yesterday's data is fine</td></tr>
+    <tr><td>How many pizzas will we sell next week?</td><td>Weekly forecast run</td><td>Yesterday's data is fine</td></tr>
+    <tr><td>Which customers are drifting away?</td><td>Monthly</td><td>Last month's data is fine</td></tr>
+    <tr><td>Are delivery apps meeting their SLA?</td><td>Weekly</td><td>Yesterday's data is fine</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  Every question is answered the next morning at the earliest. So the rule we follow is:
+  <strong>match the pipeline to the need-by time, not the event time.</strong>
+  Orders happen every minute, but the first decision that uses them happens tomorrow.
+  Collect often, process once a night, publish for weekly review. That is batch.
+</p>
+
+<h2>4 · Which pattern from the lecture, and why</h2>
+<p>The chapter presents eight patterns. Here is how each one fares for a single shop with five data sources.</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Pattern</th><th>What it is</th><th>Verdict for us</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Mono-zone</td><td>One raw pile, no processing inside</td><td>Too little. Raw Grab CSVs and POS JSON cannot be joined without a cleaning step.</td></tr>
+    <tr><td class="z">Lambda</td><td>Batch layer plus a speed layer for live data</td><td>Overkill. No live consumer, and every rule must be coded twice (the slide's own warning).</td></tr>
+    <tr><td class="z">Kappa</td><td>Speed layer only, everything is a stream</td><td>Wrong shape. Four of five sources arrive as daily files, not streams.</td></tr>
+    <tr><td class="z">Data-pond</td><td>Raw, analog, application, textual, archival ponds</td><td>Built for mixed IoT and text data. We have neither.</td></tr>
+    <tr><td class="z"><strong>Zone-based</strong></td><td>Landing → Raw → Trusted → Refined, plus a Sandbox</td><td><strong>Chosen.</strong> Zones map exactly onto the raw / staging / core / mart layers in our ER model. Each rule written once.</td></tr>
+    <tr><td class="z">Multi-zone functional</td><td>Raw, process, access, govern zones</td><td>Close cousin. Adds a govern zone we do not need for one owner and one analyst.</td></tr>
+    <tr><td class="z">Functional</td><td>Ingestion, storage, transformation, interaction layers</td><td>Describes the same thing by layer instead of by zone. Fine, but zones are easier to point at in storage.</td></tr>
+    <tr><td class="z">Lakehouse</td><td>Lake storage with warehouse-style tables (Parquet, Delta)</td><td>Not a rival; it is how we would <em>implement</em> the zones. Raw as Parquet, Trusted and Refined as tables.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 class="wide">5 · The flow</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1240 600" role="img"
+       aria-label="Five sources feed a transient landing zone; data is copied into a permanent raw zone, transformed nightly into a trusted star schema, aggregated into refined marts, and read by four consumers. A sandbox reads from trusted and refined for experiments.">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+      <marker id="arr-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="var(--ember)"/>
+      </marker>
+    </defs>
+
+    <!-- data lake boundary -->
+    <rect x="222" y="30" width="836" height="550" rx="4" fill="var(--zone)" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="232" y="52" font-size="11" letter-spacing="2" fill="var(--ink-2)">DATA LAKE · ONE OBJECT STORE · FOUR ZONES + SANDBOX</text>
+
+    <!-- column headers -->
+    <g font-size="11" letter-spacing="2" font-weight="600" fill="currentColor">
+      <text x="100" y="52" text-anchor="middle">SOURCES</text>
+      <text x="1150" y="52" text-anchor="middle">CONSUMERS</text>
+    </g>
+
+    <!-- SOURCES -->
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="20" y="80" width="160" height="56" rx="3"/>
+      <rect x="20" y="150" width="160" height="56" rx="3"/>
+      <rect x="20" y="220" width="160" height="56" rx="3"/>
+      <rect x="20" y="290" width="160" height="56" rx="3"/>
+      <rect x="20" y="360" width="160" height="56" rx="3"/>
+    </g>
+    <g font-size="12" fill="currentColor">
+      <text x="30" y="101">POS / QR orders</text>
+      <text x="30" y="118" font-size="10.5" fill="var(--ink-2)">API · JSON</text>
+      <text x="30" y="171">Aggregators ×4</text>
+      <text x="30" y="188" font-size="10.5" fill="var(--ink-2)">Grab · LINE MAN · +2 · CSV</text>
+      <text x="30" y="241">Stock counts</text>
+      <text x="30" y="258" font-size="10.5" fill="var(--ink-2)">tablet form · sheet</text>
+      <text x="30" y="311">Supplier POs</text>
+      <text x="30" y="328" font-size="10.5" fill="var(--ink-2)">sheet · invoice entry</text>
+      <text x="30" y="381">Shifts &amp; timeclock</text>
+      <text x="30" y="398" font-size="10.5" fill="var(--ink-2)">scheduling app</text>
+    </g>
+
+    <!-- source -> landing arrows, cadence labels -->
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+      <line x1="180" y1="108" x2="248" y2="108"/>
+      <line x1="180" y1="178" x2="248" y2="178"/>
+      <line x1="180" y1="248" x2="248" y2="248"/>
+      <line x1="180" y1="318" x2="248" y2="318"/>
+      <line x1="180" y1="388" x2="248" y2="388"/>
+    </g>
+    <g font-size="9" fill="var(--ember)" text-anchor="middle">
+      <text x="214" y="100">5 min</text>
+      <text x="214" y="170">daily T+1</text>
+      <text x="214" y="240">daily close</text>
+      <text x="214" y="310">on receipt</text>
+      <text x="214" y="380">daily</text>
+    </g>
+
+    <!-- ZONES -->
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="250" y="70" width="170" height="360" rx="3"/>
+      <rect x="460" y="70" width="170" height="360" rx="3"/>
+      <rect x="670" y="70" width="170" height="360" rx="3"/>
+      <rect x="880" y="70" width="170" height="360" rx="3"/>
+      <rect x="670" y="470" width="370" height="90" rx="3" stroke-dasharray="5 3"/>
+    </g>
+
+    <!-- zone titles -->
+    <g font-size="11.5" font-weight="600" letter-spacing="1.5" fill="currentColor">
+      <text x="260" y="92">LANDING</text>
+      <text x="470" y="92">RAW</text>
+      <text x="680" y="92">TRUSTED</text>
+      <text x="890" y="92">REFINED</text>
+      <text x="680" y="492">SANDBOX</text>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1">
+      <line x1="260" y1="100" x2="410" y2="100"/>
+      <line x1="470" y1="100" x2="620" y2="100"/>
+      <line x1="680" y1="100" x2="830" y2="100"/>
+      <line x1="890" y1="100" x2="1040" y2="100"/>
+    </g>
+
+    <!-- zone bodies -->
+    <g font-size="10.5" fill="currentColor">
+      <text x="260" y="120">Files exactly as they</text>
+      <text x="260" y="134">arrived. No changes.</text>
+      <text x="260" y="160" fill="var(--ink-2)">landing/pos/2026-09-12/</text>
+      <text x="260" y="174" fill="var(--ink-2)">  19-45.json</text>
+      <text x="260" y="188" fill="var(--ink-2)">landing/grab/2026-09-12/</text>
+      <text x="260" y="202" fill="var(--ink-2)">  orders.csv</text>
+      <text x="260" y="228">Kept 7 days, then</text>
+      <text x="260" y="242">deleted.</text>
+      <text x="260" y="268" fill="var(--ember)">Store: object storage</text>
+      <text x="260" y="282" fill="var(--ember)">Format: native (JSON/CSV)</text>
+
+      <text x="470" y="120">Same rows, now tagged</text>
+      <text x="470" y="134">and never edited.</text>
+      <text x="470" y="160" fill="var(--ink-2)">+ source_system</text>
+      <text x="470" y="174" fill="var(--ink-2)">+ ingest_ts</text>
+      <text x="470" y="188" fill="var(--ink-2)">+ source_file</text>
+      <text x="470" y="202" fill="var(--ink-2)">+ raw_payload</text>
+      <text x="470" y="228">Append only. Kept</text>
+      <text x="470" y="242">forever. Replay source.</text>
+      <text x="470" y="268" fill="var(--ember)">Store: object storage</text>
+      <text x="470" y="282" fill="var(--ember)">Format: Parquet</text>
+      <text x="470" y="296" fill="var(--ember)">Partition: source / date</text>
+
+      <text x="680" y="120">One row per real event.</text>
+      <text x="680" y="134">Typed, deduped, DQ-gated.</text>
+      <text x="680" y="160" fill="var(--ink-2)">fct_order · fct_order_line</text>
+      <text x="680" y="174" fill="var(--ink-2)">fct_payment · fct_stock_mvmt</text>
+      <text x="680" y="188" fill="var(--ink-2)">dim_menu_item (SCD2)</text>
+      <text x="680" y="202" fill="var(--ink-2)">dim_channel · dim_date …</text>
+      <text x="680" y="228">Star schema. The only</text>
+      <text x="680" y="242">place business rules live.</text>
+      <text x="680" y="268" fill="var(--ember)">Store: warehouse tables</text>
+      <text x="680" y="282" fill="var(--ember)">Keys: surrogate</text>
+
+      <text x="890" y="120">One table per question.</text>
+      <text x="890" y="134">Pre-aggregated.</text>
+      <text x="890" y="160" fill="var(--ink-2)" font-size="9.5">mart_sales_daily</text>
+      <text x="890" y="174" fill="var(--ink-2)" font-size="9.5">mart_ingredient_usage_daily</text>
+      <text x="890" y="188" fill="var(--ink-2)" font-size="9.5">mart_delivery_sla</text>
+      <text x="890" y="202" fill="var(--ink-2)" font-size="9.5">mart_customer_rfm</text>
+      <text x="890" y="216" fill="var(--ink-2)" font-size="9.5">mart_labor_vs_sales</text>
+      <text x="890" y="242">Read-only for users.</text>
+      <text x="890" y="268" fill="var(--ember)">Store: warehouse tables</text>
+      <text x="890" y="282" fill="var(--ember)">Grain: business day</text>
+
+      <text x="680" y="512">Analyst scratch space. Reads trusted + refined, tries new forecast</text>
+      <text x="680" y="526">features, ad-hoc SQL. Nothing here is a source for a dashboard.</text>
+      <text x="680" y="546" fill="var(--ink-2)">Only promoted output: fct_forecast, written back to trusted by the weekly job.</text>
+    </g>
+
+    <!-- zone -> zone arrows with process labels -->
+    <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#arr)">
+      <line x1="420" y1="340" x2="458" y2="340"/>
+      <line x1="630" y1="340" x2="668" y2="340"/>
+      <line x1="840" y1="340" x2="878" y2="340"/>
+    </g>
+    <g font-size="9.5" text-anchor="middle" fill="currentColor">
+      <text x="440" y="318" font-weight="600">INGEST</text>
+      <text x="440" y="330" fill="var(--ink-2)">copy + tag</text>
+      <text x="440" y="360" fill="var(--ember)">every 5 min (POS)</text>
+      <text x="440" y="372" fill="var(--ember)">nightly (rest)</text>
+
+      <text x="650" y="318" font-weight="600">TRANSFORM</text>
+      <text x="650" y="330" fill="var(--ink-2)">SQL · dedupe · DQ</text>
+      <text x="650" y="360" fill="var(--ember)">nightly 03:00</text>
+
+      <text x="860" y="318" font-weight="600">AGGREGATE</text>
+      <text x="860" y="330" fill="var(--ink-2)">group by day</text>
+      <text x="860" y="360" fill="var(--ember)">nightly 03:30</text>
+    </g>
+
+    <!-- sandbox reads -->
+    <g stroke="currentColor" stroke-width="1" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)">
+      <line x1="755" y1="430" x2="755" y2="468"/>
+      <line x1="965" y1="430" x2="965" y2="468"/>
+    </g>
+    <text x="770" y="452" font-size="9.5" fill="var(--ink-2)">reads</text>
+    <text x="980" y="452" font-size="9.5" fill="var(--ink-2)">reads</text>
+
+    <!-- CONSUMERS -->
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="1080" y="80" width="140" height="56" rx="3"/>
+      <rect x="1080" y="150" width="140" height="56" rx="3"/>
+      <rect x="1080" y="220" width="140" height="56" rx="3"/>
+      <rect x="1080" y="290" width="140" height="56" rx="3"/>
+    </g>
+    <g font-size="12" fill="currentColor">
+      <text x="1090" y="101">Manager dashboard</text>
+      <text x="1090" y="118" font-size="10.5" fill="var(--ink-2)">weekly · monthly</text>
+      <text x="1090" y="171">Demand forecast</text>
+      <text x="1090" y="188" font-size="10.5" fill="var(--ink-2)">weekly model run</text>
+      <text x="1090" y="241">Reorder suggestion</text>
+      <text x="1090" y="258" font-size="10.5" fill="var(--ink-2)">nightly list</text>
+      <text x="1090" y="311">Customer segments</text>
+      <text x="1090" y="328" font-size="10.5" fill="var(--ink-2)">monthly RFM</text>
+    </g>
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+      <line x1="1050" y1="108" x2="1078" y2="108"/>
+      <line x1="1050" y1="178" x2="1078" y2="178"/>
+      <line x1="1050" y1="248" x2="1078" y2="248"/>
+      <line x1="1050" y1="318" x2="1078" y2="318"/>
+    </g>
+
+    <!-- forecast write-back -->
+    <path d="M1150 206 L1150 213 L1060 213 L1060 445 L845 445 L845 430" fill="none" stroke="var(--ember)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr-accent)"/>
+    <text x="1062" y="440" font-size="9.5" fill="var(--ember)">fct_forecast written back</text>
+  </svg>
+  </div>
+  <figcaption>
+    Fig. 1 — Zone-based data lake. Left to right is increasing trust. Only the INGEST hop runs more than once a day,
+    and only for POS. Every transformation is written once, in the TRANSFORM job.
+  </figcaption>
+</figure>
+
+<h2>6 · Why four zones and not one?</h2>
+<p>
+  Each zone exists because something goes wrong without it. Read the "without it" column and the design explains itself.
+</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Zone</th><th>What it holds</th><th>Why it exists</th><th>Without it</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Landing</td><td>Files exactly as they arrived. Deleted after 7 days.</td><td>A safe drop point. Sources push here without knowing anything about our structure.</td><td>Grab's export would have to write straight into our tables. One changed column name breaks the load at 06:00 with nobody watching.</td></tr>
+    <tr><td class="z">Raw</td><td>Same rows, tagged with source, time and file name. Never edited, kept forever.</td><td>The audit trail and the replay button. Any later bug can be fixed by re-running from here.</td><td>A bug in the cleaning logic silently corrupts the only copy. You cannot go back.</td></tr>
+    <tr><td class="z">Trusted</td><td>One row per real event, typed, deduplicated, quality-checked, star schema.</td><td>The single place business rules live: what a "business day" is, which item name means which SKU, what counts as a duplicate.</td><td>Every dashboard reimplements the rules and they drift. Grab's "Large Pepperoni Pizza" and the POS "PEP-L" are counted as two products.</td></tr>
+    <tr><td class="z">Refined</td><td>One table per question, pre-aggregated by business day.</td><td>Dashboards read a small, fast table instead of joining six large ones on every click.</td><td>The Monday dashboard takes minutes to load and the forecast model queries raw facts.</td></tr>
+    <tr><td class="z">Sandbox</td><td>Scratch copies for experiments. Cleared after 30 days.</td><td>An analyst can try a new forecast feature without any risk to the reports.</td><td>Experiments happen in Trusted and one bad UPDATE ruins the week's numbers.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>7 · Where each thing happens</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Zone</th><th>Data flows in</th><th>Processed here</th><th>Stored as</th><th>Retention</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Landing</td><td>API pulls and CSV drops, as received</td><td>Nothing. Arrival check only.</td><td>Native JSON / CSV, folder per source per day</td><td>7 days</td></tr>
+    <tr><td class="z">Raw</td><td>Copy of every landed file</td><td>Tag with source, ingest time, file name</td><td>Parquet, partitioned by source and date</td><td>Forever</td></tr>
+    <tr><td class="z">Trusted</td><td>Raw partitions for the business day</td><td>Parse, cast, dedupe on natural key, conform names, quality gates, load star schema</td><td>Warehouse tables, facts and SCD2 dims</td><td>Forever</td></tr>
+    <tr><td class="z">Refined</td><td>Trusted facts and dims</td><td>Aggregate to business day × item × channel</td><td>Warehouse mart tables</td><td>Forever</td></tr>
+    <tr><td class="z">Sandbox</td><td>Copies from Trusted and Refined</td><td>Experiments, ad-hoc SQL</td><td>Whatever the analyst wants</td><td>30 days</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>8 · One order, traced</h2>
+<p>
+  A customer orders a large pepperoni through Grab on Friday evening. This is where that one record is at each point in time.
+</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>When</th><th>Zone</th><th>What happens to the order</th></tr></thead>
+  <tbody>
+    <tr><td class="t">Fri 19:42</td><td class="z">—</td><td>Order placed on Grab. Kitchen gets it instantly through Grab's tablet. Grab's system has the record. We do not yet.</td></tr>
+    <tr><td class="t">Sat 06:00</td><td class="z">Landing</td><td>Nightly export from the Grab merchant portal drops <code>orders.csv</code> into <code>landing/grab/2026-09-12/</code>. The order is one line in that file, with Grab's column names and a UTC timestamp.</td></tr>
+    <tr><td class="t">Sat 06:05</td><td class="z">Raw</td><td>Ingest job copies the file to Parquet and adds <code>source_system = GRAB</code>, <code>ingest_ts</code>, <code>source_file</code>. The line is otherwise untouched. If Grab re-sends the file next week, both copies stay.</td></tr>
+    <tr><td class="t">Sun 03:00</td><td class="z">Trusted</td><td>Transform job runs for business day Friday. The timestamp becomes 19:42 Asia/Bangkok, the row is deduplicated on <code>(GRAB, platform_order_id)</code>, "Large Pepperoni Pizza" is mapped to our <code>menu_item_nk</code>, and it becomes one <code>fct_order</code> plus one <code>fct_order_line</code>. A quality gate checks it has a channel, a date and a positive total.</td></tr>
+    <tr><td class="t">Sun 03:30</td><td class="z">Refined</td><td>Aggregate job adds it to <code>mart_sales_daily</code> for Friday × pepperoni × GRAB, and its recipe explosion adds flour, cheese and pepperoni to <code>mart_ingredient_usage_daily</code>.</td></tr>
+    <tr><td class="t">Mon 09:00</td><td class="z">Consumer</td><td>Owner opens the weekly dashboard. Friday's Grab sales include this order. The reorder list already used its cheese usage on Sunday night.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  A dine-in QR order takes the same path but reaches Raw within five minutes instead of the next morning.
+  It still waits for the 03:00 job to become Trusted. That gap is fine, because nothing reads Trusted before then.
+</p>
+
+<h2>9 · Source by source</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Source</th><th>Events happen</th><th>First decision that needs it</th><th>So we collect</th><th>And process</th></tr></thead>
+  <tbody>
+    <tr><td>POS / QR</td><td>Every minute during service</td><td>Next-morning review, nightly reorder</td><td>Every 5 min. Cheap, and keeps Raw current for the day</td><td>Nightly batch</td></tr>
+    <tr><td>Delivery apps</td><td>Every minute during service</td><td>Same</td><td>Daily T+1, because that is when the portal exports exist</td><td>Nightly batch</td></tr>
+    <tr><td>Stock counts</td><td>Once a day at close</td><td>Nightly reorder</td><td>Daily</td><td>Nightly batch</td></tr>
+    <tr><td>Purchasing</td><td>2–3 times a week</td><td>Nightly reorder, monthly cost review</td><td>On receipt</td><td>Nightly batch</td></tr>
+    <tr><td>Shifts</td><td>Daily</td><td>Weekly labour vs sales</td><td>Daily</td><td>Nightly batch</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>10 · When this design would change</h2>
+<ul>
+  <li><strong>The owner wants a live "today so far" screen across all channels.</strong> Add a speed layer next to the batch path and the design becomes Lambda. The batch side stays exactly as it is.</li>
+  <li><strong>A second branch opens.</strong> Add a store dimension and partition Raw by store. The zones do not change.</li>
+  <li><strong>A delivery app offers a real-time API instead of daily CSV.</strong> Collect it every 5 minutes like POS. Still lands in Landing, still processed nightly.</li>
+</ul>
+<div class="callout">
+  <b>The one-line summary</b><br>
+  Collect often, keep everything raw, clean once, aggregate once, read many times.
+  Batch is not a compromise here; it is the right speed for every question on the list.
+</div>
+
+</main>
+</body>
+</html>

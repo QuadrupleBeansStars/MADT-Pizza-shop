@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Flow ร้านพิซซ่า</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:   #F4F4EE;
+    --surface: #FCFCF8;
+    --ink:     #1B1D19;
+    --ink-2:   #5B6057;
+    --rule:    #DCDCD1;
+    --ember:   #B03A16;
+    --basil:   #45674A;
+    --zone:    #ECECE3;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --font-th: "Sukhumvit Set", "Thonburi", "Noto Sans Thai", "Sarabun", "Leelawadee UI", "Tahoma", system-ui, sans-serif;
+    --step:  clamp(1rem, 0.9rem + 0.3vw, 1.075rem);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-th);
+    font-size: var(--step);
+    line-height: 1.75;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 1.15rem;
+  }
+  main > * { grid-column: 2; min-width: 0; }
+  .wide { grid-column: 1 / -1; width: 100%; max-width: 1180px; justify-self: center; }
+
+  header.masthead {
+    grid-column: 1 / -1;
+    max-width: 1180px; justify-self: center; width: 100%;
+    padding: 4rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ember); margin: 0 0 1rem;
+  }
+  h1 {
+    font-weight: 700;
+    font-size: clamp(1.8rem, 1.2rem + 2.4vw, 2.8rem);
+    line-height: 1.25; text-wrap: balance; margin: 0 0 1rem;
+  }
+  .standfirst { font-size: 1.12rem; color: var(--ink-2); max-width: 62ch; margin: 0; }
+  .meta-strip {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1.5rem;
+    font-size: 0.82rem; color: var(--ink-2);
+  }
+  .meta-strip b { color: var(--ink); font-weight: 600; }
+
+  h2 {
+    font-size: 0.95rem; font-weight: 700; color: var(--ember); margin: 2.5rem 0 0.5rem;
+    padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 0.98rem; font-weight: 700; margin: 1.4rem 0 0.2rem; }
+  p { margin: 0; }
+  p + p { margin-top: 0.85rem; }
+  code { font-family: var(--font-mono); font-size: 0.86em; background: var(--zone); padding: 0.05em 0.3em; border-radius: 3px; }
+
+  figure { margin: 0; }
+  figure.wide { padding: 1.25rem 0 0; }
+  .diagram-scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--ink); font-family: var(--font-th); }
+  figure svg .m { font-family: var(--font-mono); }
+  figcaption { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.75rem; max-width: 80ch; }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+  th { font-size: 0.78rem; color: var(--ink-2); font-weight: 700; }
+  td.t { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; }
+  td.z { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+  .table-scroll { overflow-x: auto; }
+
+  .callout {
+    background: var(--surface); border-left: 3px solid var(--basil);
+    padding: 0.9rem 1.1rem; margin-top: 1rem;
+  }
+  .callout b { font-size: 0.85rem; color: var(--basil); }
+  .callout.q { border-left-color: var(--ember); }
+  .callout.q b { color: var(--ember); }
+
+  ul, ol { padding-left: 1.2rem; margin: 0.5rem 0 0; }
+  li + li { margin-top: 0.4rem; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+  .two > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; }
+  .two h3 { margin-top: 0; }
+  .lang { font-size: 0.82rem; color: var(--ink-2); margin-top: 0.75rem; }
+  .lang a { color: var(--ember); }
+  @media (max-width: 640px) {
+    header.masthead { padding-top: 2.5rem; }
+    .two { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">MADT8102 · Chapter 4 · Data lake design</p>
+  <h1>Data flow: Data lake แบบ zone-based สำหรับร้านพิซซ่า</h1>
+  <p class="standfirst">
+    ข้อมูลเดินทางจากเครื่อง POS แอปเดลิเวอรี่ และชีตนับสต็อก ไปเป็นรายงานรายสัปดาห์ได้อย่างไร
+    เราเลือกแพตเทิร์น data lake แบบไหนจากบทเรียน และทำไมถึงเหมาะกับร้านสาขาเดียว
+  </p>
+  <div class="meta-strip">
+    <span>แพตเทิร์น <b>Zone-based (สไลด์ 8)</b></span>
+    <span>การประมวลผล <b>Batch ทุกคืน 03:00</b></span>
+    <span>การเก็บข้อมูลเข้า <b>ทุก 5 นาทีสำหรับ POS, รายวันสำหรับที่เหลือ</b></span>
+    <span>เขตเวลา <b>Asia/Bangkok</b></span>
+  </div>
+  <p class="lang">English version: <a href="data-flow.html">data-flow.html</a></p>
+</header>
+
+<h2>1 · โจทย์ในหนึ่งย่อหน้า</h2>
+<p>
+  ร้านพิซซ่าหนึ่งร้านในกรุงเทพฯ ขายผ่านเมนู QR ของตัวเอง ทางโทรศัพท์ และผ่านแอปเดลิเวอรี่ 4 เจ้า
+  (Grab, LINE MAN, ShopeeFood, Robinhood) แต่ละระบบเก็บข้อมูลของตัวเองในรูปแบบของตัวเอง
+  เจ้าของร้านอยากตอบคำถามอย่าง <em>คืนวันศุกร์พิซซ่าหน้าไหนขายดี</em>
+  <em>สัปดาห์หน้าต้องใช้ชีสเท่าไหร่</em> และ <em>ค่าแรงสมเหตุสมผลกับยอดขายไหม</em>
+  ไม่มีใครตอบได้จากแอป 6 ตัวที่แยกกันอยู่ ข้อมูลต้องถูกรวมมาไว้ที่เดียว ทำความสะอาด
+  แล้วแปลงเป็นตารางที่แดชบอร์ดอ่านได้ "ที่เดียว" นั้นคือ data lake
+</p>
+
+<h2>2 · มีสองระบบ ไม่ใช่ระบบเดียว</h2>
+<p>
+  ความสับสนที่พบบ่อยที่สุดคือการปนกันระหว่างระบบที่ <em>ใช้ขายของ</em> กับระบบที่ <em>ใช้วิเคราะห์</em>
+  สองอย่างนี้เป็นคนละระบบ และทำงานคนละความเร็ว
+</p>
+<div class="two">
+  <div>
+    <h3>Operational (ระบบขายหน้าร้าน)</h3>
+    <p>แอป POS เมนู QR แอปของ Grab ลูกค้ากดสั่ง ครัวเห็นออเดอร์ภายในหนึ่งวินาที ใบเสร็จพิมพ์ออกมา
+    ระบบนี้ต้องทันที และมันทันทีอยู่แล้ว เราไม่ไปแตะต้องเลย</p>
+  </div>
+  <div>
+    <h3>Analytical (งานออกแบบชิ้นนี้)</h3>
+    <p>สำเนาของสิ่งที่เกิดขึ้นไปแล้ว เก็บรวบรวมจากทั้ง 6 ระบบมาจัดรูปใหม่เพื่อทำรายงาน
+    ไม่มีใครยืนรอที่เคาน์เตอร์ จะรันทุกไม่กี่นาทีหรือคืนละครั้งก็ได้ ขึ้นกับว่าต้องการคำตอบเมื่อไหร่</p>
+  </div>
+</div>
+<div class="callout q">
+  <b>แล้วลูกค้าต้องรอ 5 นาทีไหม?</b><br>
+  ไม่ ออเดอร์ผ่าน POS ทันทีเหมือนทุกวันนี้ "ทุก 5 นาที" คือความถี่ที่เรา <em>คัดลอก</em>
+  ออเดอร์ที่จบไปแล้วเข้า data lake ถ้างานคัดลอกหยุดไปทั้งวัน ร้านก็ยังขายพิซซ่าได้ตามปกติ
+  มีแค่รายงานที่จะช้าไปหนึ่งวัน
+</div>
+
+<h2>3 · Real time หรือ batch?</h2>
+<p>
+  แพตเทิร์น Lambda ในบทเรียนมีไว้สำหรับกรณีที่ต้องได้คำตอบภายในไม่กี่วินาทีหลังเหตุการณ์เกิด
+  ดังนั้นคำถามแรกคือ <em>ใครต้องการอะไร และต้องได้เมื่อไหร่</em>
+</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>คำถามที่เจ้าของร้านถาม</th><th>ดูบ่อยแค่ไหน</th><th>ข้อมูลต้องสดแค่ไหน</th></tr></thead>
+  <tbody>
+    <tr><td>สัปดาห์ที่แล้วขายอะไรได้บ้าง แยกตามช่องทางและเมนู</td><td>เช้าวันจันทร์</td><td>ข้อมูลถึงเมื่อวานก็พอ</td></tr>
+    <tr><td>ต้องสั่งวัตถุดิบแต่ละอย่างเท่าไหร่</td><td>รายการทุกคืน ดูตอนเช้า</td><td>ข้อมูลถึงเมื่อวานก็พอ</td></tr>
+    <tr><td>สัปดาห์หน้าจะขายได้กี่ถาด</td><td>รันพยากรณ์รายสัปดาห์</td><td>ข้อมูลถึงเมื่อวานก็พอ</td></tr>
+    <tr><td>ลูกค้าคนไหนเริ่มหายไป</td><td>รายเดือน</td><td>ข้อมูลถึงเดือนที่แล้วก็พอ</td></tr>
+    <tr><td>แอปเดลิเวอรี่ส่งตรงเวลาตาม SLA ไหม</td><td>รายสัปดาห์</td><td>ข้อมูลถึงเมื่อวานก็พอ</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  ทุกคำถามได้คำตอบเช้าวันถัดไปเป็นอย่างเร็วที่สุด กฎที่เราใช้จึงคือ
+  <strong>ออกแบบ pipeline ตามเวลาที่ต้องใช้คำตอบ ไม่ใช่ตามเวลาที่เหตุการณ์เกิด</strong>
+  ออเดอร์เกิดทุกนาที แต่การตัดสินใจแรกที่ใช้มันเกิดพรุ่งนี้
+  เก็บบ่อย ประมวลผลคืนละครั้ง เผยแพร่ให้ดูรายสัปดาห์ นั่นคือ batch
+</p>
+
+<h2>4 · เลือกแพตเทิร์นไหนจากบทเรียน และทำไม</h2>
+<p>บทนี้นำเสนอ 8 แพตเทิร์น นี่คือผลของแต่ละแบบเมื่อเอามาใช้กับร้านสาขาเดียวที่มีแหล่งข้อมูล 5 แหล่ง</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>แพตเทิร์น</th><th>คืออะไร</th><th>ผลสำหรับเรา</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Mono-zone</td><td>กองข้อมูลดิบกองเดียว ไม่มีการประมวลผลข้างใน</td><td>น้อยเกินไป CSV ของ Grab กับ JSON ของ POS เอามา join กันไม่ได้ถ้าไม่มีขั้นทำความสะอาด</td></tr>
+    <tr><td class="z">Lambda</td><td>Batch layer บวก speed layer สำหรับข้อมูลสด</td><td>เกินความจำเป็น ไม่มีผู้ใช้ที่ต้องการข้อมูลสด และทุกกฎต้องเขียนสองรอบ (สไลด์เองก็เตือนไว้)</td></tr>
+    <tr><td class="z">Kappa</td><td>มีแต่ speed layer ทุกอย่างเป็น stream</td><td>ผิดรูป แหล่งข้อมูล 4 ใน 5 มาเป็นไฟล์รายวัน ไม่ใช่ stream</td></tr>
+    <tr><td class="z">Data-pond</td><td>บ่อ raw, analog, application, textual, archival</td><td>ออกแบบมาสำหรับข้อมูล IoT ผสมข้อความ เราไม่มีทั้งสองอย่าง</td></tr>
+    <tr><td class="z"><strong>Zone-based</strong></td><td>Landing → Raw → Trusted → Refined บวก Sandbox</td><td><strong>เลือกอันนี้</strong> โซนตรงกับชั้น raw / staging / core / mart ใน ER model ของเราพอดี ทุกกฎเขียนครั้งเดียว</td></tr>
+    <tr><td class="z">Multi-zone functional</td><td>โซน raw, process, access, govern</td><td>ญาติใกล้ชิด เพิ่มโซน govern ที่ร้านเจ้าของคนเดียวกับนักวิเคราะห์คนเดียวยังไม่ต้องใช้</td></tr>
+    <tr><td class="z">Functional</td><td>ชั้น ingestion, storage, transformation, interaction</td><td>อธิบายสิ่งเดียวกันแต่แบ่งตามชั้นแทนโซน ใช้ได้ แต่โซนชี้ใน storage ได้ง่ายกว่า</td></tr>
+    <tr><td class="z">Lakehouse</td><td>Storage แบบ lake แต่มีตารางแบบ warehouse (Parquet, Delta)</td><td>ไม่ใช่คู่แข่ง แต่เป็นวิธี <em>ลงมือทำ</em> โซนเหล่านั้น Raw เป็น Parquet, Trusted กับ Refined เป็นตาราง</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 class="wide">5 · ภาพรวมการไหลของข้อมูล</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1240 600" role="img"
+       aria-label="แหล่งข้อมูล 5 แหล่งส่งเข้า landing zone ชั่วคราว ข้อมูลถูกคัดลอกเข้า raw zone ถาวร แปลงทุกคืนเป็น star schema ใน trusted zone รวมยอดเป็น mart ใน refined zone และถูกอ่านโดยผู้ใช้ 4 กลุ่ม sandbox อ่านจาก trusted และ refined เพื่อทดลอง">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+      <marker id="arr-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="var(--ember)"/>
+      </marker>
+    </defs>
+
+    <rect x="222" y="30" width="836" height="550" rx="4" fill="var(--zone)" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/>
+    <text x="232" y="52" font-size="11" letter-spacing="1" fill="var(--ink-2)">DATA LAKE · ที่เก็บเดียว · 4 โซน + SANDBOX</text>
+
+    <g font-size="11.5" font-weight="700" fill="currentColor">
+      <text x="100" y="52" text-anchor="middle">แหล่งข้อมูล</text>
+      <text x="1150" y="52" text-anchor="middle">ผู้ใช้ข้อมูล</text>
+    </g>
+
+    <!-- SOURCES -->
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="20" y="80" width="160" height="56" rx="3"/>
+      <rect x="20" y="150" width="160" height="56" rx="3"/>
+      <rect x="20" y="220" width="160" height="56" rx="3"/>
+      <rect x="20" y="290" width="160" height="56" rx="3"/>
+      <rect x="20" y="360" width="160" height="56" rx="3"/>
+    </g>
+    <g font-size="12" fill="currentColor">
+      <text x="30" y="101">ออเดอร์ POS / QR</text>
+      <text x="30" y="118" font-size="10.5" fill="var(--ink-2)">API · JSON</text>
+      <text x="30" y="171">แอปเดลิเวอรี่ ×4</text>
+      <text x="30" y="188" font-size="10.5" fill="var(--ink-2)">Grab · LINE MAN · +2 · CSV</text>
+      <text x="30" y="241">นับสต็อก</text>
+      <text x="30" y="258" font-size="10.5" fill="var(--ink-2)">ฟอร์มบนแท็บเล็ต · ชีต</text>
+      <text x="30" y="311">ใบสั่งซื้อซัพพลายเออร์</text>
+      <text x="30" y="328" font-size="10.5" fill="var(--ink-2)">ชีต · คีย์จากใบแจ้งหนี้</text>
+      <text x="30" y="381">กะงาน &amp; ลงเวลา</text>
+      <text x="30" y="398" font-size="10.5" fill="var(--ink-2)">แอปจัดตารางงาน</text>
+    </g>
+
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+      <line x1="180" y1="108" x2="248" y2="108"/>
+      <line x1="180" y1="178" x2="248" y2="178"/>
+      <line x1="180" y1="248" x2="248" y2="248"/>
+      <line x1="180" y1="318" x2="248" y2="318"/>
+      <line x1="180" y1="388" x2="248" y2="388"/>
+    </g>
+    <g font-size="9" fill="var(--ember)" text-anchor="middle">
+      <text x="214" y="100">ทุก 5 นาที</text>
+      <text x="214" y="170">รายวัน T+1</text>
+      <text x="214" y="240">ปิดร้าน</text>
+      <text x="214" y="310">เมื่อรับของ</text>
+      <text x="214" y="380">รายวัน</text>
+    </g>
+
+    <!-- ZONES -->
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="250" y="70" width="170" height="360" rx="3"/>
+      <rect x="460" y="70" width="170" height="360" rx="3"/>
+      <rect x="670" y="70" width="170" height="360" rx="3"/>
+      <rect x="880" y="70" width="170" height="360" rx="3"/>
+      <rect x="670" y="470" width="370" height="90" rx="3" stroke-dasharray="5 3"/>
+    </g>
+
+    <g class="m" font-size="11.5" font-weight="600" letter-spacing="1.5" fill="currentColor">
+      <text x="260" y="92">LANDING</text>
+      <text x="470" y="92">RAW</text>
+      <text x="680" y="92">TRUSTED</text>
+      <text x="890" y="92">REFINED</text>
+      <text x="680" y="492">SANDBOX</text>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1">
+      <line x1="260" y1="100" x2="410" y2="100"/>
+      <line x1="470" y1="100" x2="620" y2="100"/>
+      <line x1="680" y1="100" x2="830" y2="100"/>
+      <line x1="890" y1="100" x2="1040" y2="100"/>
+    </g>
+
+    <g font-size="10.5" fill="currentColor">
+      <text x="260" y="120">ไฟล์ตามที่มาถึง</text>
+      <text x="260" y="134">ไม่แก้ไขอะไรเลย</text>
+      <text x="260" y="160" class="m" fill="var(--ink-2)">landing/pos/2026-09-12/</text>
+      <text x="260" y="174" class="m" fill="var(--ink-2)">  19-45.json</text>
+      <text x="260" y="188" class="m" fill="var(--ink-2)">landing/grab/2026-09-12/</text>
+      <text x="260" y="202" class="m" fill="var(--ink-2)">  orders.csv</text>
+      <text x="260" y="228">เก็บ 7 วัน แล้วลบ</text>
+      <text x="260" y="268" fill="var(--ember)">เก็บที่: object storage</text>
+      <text x="260" y="282" fill="var(--ember)">รูปแบบ: ต้นฉบับ (JSON/CSV)</text>
+
+      <text x="470" y="120">แถวเดิม แต่ติดป้ายกำกับ</text>
+      <text x="470" y="134">และไม่มีวันถูกแก้</text>
+      <text x="470" y="160" class="m" fill="var(--ink-2)">+ source_system</text>
+      <text x="470" y="174" class="m" fill="var(--ink-2)">+ ingest_ts</text>
+      <text x="470" y="188" class="m" fill="var(--ink-2)">+ source_file</text>
+      <text x="470" y="202" class="m" fill="var(--ink-2)">+ raw_payload</text>
+      <text x="470" y="228">เพิ่มอย่างเดียว เก็บตลอดไป</text>
+      <text x="470" y="242">ใช้รันซ้ำได้เมื่อมีบั๊ก</text>
+      <text x="470" y="268" fill="var(--ember)">เก็บที่: object storage</text>
+      <text x="470" y="282" fill="var(--ember)">รูปแบบ: Parquet</text>
+      <text x="470" y="296" fill="var(--ember)">แบ่งพาร์ติชัน: source / date</text>
+
+      <text x="680" y="120">หนึ่งแถวต่อหนึ่งเหตุการณ์จริง</text>
+      <text x="680" y="134">แปลงชนิด ตัดซ้ำ ผ่านเกตคุณภาพ</text>
+      <text x="680" y="160" class="m" fill="var(--ink-2)">fct_order · fct_order_line</text>
+      <text x="680" y="174" class="m" fill="var(--ink-2)">fct_payment · fct_stock_mvmt</text>
+      <text x="680" y="188" class="m" fill="var(--ink-2)">dim_menu_item (SCD2)</text>
+      <text x="680" y="202" class="m" fill="var(--ink-2)">dim_channel · dim_date …</text>
+      <text x="680" y="228">Star schema ที่เดียวที่</text>
+      <text x="680" y="242">กฎทางธุรกิจอาศัยอยู่</text>
+      <text x="680" y="268" fill="var(--ember)">เก็บที่: ตาราง warehouse</text>
+      <text x="680" y="282" fill="var(--ember)">คีย์: surrogate</text>
+
+      <text x="890" y="120">หนึ่งตารางต่อหนึ่งคำถาม</text>
+      <text x="890" y="134">รวมยอดไว้ล่วงหน้า</text>
+      <text x="890" y="160" class="m" fill="var(--ink-2)" font-size="9.5">mart_sales_daily</text>
+      <text x="890" y="174" class="m" fill="var(--ink-2)" font-size="9.5">mart_ingredient_usage_daily</text>
+      <text x="890" y="188" class="m" fill="var(--ink-2)" font-size="9.5">mart_delivery_sla</text>
+      <text x="890" y="202" class="m" fill="var(--ink-2)" font-size="9.5">mart_customer_rfm</text>
+      <text x="890" y="216" class="m" fill="var(--ink-2)" font-size="9.5">mart_labor_vs_sales</text>
+      <text x="890" y="242">ผู้ใช้อ่านอย่างเดียว</text>
+      <text x="890" y="268" fill="var(--ember)">เก็บที่: ตาราง warehouse</text>
+      <text x="890" y="282" fill="var(--ember)">เกรน: วันทำการ</text>
+
+      <text x="680" y="512">พื้นที่ทดลองของนักวิเคราะห์ อ่านจาก trusted + refined ลองฟีเจอร์พยากรณ์ใหม่</text>
+      <text x="680" y="526">รัน SQL เฉพาะกิจ ไม่มีอะไรในนี้เป็นแหล่งข้อมูลของแดชบอร์ด</text>
+      <text x="680" y="546" fill="var(--ink-2)">สิ่งเดียวที่ส่งกลับ: fct_forecast เขียนกลับเข้า trusted โดยงานรายสัปดาห์</text>
+    </g>
+
+    <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#arr)">
+      <line x1="420" y1="340" x2="458" y2="340"/>
+      <line x1="630" y1="340" x2="668" y2="340"/>
+      <line x1="840" y1="340" x2="878" y2="340"/>
+    </g>
+    <g font-size="9.5" text-anchor="middle" fill="currentColor">
+      <text x="440" y="318" font-weight="700">นำเข้า</text>
+      <text x="440" y="330" fill="var(--ink-2)">คัดลอก + ติดป้าย</text>
+      <text x="440" y="360" fill="var(--ember)">ทุก 5 นาที (POS)</text>
+      <text x="440" y="372" fill="var(--ember)">ทุกคืน (ที่เหลือ)</text>
+
+      <text x="650" y="318" font-weight="700">แปลง</text>
+      <text x="650" y="330" fill="var(--ink-2)">SQL · ตัดซ้ำ · ตรวจคุณภาพ</text>
+      <text x="650" y="360" fill="var(--ember)">ทุกคืน 03:00</text>
+
+      <text x="860" y="318" font-weight="700">รวมยอด</text>
+      <text x="860" y="330" fill="var(--ink-2)">group by วัน</text>
+      <text x="860" y="360" fill="var(--ember)">ทุกคืน 03:30</text>
+    </g>
+
+    <g stroke="currentColor" stroke-width="1" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)">
+      <line x1="755" y1="430" x2="755" y2="468"/>
+      <line x1="965" y1="430" x2="965" y2="468"/>
+    </g>
+    <text x="770" y="452" font-size="9.5" fill="var(--ink-2)">อ่าน</text>
+    <text x="980" y="452" font-size="9.5" fill="var(--ink-2)">อ่าน</text>
+
+    <!-- CONSUMERS -->
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="1080" y="80" width="140" height="56" rx="3"/>
+      <rect x="1080" y="150" width="140" height="56" rx="3"/>
+      <rect x="1080" y="220" width="140" height="56" rx="3"/>
+      <rect x="1080" y="290" width="140" height="56" rx="3"/>
+    </g>
+    <g font-size="12" fill="currentColor">
+      <text x="1090" y="101">แดชบอร์ดผู้จัดการ</text>
+      <text x="1090" y="118" font-size="10.5" fill="var(--ink-2)">รายสัปดาห์ · รายเดือน</text>
+      <text x="1090" y="171">พยากรณ์ยอดขาย</text>
+      <text x="1090" y="188" font-size="10.5" fill="var(--ink-2)">รันโมเดลรายสัปดาห์</text>
+      <text x="1090" y="241">แนะนำการสั่งซื้อ</text>
+      <text x="1090" y="258" font-size="10.5" fill="var(--ink-2)">รายการทุกคืน</text>
+      <text x="1090" y="311">แบ่งกลุ่มลูกค้า</text>
+      <text x="1090" y="328" font-size="10.5" fill="var(--ink-2)">RFM รายเดือน</text>
+    </g>
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+      <line x1="1050" y1="108" x2="1078" y2="108"/>
+      <line x1="1050" y1="178" x2="1078" y2="178"/>
+      <line x1="1050" y1="248" x2="1078" y2="248"/>
+      <line x1="1050" y1="318" x2="1078" y2="318"/>
+    </g>
+
+    <path d="M1150 206 L1150 213 L1060 213 L1060 445 L845 445 L845 430" fill="none" stroke="var(--ember)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr-accent)"/>
+    <text x="1062" y="440" font-size="9.5" fill="var(--ember)">fct_forecast เขียนกลับ</text>
+  </svg>
+  </div>
+  <figcaption>
+    รูปที่ 1 — Data lake แบบ zone-based จากซ้ายไปขวาคือระดับความน่าเชื่อถือที่เพิ่มขึ้น
+    มีแค่ขั้น "นำเข้า" ที่รันมากกว่าวันละครั้ง และเฉพาะ POS เท่านั้น การแปลงทุกอย่างเขียนครั้งเดียวในงาน "แปลง"
+  </figcaption>
+</figure>
+
+<h2>6 · ทำไมต้องมี 4 โซน ไม่ใช่โซนเดียว?</h2>
+<p>
+  แต่ละโซนมีอยู่เพราะถ้าไม่มีจะเกิดปัญหา อ่านคอลัมน์ "ถ้าไม่มี" แล้วการออกแบบจะอธิบายตัวเอง
+</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>โซน</th><th>เก็บอะไร</th><th>มีไว้ทำไม</th><th>ถ้าไม่มี</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Landing</td><td>ไฟล์ตามที่มาถึงเป๊ะ ลบหลัง 7 วัน</td><td>จุดวางไฟล์ที่ปลอดภัย แหล่งข้อมูลส่งมาได้โดยไม่ต้องรู้โครงสร้างของเรา</td><td>ไฟล์ export ของ Grab ต้องเขียนตรงเข้าตารางเรา ชื่อคอลัมน์เปลี่ยนหนึ่งตัวก็ทำให้โหลดพังตอน 06:00 ที่ไม่มีใครดู</td></tr>
+    <tr><td class="z">Raw</td><td>แถวเดิม ติดป้ายแหล่ง เวลา และชื่อไฟล์ ไม่มีวันแก้ เก็บตลอดไป</td><td>ร่องรอยการตรวจสอบและปุ่มรันซ้ำ บั๊กที่เจอทีหลังแก้ได้โดยรันใหม่จากตรงนี้</td><td>บั๊กในตรรกะทำความสะอาดทำให้สำเนาเดียวที่มีพังเงียบ ๆ ย้อนกลับไม่ได้</td></tr>
+    <tr><td class="z">Trusted</td><td>หนึ่งแถวต่อหนึ่งเหตุการณ์จริง แปลงชนิด ตัดซ้ำ ตรวจคุณภาพแล้ว เป็น star schema</td><td>ที่เดียวที่กฎทางธุรกิจอาศัยอยู่: "วันทำการ" คืออะไร ชื่อเมนูไหนคือ SKU ไหน อะไรนับว่าซ้ำ</td><td>ทุกแดชบอร์ดเขียนกฎเองแล้วค่อย ๆ ต่างกัน "Large Pepperoni Pizza" ของ Grab กับ "PEP-L" ของ POS ถูกนับเป็นสองสินค้า</td></tr>
+    <tr><td class="z">Refined</td><td>หนึ่งตารางต่อหนึ่งคำถาม รวมยอดตามวันทำการไว้แล้ว</td><td>แดชบอร์ดอ่านตารางเล็กที่เร็ว แทนที่จะ join ตารางใหญ่ 6 ตารางทุกครั้งที่คลิก</td><td>แดชบอร์ดวันจันทร์โหลดเป็นนาที และโมเดลพยากรณ์ต้อง query ข้อมูล fact ดิบ</td></tr>
+    <tr><td class="z">Sandbox</td><td>สำเนาสำหรับทดลอง เคลียร์หลัง 30 วัน</td><td>นักวิเคราะห์ลองฟีเจอร์พยากรณ์ใหม่ได้โดยไม่กระทบรายงาน</td><td>การทดลองเกิดใน Trusted แล้ว UPDATE ผิดครั้งเดียวทำตัวเลขทั้งสัปดาห์เสีย</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>7 · แต่ละอย่างเกิดขึ้นที่ไหน</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>โซน</th><th>ข้อมูลเข้ามาอย่างไร</th><th>ประมวลผลอะไรที่นี่</th><th>เก็บเป็น</th><th>เก็บนานแค่ไหน</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Landing</td><td>ดึงจาก API และไฟล์ CSV ตามที่ได้รับ</td><td>ไม่มี แค่เช็กว่ามาถึง</td><td>JSON / CSV ต้นฉบับ โฟลเดอร์ต่อแหล่งต่อวัน</td><td>7 วัน</td></tr>
+    <tr><td class="z">Raw</td><td>สำเนาของทุกไฟล์ที่ landing</td><td>ติดป้ายแหล่ง เวลานำเข้า ชื่อไฟล์</td><td>Parquet แบ่งพาร์ติชันตามแหล่งและวัน</td><td>ตลอดไป</td></tr>
+    <tr><td class="z">Trusted</td><td>พาร์ติชัน raw ของวันทำการนั้น</td><td>parse, cast, ตัดซ้ำด้วย natural key, ปรับชื่อให้ตรงกัน, เกตคุณภาพ, โหลดเข้า star schema</td><td>ตาราง warehouse เป็น fact และ dim แบบ SCD2</td><td>ตลอดไป</td></tr>
+    <tr><td class="z">Refined</td><td>fact และ dim จาก trusted</td><td>รวมยอดเป็น วันทำการ × เมนู × ช่องทาง</td><td>ตาราง mart ใน warehouse</td><td>ตลอดไป</td></tr>
+    <tr><td class="z">Sandbox</td><td>สำเนาจาก trusted และ refined</td><td>ทดลอง, SQL เฉพาะกิจ</td><td>ตามที่นักวิเคราะห์ต้องการ</td><td>30 วัน</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>8 · ตามรอยหนึ่งออเดอร์</h2>
+<p>
+  ลูกค้าสั่งเปปเปอโรนีถาดใหญ่ผ่าน Grab ตอนเย็นวันศุกร์ นี่คือตำแหน่งของข้อมูลชิ้นนั้นในแต่ละช่วงเวลา
+</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>เมื่อไหร่</th><th>โซน</th><th>เกิดอะไรขึ้นกับออเดอร์</th></tr></thead>
+  <tbody>
+    <tr><td class="t">ศ. 19:42</td><td class="z">—</td><td>สั่งผ่าน Grab ครัวได้รับทันทีผ่านแท็บเล็ตของ Grab ระบบ Grab มีข้อมูลนี้ เรายังไม่มี</td></tr>
+    <tr><td class="t">ส. 06:00</td><td class="z">Landing</td><td>ไฟล์ export รายคืนจาก merchant portal ของ Grab วาง <code>orders.csv</code> ลงใน <code>landing/grab/2026-09-12/</code> ออเดอร์นี้เป็นหนึ่งบรรทัดในไฟล์นั้น ใช้ชื่อคอลัมน์ของ Grab และเวลาเป็น UTC</td></tr>
+    <tr><td class="t">ส. 06:05</td><td class="z">Raw</td><td>งานนำเข้าคัดลอกไฟล์เป็น Parquet และเพิ่ม <code>source_system = GRAB</code>, <code>ingest_ts</code>, <code>source_file</code> บรรทัดอื่นไม่แตะ ถ้า Grab ส่งไฟล์ซ้ำสัปดาห์หน้า ทั้งสองสำเนาอยู่ครบ</td></tr>
+    <tr><td class="t">อา. 03:00</td><td class="z">Trusted</td><td>งานแปลงรันสำหรับวันทำการวันศุกร์ เวลากลายเป็น 19:42 Asia/Bangkok แถวถูกตัดซ้ำด้วย <code>(GRAB, platform_order_id)</code> "Large Pepperoni Pizza" ถูกจับคู่กับ <code>menu_item_nk</code> ของเรา แล้วกลายเป็น <code>fct_order</code> หนึ่งแถวบวก <code>fct_order_line</code> หนึ่งแถว เกตคุณภาพเช็กว่ามีช่องทาง มีวันที่ และยอดรวมเป็นบวก</td></tr>
+    <tr><td class="t">อา. 03:30</td><td class="z">Refined</td><td>งานรวมยอดเพิ่มเข้า <code>mart_sales_daily</code> สำหรับ ศุกร์ × เปปเปอโรนี × GRAB และการกระจายสูตรเพิ่มแป้ง ชีส และเปปเปอโรนีเข้า <code>mart_ingredient_usage_daily</code></td></tr>
+    <tr><td class="t">จ. 09:00</td><td class="z">ผู้ใช้</td><td>เจ้าของเปิดแดชบอร์ดรายสัปดาห์ ยอดขาย Grab วันศุกร์รวมออเดอร์นี้แล้ว รายการสั่งซื้อวัตถุดิบใช้ปริมาณชีสของออเดอร์นี้ไปตั้งแต่คืนวันอาทิตย์</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  ออเดอร์ QR ทานในร้านเดินเส้นทางเดียวกัน แต่ถึง Raw ภายใน 5 นาทีแทนที่จะเป็นเช้าวันถัดไป
+  มันยังต้องรองาน 03:00 เพื่อเข้า Trusted ช่องว่างนี้ไม่เป็นไร เพราะไม่มีใครอ่าน Trusted ก่อนหน้านั้น
+</p>
+
+<h2>9 · แยกตามแหล่งข้อมูล</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>แหล่ง</th><th>เหตุการณ์เกิด</th><th>การตัดสินใจแรกที่ต้องใช้</th><th>เราจึงเก็บ</th><th>และประมวลผล</th></tr></thead>
+  <tbody>
+    <tr><td>POS / QR</td><td>ทุกนาทีช่วงเปิดร้าน</td><td>ดูตอนเช้า, สั่งซื้อทุกคืน</td><td>ทุก 5 นาที ต้นทุนต่ำ และทำให้ Raw ทันสมัยระหว่างวัน</td><td>Batch ทุกคืน</td></tr>
+    <tr><td>แอปเดลิเวอรี่</td><td>ทุกนาทีช่วงเปิดร้าน</td><td>เหมือนกัน</td><td>รายวัน T+1 เพราะ portal ออกไฟล์ให้ตอนนั้น</td><td>Batch ทุกคืน</td></tr>
+    <tr><td>นับสต็อก</td><td>วันละครั้งตอนปิดร้าน</td><td>สั่งซื้อทุกคืน</td><td>รายวัน</td><td>Batch ทุกคืน</td></tr>
+    <tr><td>การจัดซื้อ</td><td>2–3 ครั้งต่อสัปดาห์</td><td>สั่งซื้อทุกคืน, ทบทวนต้นทุนรายเดือน</td><td>เมื่อรับของ</td><td>Batch ทุกคืน</td></tr>
+    <tr><td>กะงาน</td><td>รายวัน</td><td>ค่าแรงเทียบยอดขายรายสัปดาห์</td><td>รายวัน</td><td>Batch ทุกคืน</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>10 · เมื่อไหร่การออกแบบนี้จะต้องเปลี่ยน</h2>
+<ul>
+  <li><strong>เจ้าของอยากได้หน้าจอ "ยอดวันนี้แบบสด" รวมทุกช่องทาง</strong> เพิ่ม speed layer ข้างเส้นทาง batch แล้วการออกแบบจะกลายเป็น Lambda ฝั่ง batch ยังเหมือนเดิมทุกอย่าง</li>
+  <li><strong>เปิดสาขาที่สอง</strong> เพิ่ม dimension ร้าน และแบ่งพาร์ติชัน Raw ตามร้าน โซนไม่เปลี่ยน</li>
+  <li><strong>แอปเดลิเวอรี่เปิด API แบบ real-time แทน CSV รายวัน</strong> เก็บทุก 5 นาทีเหมือน POS ยังลงที่ Landing ยังประมวลผลทุกคืน</li>
+</ul>
+<div class="callout">
+  <b>สรุปในหนึ่งบรรทัด</b><br>
+  เก็บบ่อย เก็บดิบไว้ทั้งหมด ทำความสะอาดครั้งเดียว รวมยอดครั้งเดียว อ่านได้หลายครั้ง
+  Batch ไม่ใช่การประนีประนอม แต่เป็นความเร็วที่ถูกต้องสำหรับทุกคำถามในรายการ
+</div>
+
+</main>
+</body>
+</html>
