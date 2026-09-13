@@ -12,12 +12,19 @@ ER model at each layer, and the decisions worth defending in a review.
 |---|---|
 | `README.md` | This document — the full write-up, with all five diagrams inline |
 | `docs/data-platform.html` | Styled web version of the same write-up |
+| `docs/data-flow.html` / `docs/data-flow.th.html` | Data lake design (MADT8102 ch. 4): zone-based pattern, why batch, where each thing happens. English and Thai |
+| `notebooks/data_flow_demo.ipynb` | The same flow as runnable code: fake POS / Grab / LINE MAN JSON exports → Landing → Raw (Parquet) → Trusted (DuckDB star schema) → Refined (marts), with dedupe, business day and replay from Raw. English with Thai notes |
 | `diagrams/01-pipeline-flow.mmd` | Source → raw → staging → core → mart → consumer flow |
 | `diagrams/02-er-sales-orders.mmd` | ER: orders, lines, payments, promotions, channels, customers |
 | `diagrams/03-er-inventory-supply.mmd` | ER: ingredients, recipes, stock movements, suppliers, POs |
 | `diagrams/04-er-people-shifts.mmd` | ER: staff, roles, shifts, overtime |
 | `diagrams/05-er-promotions.mmd` | ER: promotion conditions and rewards |
 | `renders/*.jpg` | All five diagrams exported as JPG, 2352px wide, for slides |
+
+**Running the notebook.** `pip install pandas pyarrow duckdb jupyter`, then open
+`notebooks/data_flow_demo.ipynb` and run all cells. It builds a `lake/` folder next to itself
+(ignored by git) so you can open the zone folders and Parquet files on disk. GitHub renders the
+saved outputs, so it can also just be read.
 
 **Reading it.** The diagrams below render directly on GitHub, and in VS Code (Markdown Preview),
 Obsidian, Typora and Notion. For the styled version, clone the repo and open
