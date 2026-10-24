@@ -1,0 +1,51 @@
+%% Minimal version - pipeline: two sales sources, three facts, three aggregates, one consumer
+%% The star itself is Fig. 2 (02-er-sales-orders.mmd), which holds exactly these three facts.
+flowchart LR
+  subgraph SRC["SOURCES"]
+    direction TB
+    S1["POS / QR<br/>orders API"]
+    S2["Grab · LINE MAN<br/>ShopeeFood · Robinhood<br/>portal exports"]
+  end
+
+  subgraph RAW["1 · RAW"]
+    direction TB
+    R1["Immutable append<br/>+ ingest_ts, source_file"]
+  end
+
+  subgraph STG["2 · STAGING"]
+    direction TB
+    T1["UTC→Asia/Bangkok · business day<br/>dedupe on natural key<br/>conform channel + item names<br/>split modifier text into rows"]
+  end
+
+  subgraph DW["3 · DIMENSIONAL WAREHOUSE"]
+    direction TB
+    D1["6 conformed dimensions + 1 bridge<br/>special-case rows, SCD2 on menu item"]
+    F1["FCT_ORDER<br/>one row per order"]
+    F2["FCT_ORDER_LINE<br/>one row per item per order"]
+    F3["FCT_ORDER_LINE_MODIFIER<br/>one row per modifier per line"]
+  end
+
+  subgraph AGG["4 · AGGREGATES"]
+    direction TB
+    A1["mart_channel_daily<br/>date × channel"]
+    A2["mart_sales_daily<br/>date × channel × SKU"]
+    A3["mart_modifier_daily<br/>date × channel × modifier"]
+  end
+
+  subgraph OUT["CONSUMER"]
+    direction TB
+    O1["Owner dashboard<br/>net revenue by channel · commission<br/>top items · add-on rate"]
+  end
+
+  S1 -->|"5 min micro-batch"| RAW
+  S2 -->|"daily T+1"| RAW
+  RAW --> T1 --> DW
+  D1 --- F1
+  D1 --- F2
+  D1 --- F3
+  F1 --> A1
+  F2 --> A2
+  F3 --> A3
+  A1 --> O1
+  A2 --> O1
+  A3 --> O1

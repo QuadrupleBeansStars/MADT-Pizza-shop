@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warehouse ร้านพิซซ่า เวอร์ชันย่อ</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:   #F4F4EE;
+    --surface: #FCFCF8;
+    --ink:     #1B1D19;
+    --ink-2:   #5B6057;
+    --rule:    #DCDCD1;
+    --ember:   #B03A16;
+    --basil:   #45674A;
+    --zone:    #ECECE3;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --font-th: "Sukhumvit Set", "Thonburi", "Noto Sans Thai", "Sarabun", "Leelawadee UI", "Tahoma", system-ui, sans-serif;
+    --step:  clamp(1rem, 0.9rem + 0.3vw, 1.075rem);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-th);
+    font-size: var(--step);
+    line-height: 1.75;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 1.15rem;
+  }
+  main > * { grid-column: 2; min-width: 0; }
+  .wide { grid-column: 1 / -1; width: 100%; max-width: 1180px; justify-self: center; }
+
+  header.masthead {
+    grid-column: 1 / -1;
+    max-width: 1180px; justify-self: center; width: 100%;
+    padding: 4rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ember); margin: 0 0 1rem;
+  }
+  h1 {
+    font-weight: 700;
+    font-size: clamp(1.8rem, 1.2rem + 2.4vw, 2.8rem);
+    line-height: 1.25; text-wrap: balance; margin: 0 0 1rem;
+  }
+  .standfirst { font-size: 1.12rem; color: var(--ink-2); max-width: 62ch; margin: 0; }
+  .meta-strip {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1.5rem;
+    font-size: 0.82rem; color: var(--ink-2);
+  }
+  .meta-strip b { color: var(--ink); font-weight: 600; }
+
+  h2 {
+    font-size: 0.95rem; font-weight: 700; color: var(--ember); margin: 2.5rem 0 0.5rem;
+    padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 0.98rem; font-weight: 700; margin: 1.4rem 0 0.2rem; }
+  p { margin: 0; }
+  p + p { margin-top: 0.85rem; }
+  code { font-family: var(--font-mono); font-size: 0.86em; background: var(--zone); padding: 0.05em 0.3em; border-radius: 3px; }
+  pre {
+    font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.5;
+    background: var(--surface); border: 1px solid var(--rule); padding: 0.8rem 1rem;
+    overflow-x: auto; margin: 0.5rem 0 0;
+  }
+
+  figure { margin: 0; }
+  figure.wide { padding: 1.25rem 0 0; }
+  .diagram-scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--ink); font-family: var(--font-th); }
+  figure svg .m { font-family: var(--font-mono); }
+  figure svg .t { font-family: var(--font-th); }
+  figcaption { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.75rem; max-width: 80ch; }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+  th { font-size: 0.78rem; color: var(--ink-2); font-weight: 700; }
+  td.t { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; }
+  td.z { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+  td.zt { font-size: 0.88rem; font-weight: 700; white-space: nowrap; }
+  td.n { font-family: var(--font-mono); font-size: 0.85rem; text-align: right; white-space: nowrap; }
+  td.bad { color: var(--ember); }
+  .table-scroll { overflow-x: auto; }
+  table.matrix th, table.matrix td { text-align: center; padding: 0.45rem 0.4rem; }
+  table.matrix th:first-child, table.matrix td:first-child { text-align: left; }
+  table.matrix td.y { color: var(--basil); font-weight: 600; }
+  table.matrix tr.total td { font-weight: 700; border-top: 2px solid var(--ink); }
+
+  .callout {
+    background: var(--surface); border-left: 3px solid var(--basil);
+    padding: 0.9rem 1.1rem; margin-top: 1rem;
+  }
+  .callout b { font-size: 0.85rem; color: var(--basil); }
+  .callout.q { border-left-color: var(--ember); }
+  .callout.q b { color: var(--ember); }
+
+  ul, ol { padding-left: 1.2rem; margin: 0.5rem 0 0; }
+  li + li { margin-top: 0.4rem; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+  .two > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; min-width: 0; }
+  .two h3 { margin-top: 0; }
+  .lang { font-size: 0.82rem; color: var(--ink-2); margin-top: 0.75rem; }
+  .lang a, main a { color: var(--ember); }
+  @media (max-width: 640px) {
+    header.masthead { padding-top: 2.5rem; }
+    .two { grid-template-columns: 1fr; }
+  }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 0.75rem; }
+  .tile { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .tile-label { font-size: 0.82rem; font-weight: 700; color: var(--ink-2); }
+  .tile-value { font-family: var(--font-mono); font-size: 1.9rem; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .tile-unit { font-size: 0.85rem; color: var(--ink-2); }
+  .tile-src { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-2); margin-top: 0.4rem; }
+  .dash { margin-top: 1rem; }
+  svg.bars { display: block; width: 100%; height: auto; color: var(--ink); font-family: var(--font-th); margin-top: 0.5rem; }
+  svg.bars .m { font-family: var(--font-mono); }
+  svg.bars path:hover { opacity: 0.8; }
+  table.compact { margin-top: 0.5rem; font-size: 0.88rem; }
+  table.compact td, table.compact th { padding: 0.35rem 0.5rem; }
+  @media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">MADT8102 · Pizza shop · Minimal warehouse</p>
+  <h1>Warehouse เวอร์ชันย่อ: fact สามตัว aggregate สามตัว แดชบอร์ดเดียว</h1>
+  <p class="standfirst">
+    ขอบเขตที่ตกลงกับอาจารย์ไว้ คือ star การขายจาก section 4 ของโมเดลเต็ม สร้างครบทั้งเส้นเพื่อให้เจ้าของร้านเห็นรายได้ตามช่องทาง
+    เมนูที่ขายดี และรายได้จากของเพิ่ม (add-on) ทุกตัวเลขในหน้านี้มาจาก <code>notebooks/warehouse_minimal.ipynb</code>
+  </p>
+  <div class="meta-strip">
+    <span>Fact <b>3 ตัว</b></span>
+    <span>Dimension <b>6 ตัว + bridge 1 ตัว</b></span>
+    <span>Aggregate <b>3 ตัว</b></span>
+    <span>ผู้ใช้ <b>แดชบอร์ดเจ้าของร้าน</b></span>
+  </div>
+  <p class="lang">English version: <a href="warehouse-minimal.html">warehouse-minimal.html</a> · โมเดลเต็ม: <a href="warehouse-design.th.html">warehouse-design.th.html</a></p>
+</header>
+
+<h2>1 · ขอบเขต</h2>
+<div class="two">
+  <div>
+    <h3>อยู่ในขอบเขต</h3>
+    <ul>
+      <li>แหล่งข้อมูลการขายสองแหล่ง: POS (QR, โทรศัพท์) และไฟล์ export ของแอปเดลิเวอรี</li>
+      <li>conformed dimension หกตัวและ bridge หนึ่งตัว</li>
+      <li>fact สามตัว: <code>FCT_ORDER</code>, <code>FCT_ORDER_LINE</code>, <code>FCT_ORDER_LINE_MODIFIER</code></li>
+      <li>aggregate table สามตัว หนึ่งตัวต่อหนึ่ง fact</li>
+      <li>ผู้ใช้กลุ่มเดียว: แดชบอร์ดของเจ้าของร้าน</li>
+    </ul>
+  </div>
+  <div>
+    <h3>ยังไม่อยู่ในขอบเขต</h3>
+    <ul>
+      <li>สต็อก การสั่งของ และการสั่งซื้อ</li>
+      <li>กะงานและค่าแรง</li>
+      <li>การชำระเงินและโปรโมชัน</li>
+      <li>เวลาการจัดส่ง</li>
+      <li>โมเดลพยากรณ์และการแบ่งกลุ่มลูกค้า</li>
+    </ul>
+  </div>
+</div>
+<p style="margin-top:0.85rem">
+  ขอบเขตเล็กลงแต่กฎการออกแบบไม่เปลี่ยน ยังเป็น Kimball dimensional warehouse ตาม MADT8102 บทที่ 5: surrogate key แบบ <code>_key</code>,
+  special-case row (0 ไม่เกี่ยวข้อง, 1 ไม่ทราบ, 2 ไม่ถูกต้อง) แทน key ที่เป็น NULL, junk dimension สำหรับสถานะออร์เดอร์,
+  เลขออร์เดอร์และเลขบรรทัดเป็น degenerate dimension และเทียบ fact ด้วยการ drill across
+</p>
+
+<h2 class="wide">2 · Pipeline</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 330" role="img"
+       aria-label="POS และไฟล์ export ของแอปเดลิเวอรีเข้า raw ทำความสะอาดใน staging แล้วโหลดเป็น fact สามตัวบน dimension หกตัวที่ใช้ร่วมกัน fact แต่ละตัวป้อน aggregate table หนึ่งตัว และ aggregate ทั้งสามป้อนแดชบอร์ดของเจ้าของร้าน">
+    <defs>
+      <marker id="arrp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+    <g font-size="12" font-weight="700" fill="var(--ink-2)">
+      <text x="10"  y="22">แหล่งข้อมูล</text>
+      <text x="190" y="22">RAW · STAGING</text>
+      <text x="400" y="22">WAREHOUSE · 03:00</text>
+      <text x="720" y="22">AGGREGATE · 03:30</text>
+      <text x="990" y="22">ผู้ใช้</text>
+    </g>
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="10"  y="70"  width="140" height="56" rx="3"/>
+      <rect x="10"  y="190" width="140" height="56" rx="3"/>
+      <rect x="190" y="70"  width="170" height="176" rx="3"/>
+      <rect x="400" y="40"  width="260" height="46" rx="3"/>
+      <rect x="990" y="100" width="180" height="146" rx="3"/>
+    </g>
+    <g fill="var(--surface)" stroke="var(--ember)" stroke-width="1.8">
+      <rect x="400" y="110" width="260" height="46" rx="3"/>
+      <rect x="400" y="180" width="260" height="46" rx="3"/>
+      <rect x="400" y="250" width="260" height="46" rx="3"/>
+    </g>
+    <g fill="var(--zone)" stroke="currentColor" stroke-width="1.2">
+      <rect x="720" y="110" width="230" height="46" rx="3"/>
+      <rect x="720" y="180" width="230" height="46" rx="3"/>
+      <rect x="720" y="250" width="230" height="46" rx="3"/>
+    </g>
+    <g font-size="11.5" fill="currentColor">
+      <text x="20" y="94" font-weight="700">POS / QR, โทรศัพท์</text>
+      <text x="20" y="112" fill="var(--ink-2)" font-size="10.5">ทุก 5 นาที</text>
+      <text x="20" y="214" font-weight="700">แอปเดลิเวอรี</text>
+      <text x="20" y="232" fill="var(--ink-2)" font-size="10.5">export รายวัน T+1</text>
+
+      <text x="200" y="94" font-weight="700">raw → stg</text>
+      <text x="200" y="118" font-size="10.5">เก็บตามที่มาถึง</text>
+      <text x="200" y="138" font-size="10.5">UTC → เวลากรุงเทพ</text>
+      <text x="200" y="154" font-size="10.5">วันทำการ 10:00–02:00</text>
+      <text x="200" y="170" font-size="10.5">ตัดซ้ำด้วย natural key</text>
+      <text x="200" y="186" font-size="10.5">แปลงชื่อเมนูเป็นมาตรฐาน</text>
+      <text x="200" y="202" font-size="10.5">แยก text ของ modifier</text>
+
+      <text x="410" y="60" font-weight="700">dimension 6 ตัว + bridge 1 ตัว</text>
+      <text x="410" y="76" fill="var(--ink-2)" font-size="10.5">วันที่ · ช่องทาง · ลูกค้า · เมนู · modifier · สถานะ</text>
+      <text x="410" y="131" font-weight="700" fill="var(--ember)" class="m">FCT_ORDER</text>
+      <text x="410" y="147" fill="var(--ink-2)" font-size="10.5">หนึ่งแถวต่อหนึ่งออร์เดอร์</text>
+      <text x="410" y="201" font-weight="700" fill="var(--ember)" class="m">FCT_ORDER_LINE</text>
+      <text x="410" y="217" fill="var(--ink-2)" font-size="10.5">หนึ่งแถวต่อเมนูหนึ่งรายการในออร์เดอร์</text>
+      <text x="410" y="271" font-weight="700" fill="var(--ember)" class="m">FCT_ORDER_LINE_MODIFIER</text>
+      <text x="410" y="287" fill="var(--ink-2)" font-size="10.5">หนึ่งแถวต่อ modifier หนึ่งตัวบนบรรทัด</text>
+
+      <text x="730" y="131" font-weight="700" class="m">mart_channel_daily</text>
+      <text x="730" y="147" fill="var(--ink-2)" font-size="10.5">วันที่ × ช่องทาง</text>
+      <text x="730" y="201" font-weight="700" class="m">mart_sales_daily</text>
+      <text x="730" y="217" fill="var(--ink-2)" font-size="10.5">วันที่ × ช่องทาง × SKU</text>
+      <text x="730" y="271" font-weight="700" class="m">mart_modifier_daily</text>
+      <text x="730" y="287" fill="var(--ink-2)" font-size="10.5">วันที่ × ช่องทาง × modifier</text>
+
+      <text x="1000" y="124" font-weight="700">แดชบอร์ดเจ้าของร้าน</text>
+      <text x="1000" y="148" font-size="10.5" fill="var(--ink-2)">รายได้สุทธิตามช่องทาง</text>
+      <text x="1000" y="164" font-size="10.5" fill="var(--ink-2)">ค่าคอมมิชชันที่จ่าย</text>
+      <text x="1000" y="180" font-size="10.5" fill="var(--ink-2)">รายได้สุทธิเฉลี่ยต่อออร์เดอร์</text>
+      <text x="1000" y="196" font-size="10.5" fill="var(--ink-2)">เมนูขายดี</text>
+      <text x="1000" y="212" font-size="10.5" fill="var(--ink-2)">ชีสเพิ่มต่อพิซซ่า</text>
+    </g>
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arrp)">
+      <line x1="150" y1="98"  x2="188" y2="120"/>
+      <line x1="150" y1="218" x2="188" y2="196"/>
+      <line x1="360" y1="158" x2="398" y2="203"/>
+      <line x1="660" y1="133" x2="718" y2="133"/>
+      <line x1="660" y1="203" x2="718" y2="203"/>
+      <line x1="660" y1="273" x2="718" y2="273"/>
+      <line x1="950" y1="133" x2="988" y2="150"/>
+      <line x1="950" y1="203" x2="988" y2="180"/>
+      <line x1="950" y1="273" x2="988" y2="230"/>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1.2" stroke-dasharray="3 3">
+      <line x1="530" y1="86" x2="530" y2="108"/>
+    </g>
+  </svg>
+  </div>
+  <figcaption>
+    fact แต่ละตัวป้อน aggregate table หนึ่งตัวพอดี และมีแค่ aggregate ที่ไปถึงแดชบอร์ด โหลดตอน 03:00 สร้าง aggregate ตอน 03:30
+    และประมวลผล 3 วันทำการล่าสุดใหม่ทุกคืนเพื่อเก็บออร์เดอร์ที่มาช้า
+  </figcaption>
+</figure>
+
+<h2 class="wide">3 · Star</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 560" role="img"
+       aria-label="FCT_ORDER ทางซ้ายและ FCT_ORDER_LINE ทางขวาชี้ตรงไปที่ dimension ที่ใช้ร่วมกันตรงกลาง: DIM_DATE, DIM_CHANNEL, DIM_CUSTOMER และ junk dimension DIM_ORDER_INFO FCT_ORDER_LINE ยังชี้ไปที่ DIM_MENU_ITEM ส่วน FCT_ORDER_LINE_MODIFIER ชี้ไปที่ DIM_MENU_ITEM และ DIM_MODIFIER ไม่มี fact ตัวไหนชี้ไปที่ fact อีกตัว">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="350" y="20"  width="232" height="104" rx="3"/>
+      <rect x="350" y="140" width="232" height="104" rx="3"/>
+      <rect x="350" y="260" width="232" height="104" rx="3"/>
+      <rect x="350" y="380" width="232" height="80"  rx="3"/>
+      <rect x="960" y="20"  width="200" height="172" rx="3"/>
+      <rect x="960" y="420" width="200" height="96"  rx="3"/>
+    </g>
+    <g fill="var(--surface)" stroke="var(--ember)" stroke-width="2">
+      <rect x="20"  y="110" width="260" height="232" rx="3"/>
+      <rect x="650" y="110" width="260" height="252" rx="3"/>
+      <rect x="650" y="420" width="260" height="124" rx="3"/>
+    </g>
+
+    <g class="m" font-size="12" font-weight="600" letter-spacing="1" fill="currentColor">
+      <text x="360" y="42">DIM_DATE</text>
+      <text x="360" y="162">DIM_CHANNEL</text>
+      <text x="360" y="282">DIM_CUSTOMER</text>
+      <text x="360" y="402">DIM_ORDER_INFO (junk)</text>
+      <text x="970" y="42">DIM_MENU_ITEM</text>
+      <text x="970" y="442">DIM_MODIFIER</text>
+    </g>
+    <g class="m" font-size="12" font-weight="600" letter-spacing="1" fill="var(--ember)">
+      <text x="30"  y="132">FCT_ORDER</text>
+      <text x="660" y="132">FCT_ORDER_LINE</text>
+      <text x="660" y="442">FCT_ORDER_LINE_MODIFIER</text>
+    </g>
+    <g font-size="10.5" fill="var(--ink-2)">
+      <text x="30"  y="148">grain: หนึ่งแถวต่อหนึ่งออร์เดอร์</text>
+      <text x="660" y="148">grain: เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</text>
+      <text x="660" y="458">grain: modifier หนึ่งตัวต่อหนึ่งบรรทัด</text>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1">
+      <line x1="360" y1="50"  x2="572"  y2="50"/>
+      <line x1="360" y1="170" x2="572"  y2="170"/>
+      <line x1="360" y1="290" x2="572"  y2="290"/>
+      <line x1="360" y1="410" x2="572"  y2="410"/>
+      <line x1="970" y1="50"  x2="1150" y2="50"/>
+      <line x1="970" y1="450" x2="1150" y2="450"/>
+      <line x1="30"  y1="156" x2="270"  y2="156"/>
+      <line x1="660" y1="156" x2="900"  y2="156"/>
+      <line x1="660" y1="466" x2="900"  y2="466"/>
+    </g>
+
+    <!-- dimension bodies -->
+    <g class="m" font-size="10.5" fill="currentColor">
+      <text x="360" y="70">date_key PK = business day</text>
+      <text x="360" y="86">full_date · weekend_flag</text>
+      <text x="360" y="102">holiday_flag</text>
+      <text x="360" y="118" fill="var(--ember)">day › month › quarter › year</text>
+
+      <text x="360" y="190">channel_key PK</text>
+      <text x="360" y="206">channel_code · channel_name</text>
+      <text x="360" y="222">channel_ownership</text>
+      <text x="360" y="238" fill="var(--ember)">channel › channel_type</text>
+
+      <text x="360" y="310">customer_key PK</text>
+      <text x="360" y="326">customer_nk · membership</text>
+      <text x="360" y="342">rfm_segment (behavioral)</text>
+      <text x="360" y="358" fill="var(--ember)" class="t">แถว 0 = ไม่มีลูกค้าระบุตัว</text>
+
+      <text x="360" y="430">order_info_key PK</text>
+      <text x="360" y="446">order_status · cancellation_flag</text>
+
+      <text x="970" y="70">menu_item_key PK</text>
+      <text x="970" y="86">menu_item_nk</text>
+      <text x="970" y="102">item_name · size_name</text>
+      <text x="970" y="118">base_price_thb</text>
+      <text x="970" y="134" fill="var(--ember)">SKU › item › category</text>
+      <text x="970" y="156" fill="var(--ember)">valid_from · valid_to</text>
+      <text x="970" y="172" fill="var(--ember)" class="t">SCD2: PEP-L = แถว 102, 106</text>
+
+      <text x="970" y="470">modifier_key PK</text>
+      <text x="970" y="486">modifier_name</text>
+      <text x="970" y="502">modifier_type</text>
+    </g>
+
+    <!-- fact bodies: keys in ink, degenerate in grey, measures in basil -->
+    <g class="m" font-size="10.5" fill="currentColor">
+      <text x="30" y="176">date_key FK</text>
+      <text x="30" y="192">channel_key FK</text>
+      <text x="30" y="208">customer_key FK (0, ไม่ NULL)</text>
+      <text x="30" y="224">order_info_key FK</text>
+
+      <text x="660" y="176">date_key FK</text>
+      <text x="660" y="192">channel_key FK</text>
+      <text x="660" y="208">customer_key FK</text>
+      <text x="660" y="224">menu_item_key FK (as-of)</text>
+      <text x="660" y="240">order_info_key FK</text>
+
+      <text x="660" y="484">date_key · channel_key FK</text>
+      <text x="660" y="500">menu_item_key · modifier_key FK</text>
+    </g>
+    <g class="m" font-size="10.5" fill="var(--ink-2)">
+      <text x="30"  y="240">order_number (degenerate)</text>
+      <text x="660" y="256">order_number · line_number</text>
+      <text x="660" y="516">order_number · line_number</text>
+    </g>
+    <g class="m" font-size="10.5" fill="var(--basil)">
+      <text x="30" y="262">gross_amount_thb</text>
+      <text x="30" y="278">discount_amount_thb</text>
+      <text x="30" y="294">delivery_fee_thb</text>
+      <text x="30" y="310">commission_amount_thb</text>
+      <text x="30" y="326">net_revenue_thb</text>
+
+      <text x="660" y="280">quantity</text>
+      <text x="660" y="296">unit_price_thb (snapshot)</text>
+      <text x="660" y="312">line_discount_thb</text>
+      <text x="660" y="328">line_net_thb</text>
+
+      <text x="660" y="532">quantity · price_delta_thb (snapshot)</text>
+    </g>
+
+    <!-- FK arrows, fact -> dimension -->
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+      <path d="M280 172 C 315 172, 315 72, 348 72"/>
+      <path d="M280 188 C 315 188, 315 192, 348 192"/>
+      <path d="M280 204 C 315 204, 315 312, 348 312"/>
+      <path d="M280 220 C 315 220, 315 420, 348 420"/>
+      <path d="M650 172 C 615 172, 615 72, 584 72"/>
+      <path d="M650 188 C 615 188, 615 192, 584 192"/>
+      <path d="M650 204 C 615 204, 615 312, 584 312"/>
+      <path d="M650 236 C 615 236, 615 420, 584 420"/>
+      <path d="M910 220 C 935 220, 935 105, 958 105"/>
+      <path d="M910 496 C 940 496, 1060 300, 1060 194"/>
+      <line x1="910" y1="476" x2="958" y2="476"/>
+    </g>
+
+    <!-- legend -->
+    <g font-size="10">
+      <rect x="20" y="380" width="14" height="10" fill="var(--surface)" stroke="var(--ember)" stroke-width="2"/>
+      <text x="42" y="389" fill="currentColor">fact: เหตุการณ์ ลึก เพิ่มอย่างเดียว</text>
+      <rect x="20" y="400" width="14" height="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+      <text x="42" y="409" fill="currentColor">dimension: บริบท กว้าง</text>
+      <text x="20" y="432" fill="currentColor">key / FK</text>
+      <text x="80" y="432" fill="var(--ink-2)">degenerate</text>
+      <text x="160" y="432" fill="var(--basil)">measure</text>
+      <text x="240" y="432" fill="var(--ember)">hierarchy</text>
+      <text x="20" y="456" fill="currentColor">ทุก dimension: 0 ไม่เกี่ยวข้อง</text>
+      <text x="20" y="472" fill="currentColor">1 ไม่ทราบ · 2 ไม่ถูกต้อง</text>
+      <text x="20" y="496" fill="currentColor">fact ไม่ชี้ไปที่ fact:</text>
+      <text x="20" y="512" fill="currentColor">เทียบกันด้วยการ drill across</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>
+    ส่วนการขายจากรูปที่ 2 ใน README แบบย่อ fact ทั้งสองตัวชี้ตรงไปที่ conformed dimension ที่ใช้ร่วมกัน เงินระดับออร์เดอร์อยู่ใน FCT_ORDER
+    เงินระดับบรรทัดอยู่ใน FCT_ORDER_LINE และเทียบกันด้วยการ drill across ผ่าน order_number หรือ conformed dimension
+    fact ของ modifier ก็มี key วันที่และช่องทางด้วย (ไม่ได้วาดลูกศร)
+  </figcaption>
+</figure>
+
+<h2>4 · Dimension และ fact table</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Dimension</th><th>Hierarchy และหมายเหตุ</th></tr></thead>
+  <tbody>
+    <tr><td class="z">DIM_DATE</td><td>วัน › เดือน › ไตรมาส › ปี ตามวันทำการ (10:00–02:00)</td></tr>
+    <tr><td class="z">DIM_CHANNEL</td><td>ช่องทาง › ประเภทช่องทาง (Dine-in / Delivery) ช่องทางของร้านหรือแพลตฟอร์ม อัตราคอมมิชชัน</td></tr>
+    <tr><td class="z">DIM_CUSTOMER</td><td>สมาชิกบนช่องทางของร้าน แถว 0 สำหรับออร์เดอร์ที่ไม่มีลูกค้าระบุตัว</td></tr>
+    <tr><td class="z">DIM_MENU_ITEM</td><td>SKU › เมนู › หมวด เก็บราคาแบบ <strong>SCD2</strong> (Pepperoni L คือแถว 102 และ 106)</td></tr>
+    <tr><td class="z">DIM_MODIFIER</td><td>ชีสเพิ่ม ไม่ใส่พริก… แบบ add / remove / substitute</td></tr>
+    <tr><td class="z">DIM_ORDER_INFO</td><td>junk dimension: สถานะออร์เดอร์ flag การยกเลิก</td></tr>
+    <tr><td class="z">BRG_CHANNEL_MENU_ITEM</td><td>ชื่อและราคาบนแพลตฟอร์ม → SKU ของเรา</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Fact table</th><th>Grain: หนึ่งแถว =</th><th>Measure</th><th>ทำไมต้องแยกตาราง</th></tr></thead>
+  <tbody>
+    <tr><td class="z">FCT_ORDER</td><td>ออร์เดอร์หนึ่งใบ ทุกช่องทาง</td><td>ยอดขาย ส่วนลด ค่าส่ง คอมมิชชัน รายได้สุทธิ</td><td>เงินระดับออร์เดอร์ต้องไม่ซ้ำในทุกบรรทัด</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE</td><td>เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</td><td>จำนวน ราคาต่อหน่วย (snapshot) ส่วนลด ยอดสุทธิของบรรทัด</td><td>รู้ว่าอะไรขายได้ ที่ราคาที่จ่ายจริง</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>modifier หนึ่งตัวบนบรรทัดหนึ่งบรรทัด</td><td>จำนวน ราคาส่วนเพิ่ม (snapshot)</td><td>ของเพิ่มเป็นแถว ไม่ใช่คอลัมน์ text จึงนับได้</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 class="wide">5 · Aggregate table</h2>
+<div class="wide table-scroll">
+<table>
+  <thead><tr><th>Aggregate table</th><th>Grain: หนึ่งแถว =</th><th>สร้างจาก</th><th>คอลัมน์</th></tr></thead>
+  <tbody>
+    <tr><td class="z">mart_channel_daily</td><td>วันทำการ × ช่องทาง</td><td>FCT_ORDER</td><td>orders, gross_sales_thb, commission_thb, net_revenue_thb, ชื่อวัน flag วันหยุดสุดสัปดาห์ ประเภทและเจ้าของช่องทาง</td></tr>
+    <tr><td class="z">mart_sales_daily</td><td>วันทำการ × ช่องทาง × SKU</td><td>FCT_ORDER_LINE</td><td>units_sold, orders, item_sales_thb, ชื่อเมนู หมวด ไซซ์</td></tr>
+    <tr><td class="z">mart_modifier_daily</td><td>วันทำการ × ช่องทาง × modifier</td><td>FCT_ORDER_LINE_MODIFIER</td><td>times_applied, modifier_revenue_thb, ประเภท modifier หมวดของเมนู</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  ทุกตัวสร้างจาก warehouse เท่านั้น ไม่รวมออร์เดอร์ที่ยกเลิก และเก็บเฉพาะ measure ที่บวกได้ อัตราส่วนอย่างยอดเฉลี่ยต่อออร์เดอร์
+  ให้แดชบอร์ดคำนวณจากส่วนประกอบ จึงถูกต้องทั้งรายวัน รายสัปดาห์ และรายเดือน
+</p>
+
+<h2 class="wide">6 · แดชบอร์ดของเจ้าของร้าน</h2>
+<p>ผู้ใช้มีกลุ่มเดียว ทุกช่องอ่านจาก aggregate table ไม่มีช่องไหนอ่านจาก fact หรือจากต้นทาง ข้อมูลต้นแบบ วันศุกร์ 4 ก.ย. 2026:</p>
+<div class="wide">
+  <div class="tiles">
+    <div class="tile"><span class="tile-label">รายได้สุทธิ</span><span class="tile-value">1,815.9</span><span class="tile-unit">บาท · 5 ออร์เดอร์</span><span class="tile-src">mart_channel_daily</span></div>
+    <div class="tile"><span class="tile-label">ค่าคอมมิชชันที่จ่าย</span><span class="tile-value">257.1</span><span class="tile-unit">บาท · 12.4% ของยอดขาย</span><span class="tile-src">mart_channel_daily</span></div>
+    <div class="tile"><span class="tile-label">รายได้สุทธิเฉลี่ยต่อออร์เดอร์</span><span class="tile-value">363.2</span><span class="tile-unit">บาท · Grab 299.95</span><span class="tile-src">mart_channel_daily (สุทธิ ÷ ออร์เดอร์)</span></div>
+    <div class="tile"><span class="tile-label">ชีสเพิ่มต่อพิซซ่า</span><span class="tile-value">40%</span><span class="tile-unit">2 จาก 5 ถาด · 80 บาท</span><span class="tile-src">mart_modifier_daily × mart_sales_daily</span></div>
+  </div>
+  <div class="two dash">
+    <div>
+      <h3>รายได้สุทธิตามช่องทาง วันศุกร์</h3>
+      <svg viewBox="0 0 520 150" role="img" class="bars" aria-label="รายได้สุทธิตามช่องทางวันศุกร์: QR 808.0 บาท, Grab 599.9 บาท, โทรศัพท์ 408.0 บาท">
+        <g stroke="var(--rule)" stroke-width="1">
+          <line x1="110" y1="10" x2="110" y2="128"/>
+        </g>
+        <g font-size="12.5" fill="currentColor" text-anchor="end">
+          <text x="100" y="35">QR dine-in</text>
+          <text x="100" y="75">Grab</text>
+          <text x="100" y="115">โทรศัพท์</text>
+        </g>
+        <g fill="var(--basil)">
+          <path d="M110 22 H426 a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 H110 Z"><title>QR dine-in: สุทธิ 808.0 บาท (2 ออร์เดอร์)</title></path>
+          <path d="M110 62 H344 a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 H110 Z"><title>Grab: สุทธิ 599.9 บาท (ยอดขาย 857.0 − คอมมิชชัน 257.1, 2 ออร์เดอร์)</title></path>
+          <path d="M110 102 H266 a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 H110 Z"><title>โทรศัพท์: สุทธิ 408.0 บาท (1 ออร์เดอร์)</title></path>
+        </g>
+        <g font-size="12" fill="currentColor" class="m">
+          <text x="438" y="36">808.0</text>
+          <text x="356" y="76">599.9</text>
+          <text x="278" y="116">408.0</text>
+        </g>
+        <text x="110" y="146" font-size="10.5" fill="var(--ink-2)">บาท หลังหักคอมมิชชันแพลตฟอร์ม · ชี้ที่แท่งเพื่อดูรายละเอียด</text>
+      </svg>
+    </div>
+    <div>
+      <h3>เมนูขายดี วันศุกร์และวันเสาร์</h3>
+      <table class="compact">
+        <thead><tr><th>เมนู</th><th style="text-align:right">จำนวน</th><th style="text-align:right">ยอดขาย (บาท)</th></tr></thead>
+        <tbody>
+          <tr><td>Pepperoni L</td><td class="n">7</td><td class="n">2,533</td></tr>
+          <tr><td>Coke</td><td class="n">5</td><td class="n">185</td></tr>
+          <tr><td>Hawaiian L</td><td class="n">3</td><td class="n">1,007</td></tr>
+          <tr><td>Garlic Bread</td><td class="n">2</td><td class="n">198</td></tr>
+          <tr><td>Pepperoni M</td><td class="n">1</td><td class="n">249</td></tr>
+        </tbody>
+      </table>
+      <p class="tile-src" style="margin-top:0.5rem">mart_sales_daily</p>
+    </div>
+  </div>
+</div>
+<div class="callout">
+  <b>มีหนึ่งช่องที่เป็นการ drill across</b><br>
+  ชีสเพิ่มต่อพิซซ่าใช้ aggregate สองตัว: สรุปจำนวน modifier และจำนวนพิซซ่าให้อยู่ระดับวันทำการก่อน แล้วค่อยหารกัน
+  ถ้า join fact ระดับบรรทัดกับ fact ของ modifier ทีละแถว P-1003 ซึ่งมี modifier สองตัวจะถูกนับซ้ำ
+</div>
+
+<h2>7 · ขยายกลับไปเป็นโมเดลเต็ม</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ขั้นถัดไป</th><th>เพิ่ม</th><th>ใช้ซ้ำ</th></tr></thead>
+  <tbody>
+    <tr><td class="zt">สต็อกและการสั่งของ</td><td><code>FCT_INVENTORY_MOVEMENT</code>, <code>FCT_INVENTORY_COUNT</code>, สูตร</td><td>วันที่ เมนู modifier</td></tr>
+    <tr><td class="zt">เวลาการจัดส่ง</td><td><code>FCT_ORDER_EVENT</code></td><td>วันที่ ช่องทาง</td></tr>
+    <tr><td class="zt">ค่าแรง</td><td><code>FCT_SHIFT</code>, <code>DIM_STAFF</code></td><td>วันที่</td></tr>
+    <tr><td class="zt">การชำระเงิน โปรโมชัน</td><td><code>FCT_PAYMENT</code>, <code>FCT_ORDER(_LINE)_PROMOTION</code></td><td>วันที่ ช่องทาง ลูกค้า เมนู</td></tr>
+  </tbody>
+</table>
+</div>
+<p>เพราะ dimension เป็น conformed การเพิ่มแต่ละอย่างจึงเป็น star ใหม่ข้าง ๆ สามตัวนี้ ไม่ต้องออกแบบใหม่ การออกแบบเต็มอยู่ใน <a href="warehouse-design.th.html">warehouse-design.th.html</a></p>
+
+</main>
+</body>
+</html>

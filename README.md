@@ -6,11 +6,18 @@ selling across QR dine-in, phone, and four delivery aggregators.
 This repository is the full write-up: how data gets from five source systems into a warehouse, the
 ER model at each layer, and the decisions worth defending in a review.
 
+> **Minimal version.** The scope agreed with the teacher, three fact tables, three aggregate tables and the
+> owner dashboard, is in [`README-minimal.md`](README-minimal.md). This document is the full model it grows into.
+
 ## Files
 
 | File | What it is |
 |---|---|
 | `README.md` | This document — the full write-up, with all six diagrams inline |
+| `README-minimal.md` | The minimal version: 3 facts (section 4), 3 aggregate tables, owner dashboard only |
+| `docs/warehouse-minimal.html` / `docs/warehouse-minimal.th.html` | Presentation page for the minimal version. English and Thai |
+| `notebooks/warehouse_minimal.ipynb` | Runnable minimal build, from sources to the owner dashboard. English and Thai |
+| `diagrams/minimal-01-pipeline.mmd` | Minimal pipeline: 2 sources → 3 facts → 3 aggregates → owner dashboard |
 | `docs/data-platform.html` | Styled web version of the same write-up |
 | `docs/data-flow.html` / `docs/data-flow.th.html` | Data lake design (MADT8102 ch. 4): zone-based pattern, why batch, where each thing happens. English and Thai |
 | `docs/warehouse-design.html` / `docs/warehouse-design.th.html` | The project's warehouse spec, from staging to marts: layers and access rules, every dimension and fact table, the chapter 5 conventions each table follows, how the nightly load runs, the five data marts and their six aggregate tables, and build status. English and Thai |

@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pizza Shop Minimal Warehouse</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:   #F4F4EE;
+    --surface: #FCFCF8;
+    --ink:     #1B1D19;
+    --ink-2:   #5B6057;
+    --rule:    #DCDCD1;
+    --ember:   #B03A16;
+    --basil:   #45674A;
+    --zone:    #ECECE3;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --step:  clamp(1rem, 0.9rem + 0.3vw, 1.075rem);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: var(--step);
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 1.15rem;
+  }
+  main > * { grid-column: 2; min-width: 0; }
+  .wide { grid-column: 1 / -1; width: 100%; max-width: 1180px; justify-self: center; }
+
+  header.masthead {
+    grid-column: 1 / -1;
+    max-width: 1180px; justify-self: center; width: 100%;
+    padding: 4rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ember); margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: var(--font-mono); font-weight: 600;
+    font-size: clamp(1.8rem, 1.2rem + 2.4vw, 2.9rem);
+    line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; margin: 0 0 1rem;
+  }
+  .standfirst { font-size: 1.12rem; color: var(--ink-2); max-width: 62ch; margin: 0; }
+  .meta-strip {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1.5rem;
+    font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em;
+    color: var(--ink-2); text-transform: uppercase;
+  }
+  .meta-strip b { color: var(--ink); font-weight: 600; }
+
+  h2 {
+    font-family: var(--font-mono); font-size: 0.82rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ember); margin: 2.5rem 0 0.5rem;
+    padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-family: var(--font-mono); font-size: 0.92rem; font-weight: 600; margin: 1.4rem 0 0.2rem; }
+  p { margin: 0; }
+  p + p { margin-top: 0.85rem; }
+  code { font-family: var(--font-mono); font-size: 0.86em; background: var(--zone); padding: 0.05em 0.3em; border-radius: 3px; }
+  pre {
+    font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.5;
+    background: var(--surface); border: 1px solid var(--rule); padding: 0.8rem 1rem;
+    overflow-x: auto; margin: 0.5rem 0 0;
+  }
+
+  figure { margin: 0; }
+  figure.wide { padding: 1.25rem 0 0; }
+  .diagram-scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--ink); font-family: var(--font-mono); }
+  figcaption { font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-2); margin-top: 0.75rem; max-width: 80ch; }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+  td.t { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; }
+  td.z { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+  td.n { font-family: var(--font-mono); font-size: 0.85rem; text-align: right; white-space: nowrap; }
+  td.bad { color: var(--ember); }
+  .table-scroll { overflow-x: auto; }
+  table.matrix th, table.matrix td { text-align: center; padding: 0.45rem 0.4rem; }
+  table.matrix th:first-child, table.matrix td:first-child { text-align: left; }
+  table.matrix td.y { color: var(--basil); font-weight: 600; }
+  table.matrix tr.total td { font-family: var(--font-mono); font-weight: 600; border-top: 2px solid var(--ink); }
+
+  .callout {
+    background: var(--surface); border-left: 3px solid var(--basil);
+    padding: 0.9rem 1.1rem; margin-top: 1rem;
+  }
+  .callout b { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--basil); }
+  .callout.q { border-left-color: var(--ember); }
+  .callout.q b { color: var(--ember); }
+
+  ul, ol { padding-left: 1.2rem; margin: 0.5rem 0 0; }
+  li + li { margin-top: 0.4rem; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+  .two > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; min-width: 0; }
+  .two h3 { margin-top: 0; }
+  .lang { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-2); margin-top: 0.75rem; }
+  .lang a, main a { color: var(--ember); }
+  @media (max-width: 640px) {
+    header.masthead { padding-top: 2.5rem; }
+    .two { grid-template-columns: 1fr; }
+  }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 0.75rem; }
+  .tile { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+  .tile-label { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+  .tile-value { font-family: var(--font-mono); font-size: 1.9rem; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .tile-unit { font-size: 0.85rem; color: var(--ink-2); }
+  .tile-src { font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-2); margin-top: 0.4rem; }
+  .dash { margin-top: 1rem; }
+  svg.bars { display: block; width: 100%; height: auto; color: var(--ink); font-family: var(--font-mono); margin-top: 0.5rem; }
+  svg.bars path:hover { opacity: 0.8; }
+  table.compact { margin-top: 0.5rem; font-size: 0.88rem; }
+  table.compact td, table.compact th { padding: 0.35rem 0.5rem; }
+  @media (max-width: 760px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">MADT8102 · Pizza shop · Minimal warehouse</p>
+  <h1>Minimal warehouse: three facts, three aggregates, one dashboard</h1>
+  <p class="standfirst">
+    The scope agreed with the teacher. The sales star from section 4 of the full model, built end to end so the
+    owner can see revenue by channel, what sells, and what add-ons earn. Every number below comes from
+    <code>notebooks/warehouse_minimal.ipynb</code>.
+  </p>
+  <div class="meta-strip">
+    <span>Facts <b>3</b></span>
+    <span>Dimensions <b>6 + 1 bridge</b></span>
+    <span>Aggregates <b>3</b></span>
+    <span>Consumer <b>Owner dashboard</b></span>
+  </div>
+  <p class="lang">ฉบับภาษาไทย: <a href="warehouse-minimal.th.html">warehouse-minimal.th.html</a> · Full model: <a href="warehouse-design.html">warehouse-design.html</a></p>
+</header>
+
+<h2>1 · Scope</h2>
+<div class="two">
+  <div>
+    <h3>In</h3>
+    <ul>
+      <li>Two sales sources: the POS (QR, phone) and the delivery-app exports</li>
+      <li>Six conformed dimensions and one bridge</li>
+      <li>Three fact tables: <code>FCT_ORDER</code>, <code>FCT_ORDER_LINE</code>, <code>FCT_ORDER_LINE_MODIFIER</code></li>
+      <li>Three aggregate tables, one per fact</li>
+      <li>One consumer: the owner dashboard</li>
+    </ul>
+  </div>
+  <div>
+    <h3>Out, for now</h3>
+    <ul>
+      <li>Stock and reorder, purchasing</li>
+      <li>Staff shifts and labour cost</li>
+      <li>Payments and promotions</li>
+      <li>Delivery-time events</li>
+      <li>Forecast model and customer segmentation</li>
+    </ul>
+  </div>
+</div>
+<p style="margin-top:0.85rem">
+  The design rules do not change with the scope. This is still a Kimball dimensional warehouse following MADT8102
+  chapter 5: <code>_key</code> surrogate keys, special-case rows (0 Not applicable, 1 Unknown, 2 Invalid) instead of
+  NULL keys, a junk dimension for order status, degenerate order and line numbers, and facts compared by drilling across.
+</p>
+
+<h2 class="wide">2 · Pipeline</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 330" role="img"
+       aria-label="POS and delivery-app exports land in raw, are cleaned in staging, and load three fact tables on six shared dimensions. Each fact feeds one aggregate table, and all three aggregates feed the owner dashboard.">
+    <defs>
+      <marker id="arrp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+    <g font-size="11" font-weight="600" letter-spacing="2" fill="var(--ink-2)">
+      <text x="10"  y="22">SOURCES</text>
+      <text x="190" y="22">RAW · STAGING</text>
+      <text x="400" y="22">WAREHOUSE · 03:00</text>
+      <text x="720" y="22">AGGREGATES · 03:30</text>
+      <text x="990" y="22">CONSUMER</text>
+    </g>
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="10"  y="70"  width="140" height="56" rx="3"/>
+      <rect x="10"  y="190" width="140" height="56" rx="3"/>
+      <rect x="190" y="70"  width="170" height="176" rx="3"/>
+      <rect x="400" y="40"  width="260" height="46" rx="3"/>
+      <rect x="990" y="100" width="180" height="146" rx="3"/>
+    </g>
+    <g fill="var(--surface)" stroke="var(--ember)" stroke-width="1.8">
+      <rect x="400" y="110" width="260" height="46" rx="3"/>
+      <rect x="400" y="180" width="260" height="46" rx="3"/>
+      <rect x="400" y="250" width="260" height="46" rx="3"/>
+    </g>
+    <g fill="var(--zone)" stroke="currentColor" stroke-width="1.2">
+      <rect x="720" y="110" width="230" height="46" rx="3"/>
+      <rect x="720" y="180" width="230" height="46" rx="3"/>
+      <rect x="720" y="250" width="230" height="46" rx="3"/>
+    </g>
+    <g font-size="11" fill="currentColor">
+      <text x="20" y="94" font-weight="600">POS / QR, phone</text>
+      <text x="20" y="112" fill="var(--ink-2)" font-size="10">every 5 min</text>
+      <text x="20" y="214" font-weight="600">Delivery apps</text>
+      <text x="20" y="232" fill="var(--ink-2)" font-size="10">daily export, T+1</text>
+
+      <text x="200" y="94" font-weight="600">raw → stg</text>
+      <text x="200" y="118" font-size="10">kept as it arrived</text>
+      <text x="200" y="138" font-size="10">UTC → Bangkok</text>
+      <text x="200" y="154" font-size="10">business day 10:00–02:00</text>
+      <text x="200" y="170" font-size="10">dedupe on natural key</text>
+      <text x="200" y="186" font-size="10">conform item names</text>
+      <text x="200" y="202" font-size="10">split modifier text</text>
+
+      <text x="410" y="60" font-weight="600">6 dimensions + 1 bridge</text>
+      <text x="410" y="76" fill="var(--ink-2)" font-size="10">date · channel · customer · item · modifier · order</text>
+      <text x="410" y="131" font-weight="600" fill="var(--ember)">FCT_ORDER</text>
+      <text x="410" y="147" fill="var(--ink-2)" font-size="10">one row per order</text>
+      <text x="410" y="201" font-weight="600" fill="var(--ember)">FCT_ORDER_LINE</text>
+      <text x="410" y="217" fill="var(--ink-2)" font-size="10">one row per item per order</text>
+      <text x="410" y="271" font-weight="600" fill="var(--ember)">FCT_ORDER_LINE_MODIFIER</text>
+      <text x="410" y="287" fill="var(--ink-2)" font-size="10">one row per modifier per line</text>
+
+      <text x="730" y="131" font-weight="600">mart_channel_daily</text>
+      <text x="730" y="147" fill="var(--ink-2)" font-size="10">date × channel</text>
+      <text x="730" y="201" font-weight="600">mart_sales_daily</text>
+      <text x="730" y="217" fill="var(--ink-2)" font-size="10">date × channel × SKU</text>
+      <text x="730" y="271" font-weight="600">mart_modifier_daily</text>
+      <text x="730" y="287" fill="var(--ink-2)" font-size="10">date × channel × modifier</text>
+
+      <text x="1000" y="124" font-weight="600">Owner dashboard</text>
+      <text x="1000" y="148" font-size="10" fill="var(--ink-2)">net revenue by channel</text>
+      <text x="1000" y="164" font-size="10" fill="var(--ink-2)">commission paid</text>
+      <text x="1000" y="180" font-size="10" fill="var(--ink-2)">average net per order</text>
+      <text x="1000" y="196" font-size="10" fill="var(--ink-2)">top items</text>
+      <text x="1000" y="212" font-size="10" fill="var(--ink-2)">extra cheese per pizza</text>
+    </g>
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arrp)">
+      <line x1="150" y1="98"  x2="188" y2="120"/>
+      <line x1="150" y1="218" x2="188" y2="196"/>
+      <line x1="360" y1="158" x2="398" y2="203"/>
+      <line x1="660" y1="133" x2="718" y2="133"/>
+      <line x1="660" y1="203" x2="718" y2="203"/>
+      <line x1="660" y1="273" x2="718" y2="273"/>
+      <line x1="950" y1="133" x2="988" y2="150"/>
+      <line x1="950" y1="203" x2="988" y2="180"/>
+      <line x1="950" y1="273" x2="988" y2="230"/>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1.2" stroke-dasharray="3 3">
+      <line x1="530" y1="86" x2="530" y2="108"/>
+    </g>
+  </svg>
+  </div>
+  <figcaption>
+    Each fact feeds exactly one aggregate table, and only the aggregates reach the dashboard. Load at 03:00, aggregates
+    at 03:30, the last 3 business days reprocessed nightly for late orders.
+  </figcaption>
+</figure>
+
+<h2 class="wide">3 · The star</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 560" role="img"
+       aria-label="FCT_ORDER on the left and FCT_ORDER_LINE on the right both point directly at the shared dimensions in the middle: DIM_DATE, DIM_CHANNEL, DIM_CUSTOMER and the DIM_ORDER_INFO junk dimension. FCT_ORDER_LINE also points at DIM_MENU_ITEM. FCT_ORDER_LINE_MODIFIER points at DIM_MENU_ITEM and DIM_MODIFIER. No fact points at another fact.">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="350" y="20"  width="232" height="104" rx="3"/>
+      <rect x="350" y="140" width="232" height="104" rx="3"/>
+      <rect x="350" y="260" width="232" height="104" rx="3"/>
+      <rect x="350" y="380" width="232" height="80"  rx="3"/>
+      <rect x="960" y="20"  width="200" height="172" rx="3"/>
+      <rect x="960" y="420" width="200" height="96"  rx="3"/>
+    </g>
+    <g fill="var(--surface)" stroke="var(--ember)" stroke-width="2">
+      <rect x="20"  y="110" width="260" height="232" rx="3"/>
+      <rect x="650" y="110" width="260" height="252" rx="3"/>
+      <rect x="650" y="420" width="260" height="124" rx="3"/>
+    </g>
+
+    <g font-size="12" font-weight="600" letter-spacing="1" fill="currentColor">
+      <text x="360" y="42">DIM_DATE</text>
+      <text x="360" y="162">DIM_CHANNEL</text>
+      <text x="360" y="282">DIM_CUSTOMER</text>
+      <text x="360" y="402">DIM_ORDER_INFO (junk)</text>
+      <text x="970" y="42">DIM_MENU_ITEM</text>
+      <text x="970" y="442">DIM_MODIFIER</text>
+    </g>
+    <g font-size="12" font-weight="600" letter-spacing="1" fill="var(--ember)">
+      <text x="30"  y="132">FCT_ORDER</text>
+      <text x="660" y="132">FCT_ORDER_LINE</text>
+      <text x="660" y="442">FCT_ORDER_LINE_MODIFIER</text>
+    </g>
+    <g font-size="10" fill="var(--ink-2)">
+      <text x="30"  y="148">grain: one row per order</text>
+      <text x="660" y="148">grain: one menu item on one order</text>
+      <text x="660" y="458">grain: one modifier on one order line</text>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1">
+      <line x1="360" y1="50"  x2="572"  y2="50"/>
+      <line x1="360" y1="170" x2="572"  y2="170"/>
+      <line x1="360" y1="290" x2="572"  y2="290"/>
+      <line x1="360" y1="410" x2="572"  y2="410"/>
+      <line x1="970" y1="50"  x2="1150" y2="50"/>
+      <line x1="970" y1="450" x2="1150" y2="450"/>
+      <line x1="30"  y1="156" x2="270"  y2="156"/>
+      <line x1="660" y1="156" x2="900"  y2="156"/>
+      <line x1="660" y1="466" x2="900"  y2="466"/>
+    </g>
+
+    <!-- dimension bodies -->
+    <g font-size="10.5" fill="currentColor">
+      <text x="360" y="70">date_key PK = business day</text>
+      <text x="360" y="86">full_date · weekend_flag</text>
+      <text x="360" y="102">holiday_flag</text>
+      <text x="360" y="118" fill="var(--ember)">day › month › quarter › year</text>
+
+      <text x="360" y="190">channel_key PK</text>
+      <text x="360" y="206">channel_code · channel_name</text>
+      <text x="360" y="222">channel_ownership</text>
+      <text x="360" y="238" fill="var(--ember)">channel › channel_type</text>
+
+      <text x="360" y="310">customer_key PK</text>
+      <text x="360" y="326">customer_nk · membership</text>
+      <text x="360" y="342">rfm_segment (behavioral)</text>
+      <text x="360" y="358" fill="var(--ember)">row 0 = no identified customer</text>
+
+      <text x="360" y="430">order_info_key PK</text>
+      <text x="360" y="446">order_status · cancellation_flag</text>
+
+      <text x="970" y="70">menu_item_key PK</text>
+      <text x="970" y="86">menu_item_nk</text>
+      <text x="970" y="102">item_name · size_name</text>
+      <text x="970" y="118">base_price_thb</text>
+      <text x="970" y="134" fill="var(--ember)">SKU › item › category</text>
+      <text x="970" y="156" fill="var(--ember)">valid_from · valid_to</text>
+      <text x="970" y="172" fill="var(--ember)">SCD2: PEP-L = rows 102, 106</text>
+
+      <text x="970" y="470">modifier_key PK</text>
+      <text x="970" y="486">modifier_name</text>
+      <text x="970" y="502">modifier_type</text>
+    </g>
+
+    <!-- fact bodies: keys in ink, degenerate in grey, measures in basil -->
+    <g font-size="10.5" fill="currentColor">
+      <text x="30" y="176">date_key FK</text>
+      <text x="30" y="192">channel_key FK</text>
+      <text x="30" y="208">customer_key FK (0, never NULL)</text>
+      <text x="30" y="224">order_info_key FK</text>
+
+      <text x="660" y="176">date_key FK</text>
+      <text x="660" y="192">channel_key FK</text>
+      <text x="660" y="208">customer_key FK</text>
+      <text x="660" y="224">menu_item_key FK (as-of)</text>
+      <text x="660" y="240">order_info_key FK</text>
+
+      <text x="660" y="484">date_key · channel_key FK</text>
+      <text x="660" y="500">menu_item_key · modifier_key FK</text>
+    </g>
+    <g font-size="10.5" fill="var(--ink-2)">
+      <text x="30"  y="240">order_number (degenerate)</text>
+      <text x="660" y="256">order_number · line_number</text>
+      <text x="660" y="516">order_number · line_number</text>
+    </g>
+    <g font-size="10.5" fill="var(--basil)">
+      <text x="30" y="262">gross_amount_thb</text>
+      <text x="30" y="278">discount_amount_thb</text>
+      <text x="30" y="294">delivery_fee_thb</text>
+      <text x="30" y="310">commission_amount_thb</text>
+      <text x="30" y="326">net_revenue_thb</text>
+
+      <text x="660" y="280">quantity</text>
+      <text x="660" y="296">unit_price_thb (snapshot)</text>
+      <text x="660" y="312">line_discount_thb</text>
+      <text x="660" y="328">line_net_thb</text>
+
+      <text x="660" y="532">quantity · price_delta_thb (snapshot)</text>
+    </g>
+
+    <!-- FK arrows, fact -> dimension -->
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+      <path d="M280 172 C 315 172, 315 72, 348 72"/>
+      <path d="M280 188 C 315 188, 315 192, 348 192"/>
+      <path d="M280 204 C 315 204, 315 312, 348 312"/>
+      <path d="M280 220 C 315 220, 315 420, 348 420"/>
+      <path d="M650 172 C 615 172, 615 72, 584 72"/>
+      <path d="M650 188 C 615 188, 615 192, 584 192"/>
+      <path d="M650 204 C 615 204, 615 312, 584 312"/>
+      <path d="M650 236 C 615 236, 615 420, 584 420"/>
+      <path d="M910 220 C 935 220, 935 105, 958 105"/>
+      <path d="M910 496 C 940 496, 1060 300, 1060 194"/>
+      <line x1="910" y1="476" x2="958" y2="476"/>
+    </g>
+
+    <!-- legend -->
+    <g font-size="10">
+      <rect x="20" y="380" width="14" height="10" fill="var(--surface)" stroke="var(--ember)" stroke-width="2"/>
+      <text x="42" y="389" fill="currentColor">fact: an event. Deep, append-only</text>
+      <rect x="20" y="400" width="14" height="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+      <text x="42" y="409" fill="currentColor">dimension: context. Wide</text>
+      <text x="20" y="432" fill="currentColor">key / FK</text>
+      <text x="80" y="432" fill="var(--ink-2)">degenerate</text>
+      <text x="160" y="432" fill="var(--basil)">measure</text>
+      <text x="240" y="432" fill="var(--ember)">hierarchy</text>
+      <text x="20" y="456" fill="currentColor">every dimension: 0 Not applicable</text>
+      <text x="20" y="472" fill="currentColor">1 Unknown · 2 Invalid</text>
+      <text x="20" y="496" fill="currentColor">facts never point at facts:</text>
+      <text x="20" y="512" fill="currentColor">compare them by drilling across</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>
+    The sales part of the README's figure 2, simplified. Both facts point straight at the shared, conformed dimensions;
+    order-level money stays on FCT_ORDER and line-level money on FCT_ORDER_LINE, and the two are compared by drilling across
+    on order_number or a conformed dimension. The modifier fact also carries date and channel keys (arrows omitted).
+  </figcaption>
+</figure>
+
+<h2>4 · Dimensions and fact tables</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Dimension</th><th>Hierarchy and notes</th></tr></thead>
+  <tbody>
+    <tr><td class="z">DIM_DATE</td><td>day › month › quarter › year, on the business day (10:00–02:00)</td></tr>
+    <tr><td class="z">DIM_CHANNEL</td><td>channel › channel type (Dine-in / Delivery); own channel or aggregator; commission rate</td></tr>
+    <tr><td class="z">DIM_CUSTOMER</td><td>Members on own channels; row 0 for orders with no identified customer</td></tr>
+    <tr><td class="z">DIM_MENU_ITEM</td><td>SKU › item › category; <strong>SCD2</strong> on price (Pepperoni L is rows 102 and 106)</td></tr>
+    <tr><td class="z">DIM_MODIFIER</td><td>Extra cheese, no chili…; add / remove / substitute</td></tr>
+    <tr><td class="z">DIM_ORDER_INFO</td><td>Junk dimension: order status, cancellation flag</td></tr>
+    <tr><td class="z">BRG_CHANNEL_MENU_ITEM</td><td>Platform item names and prices → our SKU</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Fact table</th><th>Grain: one row =</th><th>Measures</th><th>Why its own table</th></tr></thead>
+  <tbody>
+    <tr><td class="z">FCT_ORDER</td><td>one order, any channel</td><td>gross, discount, delivery fee, commission, net revenue</td><td>Order-level money must not repeat on line rows</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE</td><td>one menu item on one order</td><td>quantity, unit price (snapshot), line discount, line net</td><td>What sells, at the price actually paid</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>one modifier on one order line</td><td>quantity, price delta (snapshot)</td><td>Add-ons are rows, not a text column, so they can be counted</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 class="wide">5 · Aggregate tables</h2>
+<div class="wide table-scroll">
+<table>
+  <thead><tr><th>Aggregate table</th><th>Grain: one row =</th><th>Built from</th><th>Columns</th></tr></thead>
+  <tbody>
+    <tr><td class="z">mart_channel_daily</td><td>business date × channel</td><td>FCT_ORDER</td><td>orders, gross_sales_thb, commission_thb, net_revenue_thb, day name, weekend flag, channel type and ownership</td></tr>
+    <tr><td class="z">mart_sales_daily</td><td>business date × channel × SKU</td><td>FCT_ORDER_LINE</td><td>units_sold, orders, item_sales_thb, item name, category, size</td></tr>
+    <tr><td class="z">mart_modifier_daily</td><td>business date × channel × modifier</td><td>FCT_ORDER_LINE_MODIFIER</td><td>times_applied, modifier_revenue_thb, modifier type, item category</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  Each is built only from the warehouse, excludes cancelled orders, and stores additive measures only. Ratios such as
+  average order value are computed by the dashboard from the parts, so they stay correct by day, week or month.
+</p>
+
+<h2 class="wide">6 · The owner dashboard</h2>
+<p>The only consumer. Every tile reads an aggregate table; nothing on it reads a fact or a source. Prototype data, Friday 4 Sep 2026:</p>
+<div class="wide">
+  <div class="tiles">
+    <div class="tile"><span class="tile-label">Net revenue</span><span class="tile-value">1,815.9</span><span class="tile-unit">THB · 5 orders</span><span class="tile-src">mart_channel_daily</span></div>
+    <div class="tile"><span class="tile-label">Commission paid</span><span class="tile-value">257.1</span><span class="tile-unit">THB · 12.4% of gross</span><span class="tile-src">mart_channel_daily</span></div>
+    <div class="tile"><span class="tile-label">Average net per order</span><span class="tile-value">363.2</span><span class="tile-unit">THB · Grab 299.95</span><span class="tile-src">mart_channel_daily (net ÷ orders)</span></div>
+    <div class="tile"><span class="tile-label">Extra cheese per pizza</span><span class="tile-value">40%</span><span class="tile-unit">2 of 5 pizzas · 80 THB</span><span class="tile-src">mart_modifier_daily × mart_sales_daily</span></div>
+  </div>
+  <div class="two dash">
+    <div>
+      <h3>Net revenue by channel, Friday</h3>
+      <svg viewBox="0 0 520 150" role="img" class="bars" aria-label="Net revenue by channel on Friday: QR dine-in 808.0 baht, Grab 599.9 baht, Phone 408.0 baht.">
+        <g stroke="var(--rule)" stroke-width="1">
+          <line x1="110" y1="10" x2="110" y2="128"/>
+        </g>
+        <g font-size="12" fill="currentColor" text-anchor="end">
+          <text x="100" y="35">QR dine-in</text>
+          <text x="100" y="75">Grab</text>
+          <text x="100" y="115">Phone</text>
+        </g>
+        <g fill="var(--basil)">
+          <path d="M110 22 H426 a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 H110 Z"><title>QR dine-in: 808.0 THB net (2 orders)</title></path>
+          <path d="M110 62 H344 a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 H110 Z"><title>Grab: 599.9 THB net (857.0 gross − 257.1 commission, 2 orders)</title></path>
+          <path d="M110 102 H266 a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 H110 Z"><title>Phone: 408.0 THB net (1 order)</title></path>
+        </g>
+        <g font-size="12" fill="currentColor">
+          <text x="438" y="36">808.0</text>
+          <text x="356" y="76">599.9</text>
+          <text x="278" y="116">408.0</text>
+        </g>
+        <text x="110" y="146" font-size="10" fill="var(--ink-2)">THB, net of platform commission · hover a bar for detail</text>
+      </svg>
+    </div>
+    <div>
+      <h3>Top items, Friday and Saturday</h3>
+      <table class="compact">
+        <thead><tr><th>Item</th><th style="text-align:right">Units</th><th style="text-align:right">Sales THB</th></tr></thead>
+        <tbody>
+          <tr><td>Pepperoni L</td><td class="n">7</td><td class="n">2,533</td></tr>
+          <tr><td>Coke</td><td class="n">5</td><td class="n">185</td></tr>
+          <tr><td>Hawaiian L</td><td class="n">3</td><td class="n">1,007</td></tr>
+          <tr><td>Garlic Bread</td><td class="n">2</td><td class="n">198</td></tr>
+          <tr><td>Pepperoni M</td><td class="n">1</td><td class="n">249</td></tr>
+        </tbody>
+      </table>
+      <p class="tile-src" style="margin-top:0.5rem">mart_sales_daily</p>
+    </div>
+  </div>
+</div>
+<div class="callout">
+  <b>One tile is a drill across</b><br>
+  Extra cheese per pizza combines two aggregates: modifiers and pizzas are each summed to the business date first,
+  then divided. Joining the line and modifier facts row by row would double-count P-1003, which has two modifiers.
+</div>
+
+<h2>7 · Growing back to the full model</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Next</th><th>Adds</th><th>Reuses</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Stock and reorder</td><td><code>FCT_INVENTORY_MOVEMENT</code>, <code>FCT_INVENTORY_COUNT</code>, recipes</td><td>date, menu item, modifier</td></tr>
+    <tr><td class="z">Delivery times</td><td><code>FCT_ORDER_EVENT</code></td><td>date, channel</td></tr>
+    <tr><td class="z">Labour</td><td><code>FCT_SHIFT</code>, <code>DIM_STAFF</code></td><td>date</td></tr>
+    <tr><td class="z">Payments, promotions</td><td><code>FCT_PAYMENT</code>, <code>FCT_ORDER(_LINE)_PROMOTION</code></td><td>date, channel, customer, menu item</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Because the dimensions are conformed, each addition is a new star beside these three, not a redesign. The full design is in <a href="warehouse-design.html">warehouse-design.html</a>.</p>
+
+</main>
+</body>
+</html>
