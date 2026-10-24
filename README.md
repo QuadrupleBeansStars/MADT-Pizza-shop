@@ -13,6 +13,7 @@ ER model at each layer, and the decisions worth defending in a review.
 | `README.md` | This document — the full write-up, with all five diagrams inline |
 | `docs/data-platform.html` | Styled web version of the same write-up |
 | `docs/data-flow.html` / `docs/data-flow.th.html` | Data lake design (MADT8102 ch. 4): zone-based pattern, why batch, where each thing happens. English and Thai |
+| `docs/warehouse-design.html` / `docs/warehouse-design.th.html` | Warehouse and fact table design, for presenting: why a warehouse, the four design steps, bus matrix, sales star, how a fact row is loaded, the five fact table rules with their numbers, and a catalogue of all 13 fact tables. English and Thai |
 | `notebooks/data_flow_demo.ipynb` | The same flow as runnable code: fake POS / Grab / LINE MAN JSON exports → Landing → Raw (Parquet) → Trusted (DuckDB star schema) → Refined (marts), with dedupe, business day and replay from Raw. English with Thai notes |
 | `notebooks/warehouse_design.ipynb` | Why build a warehouse, how ours was designed (4 steps, bus matrix, SCD2, surrogate key pipeline), and the fact table rules behind every `FCT_*` table, each shown as a small runnable demo. English and Thai, for study |
 | `diagrams/01-pipeline-flow.mmd` | Source → raw → staging → core → mart → consumer flow |

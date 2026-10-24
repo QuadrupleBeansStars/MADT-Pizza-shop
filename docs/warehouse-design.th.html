@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ออกแบบ Warehouse ร้านพิซซ่า</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper:   #F4F4EE;
+    --surface: #FCFCF8;
+    --ink:     #1B1D19;
+    --ink-2:   #5B6057;
+    --rule:    #DCDCD1;
+    --ember:   #B03A16;
+    --basil:   #45674A;
+    --zone:    #ECECE3;
+    --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --font-th: "Sukhumvit Set", "Thonburi", "Noto Sans Thai", "Sarabun", "Leelawadee UI", "Tahoma", system-ui, sans-serif;
+    --step:  clamp(1rem, 0.9rem + 0.3vw, 1.075rem);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-th);
+    font-size: var(--step);
+    line-height: 1.75;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    display: grid;
+    grid-template-columns: 1fr min(70ch, 100%) 1fr;
+    row-gap: 1.15rem;
+  }
+  main > * { grid-column: 2; min-width: 0; }
+  .wide { grid-column: 1 / -1; width: 100%; max-width: 1180px; justify-self: center; }
+
+  header.masthead {
+    grid-column: 1 / -1;
+    max-width: 1180px; justify-self: center; width: 100%;
+    padding: 4rem 0 2rem;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 2rem;
+  }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ember); margin: 0 0 1rem;
+  }
+  h1 {
+    font-weight: 700;
+    font-size: clamp(1.8rem, 1.2rem + 2.4vw, 2.8rem);
+    line-height: 1.25; text-wrap: balance; margin: 0 0 1rem;
+  }
+  .standfirst { font-size: 1.12rem; color: var(--ink-2); max-width: 62ch; margin: 0; }
+  .meta-strip {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1.5rem;
+    font-size: 0.82rem; color: var(--ink-2);
+  }
+  .meta-strip b { color: var(--ink); font-weight: 600; }
+
+  h2 {
+    font-size: 0.95rem; font-weight: 700; color: var(--ember); margin: 2.5rem 0 0.5rem;
+    padding-top: 1.25rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 0.98rem; font-weight: 700; margin: 1.4rem 0 0.2rem; }
+  p { margin: 0; }
+  p + p { margin-top: 0.85rem; }
+  code { font-family: var(--font-mono); font-size: 0.86em; background: var(--zone); padding: 0.05em 0.3em; border-radius: 3px; }
+  pre {
+    font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.5;
+    background: var(--surface); border: 1px solid var(--rule); padding: 0.8rem 1rem;
+    overflow-x: auto; margin: 0.5rem 0 0;
+  }
+
+  figure { margin: 0; }
+  figure.wide { padding: 1.25rem 0 0; }
+  .diagram-scroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--ink); font-family: var(--font-th); }
+  figure svg .m { font-family: var(--font-mono); }
+  figcaption { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.75rem; max-width: 80ch; }
+
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--rule); }
+  th { font-size: 0.78rem; color: var(--ink-2); font-weight: 700; }
+  td.t { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; }
+  td.z { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+  td.zt { font-size: 0.88rem; font-weight: 700; white-space: nowrap; }
+  td.n { font-family: var(--font-mono); font-size: 0.85rem; text-align: right; white-space: nowrap; }
+  td.bad { color: var(--ember); }
+  .table-scroll { overflow-x: auto; }
+  table.matrix th, table.matrix td { text-align: center; padding: 0.45rem 0.4rem; }
+  table.matrix th:first-child, table.matrix td:first-child { text-align: left; }
+  table.matrix td.y { color: var(--basil); font-weight: 600; }
+  table.matrix tr.total td { font-weight: 700; border-top: 2px solid var(--ink); }
+
+  .callout {
+    background: var(--surface); border-left: 3px solid var(--basil);
+    padding: 0.9rem 1.1rem; margin-top: 1rem;
+  }
+  .callout b { font-size: 0.85rem; color: var(--basil); }
+  .callout.q { border-left-color: var(--ember); }
+  .callout.q b { color: var(--ember); }
+
+  ul, ol { padding-left: 1.2rem; margin: 0.5rem 0 0; }
+  li + li { margin-top: 0.4rem; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+  .two > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; min-width: 0; }
+  .two h3 { margin-top: 0; }
+  .lang { font-size: 0.82rem; color: var(--ink-2); margin-top: 0.75rem; }
+  .lang a { color: var(--ember); }
+  @media (max-width: 640px) {
+    header.masthead { padding-top: 2.5rem; }
+    .two { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <p class="eyebrow">MADT8102 · Warehouse and fact table design</p>
+  <h1>ออกแบบ Warehouse: ทำไปเพื่ออะไร ทำออกมายังไง และ fact table ข้างใน</h1>
+  <p class="standfirst">
+    ทำไมร้านพิซซ่าต้องมี warehouse, 4 ขั้นตอนที่เราใช้ออกแบบ และกฎเบื้องหลัง fact table ทั้ง 13 ตัวในโมเดลของเรา
+    ทุกตัวเลขในหน้านี้มาจาก <code>notebooks/warehouse_design.ipynb</code> ซึ่งรันซ้ำได้ทุกค่า
+  </p>
+  <div class="meta-strip">
+    <span>วิธีการ <b>Kimball 4 ขั้นตอน</b></span>
+    <span>Schema <b>Star · fact 13 ตัว</b></span>
+    <span>ประวัติ <b>SCD2 + snapshot บน fact</b></span>
+    <span>วัน <b>วันทำการ 10:00–02:00</b></span>
+  </div>
+  <p class="lang">English version: <a href="warehouse-design.html">warehouse-design.html</a></p>
+</header>
+
+<h2>1 · ทำ warehouse ไปเพื่ออะไร? ลองถามคำถามเดียว</h2>
+<p>
+  เจ้าของร้านถามว่า <em>วันศุกร์ได้รายได้สุทธิแต่ละช่องทางเท่าไร?</em> สุทธิคือเงินที่ร้านได้จริงหลังหักค่าคอมมิชชันของแอปเดลิเวอรี
+  เราตอบคำถามนี้สองครั้ง: ครั้งแรกถามจาก POS กับไฟล์ export ของ Grab ตรง ๆ ครั้งที่สองถามจาก warehouse
+</p>
+<div class="two">
+  <div>
+    <h3>ถามจาก source: SQL 30 บรรทัด</h3>
+    <p>query ต้องแบกกฎ 6 ข้อไว้เอง:</p>
+    <ol>
+      <li>รวมข้อมูลสองหน้าตาเข้าด้วยกัน (ตาราง POS กับ CSV ของ Grab)</li>
+      <li>แปลงเวลา UTC ของ Grab เป็นเวลากรุงเทพ</li>
+      <li>วันทำการ: ออร์เดอร์ก่อน 10:00 นับเป็นของเมื่อวาน</li>
+      <li>Grab ซ้ำค่าคอมมิชชันทุกแถว ต้องใช้ <code>MAX</code> ไม่ใช่ <code>SUM</code></li>
+      <li>ราคาชีสเพิ่มซ่อนอยู่ในคอลัมน์ text ต้อง parse เอง</li>
+      <li>POS เรียกว่า <code>QR</code> แต่ที่อื่นเรียก <code>QR_DINEIN</code></li>
+    </ol>
+  </div>
+  <div>
+    <h3>ถามจาก warehouse: 7 บรรทัด</h3>
+    <pre>SELECT c.channel_code,
+       SUM(o.net_revenue_thb)
+FROM dw.fct_order o
+JOIN dw.dim_channel c USING (channel_sk)
+JOIN dw.dim_date d    USING (date_sk)
+WHERE d.calendar_date = '2026-09-04'
+GROUP BY ALL</pre>
+    <p style="margin-top:0.75rem">ไม่มีกฎอยู่ข้างในเลย กฎทั้งหมดถูกใช้ไป <strong>ครั้งเดียว</strong> ตอนโหลดข้อมูล</p>
+  </div>
+</div>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ช่องทาง ศุกร์ 4 ก.ย.</th><th style="text-align:right">ยอดขาย (บาท)</th><th style="text-align:right">คอมมิชชัน</th><th style="text-align:right">สุทธิ (บาท)</th></tr></thead>
+  <tbody>
+    <tr><td class="z">GRAB</td><td class="n">857.0</td><td class="n">257.1</td><td class="n">599.9</td></tr>
+    <tr><td class="z">PHONE</td><td class="n">408.0</td><td class="n">0.0</td><td class="n">408.0</td></tr>
+    <tr><td class="z">QR_DINEIN</td><td class="n">808.0</td><td class="n">0.0</td><td class="n">808.0</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  ทั้งสอง query ได้ตารางนี้เหมือนกัน ต่างกันตรงที่ฉบับ source จะถูกก็ต่อเมื่อนักวิเคราะห์ทุกคน แดชบอร์ดทุกอัน และโมเดลพยากรณ์
+  จำกฎทั้ง 6 ข้อได้และเขียนเหมือนกันทุกครั้ง ลืมข้อ 4 ค่าคอมมิชชันของ Grab จะเป็นสองเท่า ลืมข้อ 3 ออร์เดอร์ตอนตี 1:20 จะย้ายไปอยู่วันเสาร์
+</p>
+<div class="callout q">
+  <b>ปัญหาข้อที่ 7: ประวัติหายไปแล้ว</b><br>
+  วันเสาร์เจ้าของร้านขึ้นราคา Pepperoni L จาก 329 เป็น 349 บาท แล้ว POS ก็เขียนทับราคาเดิมไป ตอนนี้ตารางเมนูมีแค่ 349
+  คำถาม "margin ก่อนขึ้นราคาเป็นเท่าไร" จะตอบจาก POS ไม่ได้อีกเลย ระบบหน้าร้านตอบว่า <em>ตอนนี้อะไรจริง</em>
+  แต่งานวิเคราะห์ต้องการ <em>ตอนนั้นอะไรจริง</em>
+</div>
+
+<h2>2 · warehouse มีไว้ทำอะไร</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>เหตุผล</th><th>สำหรับร้านพิซซ่า</th><th>อยู่ตรงไหนในโมเดล</th></tr></thead>
+  <tbody>
+    <tr><td class="zt">รวมข้อมูล</td><td>ห้าแหล่ง รูปแบบเดียว ออร์เดอร์จาก Grab กับจาก QR เป็นหนึ่งแถวใน <code>FCT_ORDER</code> เหมือนกัน</td><td><code>DIM_CHANNEL</code>, <code>BRG_CHANNEL_MENU_ITEM</code></td></tr>
+    <tr><td class="zt">นิยามครั้งเดียว</td><td>วันทำการ รายได้สุทธิ และชื่อช่องทาง ถูกคำนวณตอนโหลด ไม่ใช่ในทุกรายงาน</td><td><code>date_sk</code> คือวันทำการ, เก็บ <code>net_revenue_thb</code> ไว้เลย</td></tr>
+    <tr><td class="zt">เก็บประวัติ</td><td>ราคา สูตร และค่าแรงเปลี่ยนได้ แต่ทุกเวอร์ชันถูกเก็บไว้</td><td>SCD2 บน <code>DIM_MENU_ITEM</code>, <code>BRG_RECIPE</code>, <code>DIM_STAFF</code></td></tr>
+    <tr><td class="zt">จัดรูปให้ถามง่าย</td><td>fact อยู่ตรงกลาง บริบทอยู่รอบ ๆ คำถามกลายเป็น <code>GROUP BY</code> สั้น ๆ</td><td><code>FCT_*</code> ทุกตัวกับ <code>DIM_*</code> ของมัน</td></tr>
+    <tr><td class="zt">ไม่รบกวนหน้าร้าน</td><td>งานวิเคราะห์หนัก ๆ ไม่ทำให้ POS ช้าในคืนวันศุกร์</td><td>batch ทุกคืนจาก Raw ไม่ query POS ตรง ๆ</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="two">
+  <div>
+    <h3>ฐานข้อมูลหน้าร้าน (POS)</h3>
+    <ul>
+      <li>สร้างมาเพื่อบันทึกออร์เดอร์ทีละใบให้เร็ว</li>
+      <li>normalize แล้ว มีตารางเล็ก ๆ หลายตาราง</li>
+      <li>เก็บสถานะปัจจุบัน แก้ไขทับที่เดิม</li>
+      <li>คนใช้คือแคชเชียร์กับจอในครัว</li>
+      <li><code>WHERE pos_order_id = 'P-1001'</code></li>
+    </ul>
+  </div>
+  <div>
+    <h3>Warehouse</h3>
+    <ul>
+      <li>สร้างมาเพื่ออ่านข้อมูลจำนวนมากแล้วตอบคำถาม</li>
+      <li>Star schema: dimension กว้าง fact แคบ</li>
+      <li>เก็บทุกเวอร์ชัน fact เพิ่มอย่างเดียว ไม่แก้</li>
+      <li>คนใช้คือเจ้าของร้าน นักวิเคราะห์ โมเดลพยากรณ์</li>
+      <li><code>GROUP BY business_date, channel</code></li>
+    </ul>
+  </div>
+</div>
+
+<h2>3 · เราออกแบบยังไง: 4 ขั้นตอน ตามลำดับ</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ขั้นตอน</th><th>คำถาม</th><th>คำตอบของร้านพิซซ่าสำหรับ <code>FCT_ORDER_LINE</code></th></tr></thead>
+  <tbody>
+    <tr><td class="zt">1 · Process</td><td>เรากำลังวัด <em>เหตุการณ์</em> ทางธุรกิจอะไร?</td><td>ลูกค้าสั่งเมนูหนึ่งรายการ</td></tr>
+    <tr><td class="zt">2 · Grain</td><td>ข้อมูล <strong>หนึ่งแถว</strong> หมายถึงอะไรกันแน่?</td><td>เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</td></tr>
+    <tr><td class="zt">3 · Dimensions</td><td>ใคร อะไร เมื่อไร ที่ไหน ยังไง?</td><td>วันที่ ช่องทาง ลูกค้า (ผ่านออร์เดอร์) และเมนู</td></tr>
+    <tr><td class="zt">4 · Facts</td><td>ตัวเลขอะไรบ้างที่ถูกต้องที่ grain นั้น?</td><td><code>quantity</code>, <code>unit_price_thb</code>, <code>line_net_thb</code></td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  ลำดับสำคัญมาก: <strong>กำหนด grain ก่อนเลือกคอลัมน์</strong> ถ้าเริ่มจากไล่คอลัมน์ที่อยากได้
+  จะได้ตารางที่วางเงินระดับออร์เดอร์ (คอมมิชชัน ค่าส่ง) ไว้ข้างเงินระดับบรรทัด (ราคาเมนู) แล้วทุกการ sum หลังจากนั้นก็จะผิด
+  section 7 จะโชว์ว่าผิดไปเท่าไร
+</p>
+
+<h2 class="wide">4 · ขั้นที่ 1 ของทั้งร้าน: bus matrix</h2>
+<div class="wide table-scroll">
+<table class="matrix">
+  <thead><tr><th>Business process → fact table</th><th>Date</th><th>Channel</th><th>Customer</th><th>Menu item</th><th>Modifier</th><th>Promotion</th><th>Ingredient</th><th>Supplier</th><th>Staff</th></tr></thead>
+  <tbody>
+    <tr><td>ขายออร์เดอร์ · <code>FCT_ORDER</code>, <code>FCT_ORDER_LINE</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>ปรับแต่งเมนู · <code>FCT_ORDER_LINE_MODIFIER</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>รับชำระเงิน · <code>FCT_PAYMENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>ให้ส่วนลด · <code>FCT_ORDER(_LINE)_PROMOTION</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td></td><td></td><td></td></tr>
+    <tr><td>ทำอาหาร / จัดส่ง · <code>FCT_ORDER_EVENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td>ซื้อวัตถุดิบ · <code>FCT_PURCHASE_ORDER(_LINE)</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
+    <tr><td>สต็อกเคลื่อนไหว · <code>FCT_INVENTORY_MOVEMENT</code></td><td class="y">✓</td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
+    <tr><td>นับสต็อก · <code>FCT_INVENTORY_COUNT</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td></td><td class="y">✓</td></tr>
+    <tr><td>เข้ากะ · <code>FCT_SHIFT</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr class="total"><td>จำนวน process ที่ใช้ dimension นี้</td><td>9</td><td>5</td><td>5</td><td>4</td><td>2</td><td>1</td><td>3</td><td>2</td><td>3</td></tr>
+  </tbody>
+</table>
+</div>
+<p>
+  แต่ละแถวคือ business process หนึ่งตัว และจะกลายเป็น fact table หนึ่งตัวหรือมากกว่า แต่ละคอลัมน์คือ dimension ที่สร้าง <strong>ครั้งเดียว</strong>
+  แล้วใช้ร่วมกันทุก process เรียกว่า <strong>conformed dimension</strong> และมันคือสิ่งที่ทำให้ fact หลายตัวกลายเป็น warehouse เดียวกัน:
+</p>
+<ul>
+  <li><strong>Date ใช้ร่วมกันทั้ง 9 process</strong> มี <code>DIM_DATE</code> ตัวเดียวที่ใช้วันทำการ ยอดขาย สต็อก กะ และการสั่งซื้อจึงเรียงตามวันได้เลย โดยไม่มีใครต้องนิยาม "วันศุกร์" ใหม่</li>
+  <li><strong>Menu item เชื่อมการขายกับการเคลื่อนไหวสต็อก</strong> จำนวนที่ขาย × <code>BRG_RECIPE</code> = กรัมของชีสที่ใช้ นี่คือวงจรการสั่งของ</li>
+  <li><strong>Staff เชื่อมการจัดส่ง การนับสต็อก และกะงาน</strong> คำถาม "ใครอยู่กะตอนที่ออร์เดอร์ช้า" จึงเป็นแค่การ join ไม่ใช่โปรเจกต์ใหม่</li>
+</ul>
+
+<h2 class="wide">5 · Star ของการขาย และกายวิภาคของ fact table</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 540" role="img"
+       aria-label="FCT_ORDER อยู่ระหว่าง DIM_DATE, DIM_CHANNEL และ DIM_CUSTOMER ส่วน FCT_ORDER_LINE ชี้ไปที่ FCT_ORDER และ DIM_MENU_ITEM และ FCT_ORDER_LINE_MODIFIER ห้อยจากบรรทัดออร์เดอร์และชี้ไปที่ DIM_MODIFIER fact แต่ละตัวแสดง key, degenerate key และ measure">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="20"  y="40"  width="210" height="110" rx="3"/>
+      <rect x="20"  y="200" width="210" height="110" rx="3"/>
+      <rect x="20"  y="360" width="210" height="96"  rx="3"/>
+      <rect x="960" y="40"  width="200" height="150" rx="3"/>
+      <rect x="960" y="420" width="200" height="90"  rx="3"/>
+    </g>
+    <g fill="var(--surface)" stroke="var(--ember)" stroke-width="2">
+      <rect x="300" y="130" width="250" height="250" rx="3"/>
+      <rect x="640" y="130" width="250" height="250" rx="3"/>
+      <rect x="640" y="420" width="250" height="90"  rx="3"/>
+    </g>
+
+    <g class="m" font-size="12" font-weight="600" letter-spacing="1" fill="currentColor">
+      <text x="30"  y="62">DIM_DATE</text>
+      <text x="30"  y="222">DIM_CHANNEL</text>
+      <text x="30"  y="382">DIM_CUSTOMER</text>
+      <text x="970" y="62">DIM_MENU_ITEM</text>
+      <text x="970" y="442">DIM_MODIFIER</text>
+    </g>
+    <g class="m" font-size="12" font-weight="600" letter-spacing="1" fill="var(--ember)">
+      <text x="310" y="152">FCT_ORDER</text>
+      <text x="650" y="152">FCT_ORDER_LINE</text>
+      <text x="650" y="442">FCT_ORDER_LINE_MODIFIER</text>
+    </g>
+    <g font-size="10.5" fill="var(--ink-2)">
+      <text x="310" y="168">grain: หนึ่งแถวต่อหนึ่งออร์เดอร์</text>
+      <text x="650" y="168">grain: เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</text>
+      <text x="650" y="458">grain: modifier หนึ่งตัวต่อหนึ่งบรรทัด</text>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1">
+      <line x1="30"  y1="70"  x2="220"  y2="70"/>
+      <line x1="30"  y1="230" x2="220"  y2="230"/>
+      <line x1="30"  y1="390" x2="220"  y2="390"/>
+      <line x1="970" y1="70"  x2="1150" y2="70"/>
+      <line x1="970" y1="450" x2="1150" y2="450"/>
+      <line x1="310" y1="176" x2="540"  y2="176"/>
+      <line x1="650" y1="176" x2="880"  y2="176"/>
+      <line x1="650" y1="466" x2="880"  y2="466"/>
+    </g>
+
+    <g class="m" font-size="10.5" fill="currentColor">
+      <text x="30" y="90">date_sk PK = วันทำการ</text>
+      <text x="30" y="106">calendar_date</text>
+      <text x="30" y="122">day_of_week · is_weekend</text>
+      <text x="30" y="138">is_thai_holiday</text>
+
+      <text x="30" y="250">channel_sk PK</text>
+      <text x="30" y="266">channel_code</text>
+      <text x="30" y="282">is_own_channel</text>
+      <text x="30" y="298">commission_rate_pct</text>
+
+      <text x="30" y="410">customer_sk PK</text>
+      <text x="30" y="426">customer_nk</text>
+      <text x="30" y="442">is_member</text>
+
+      <text x="970" y="90">menu_item_sk PK</text>
+      <text x="970" y="106">menu_item_nk</text>
+      <text x="970" y="122">item_name · category · size</text>
+      <text x="970" y="138">base_price_thb</text>
+      <text x="970" y="160" fill="var(--ember)">valid_from · valid_to</text>
+
+      <text x="970" y="470">modifier_sk PK</text>
+      <text x="970" y="486">modifier_name</text>
+      <text x="970" y="502">modifier_type</text>
+    </g>
+    <text x="970" y="176" font-size="10.5" fill="var(--ember)">SCD2: PEP-L มี 2 แถว</text>
+
+    <g class="m" font-size="10.5" fill="currentColor">
+      <text x="310" y="196">order_sk PK</text>
+      <text x="310" y="228">date_sk FK</text>
+      <text x="310" y="244">channel_sk FK</text>
+      <text x="650" y="196">order_line_sk PK</text>
+      <text x="650" y="212">order_sk FK</text>
+      <text x="650" y="486">order_line_sk FK · modifier_sk FK</text>
+    </g>
+    <g font-size="10.5" fill="currentColor">
+      <text x="310" y="260"><tspan class="m">customer_sk FK</tspan> (Grab เป็น null)</text>
+      <text x="650" y="228"><tspan class="m">menu_item_sk FK</tspan> (as-of)</text>
+    </g>
+    <g class="m" font-size="10.5" fill="var(--ink-2)">
+      <text x="310" y="212">external_order_id (degenerate)</text>
+      <text x="650" y="244">line_no (degenerate)</text>
+    </g>
+    <g class="m" font-size="10.5" fill="var(--basil)">
+      <text x="310" y="290">gross_amount_thb</text>
+      <text x="310" y="306">discount_amount_thb</text>
+      <text x="310" y="322">delivery_fee_thb</text>
+      <text x="310" y="338">commission_amount_thb</text>
+      <text x="310" y="354">net_revenue_thb</text>
+
+      <text x="650" y="290">quantity</text>
+      <text x="650" y="306">unit_price_thb (snapshot)</text>
+      <text x="650" y="322">line_discount_thb</text>
+      <text x="650" y="338">line_net_thb</text>
+
+      <text x="650" y="502">quantity · price_delta_thb (snapshot)</text>
+    </g>
+
+    <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
+      <path d="M300 224 C 265 224, 265 95, 232 95"/>
+      <path d="M300 240 C 265 240, 265 255, 232 255"/>
+      <path d="M300 256 C 265 256, 265 408, 232 408"/>
+      <path d="M640 208 C 600 208, 590 192, 552 192"/>
+      <path d="M890 224 C 925 224, 925 115, 958 115"/>
+      <line x1="765" y1="380" x2="765" y2="418"/>
+      <line x1="890" y1="482" x2="958" y2="482"/>
+    </g>
+
+    <g font-size="10.5">
+      <rect x="300" y="420" width="14" height="10" fill="var(--surface)" stroke="var(--ember)" stroke-width="2"/>
+      <text x="322" y="429" fill="currentColor">fact: เหตุการณ์ แคบ ยาว เพิ่มอย่างเดียว</text>
+      <rect x="300" y="440" width="14" height="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+      <text x="322" y="449" fill="currentColor">dimension: บริบท กว้าง สั้น</text>
+      <text x="300" y="474" fill="currentColor">key / FK</text>
+      <text x="360" y="474" fill="var(--ink-2)">degenerate</text>
+      <text x="440" y="474" fill="var(--basil)">measure</text>
+    </g>
+  </svg>
+  </div>
+  <figcaption>
+    ส่วนการขายจากรูปที่ 2 ใน README แบบย่อ เงินระดับออร์เดอร์อยู่ใน FCT_ORDER เงินระดับบรรทัดอยู่ใน FCT_ORDER_LINE
+    แยกเป็นสองตารางเพราะ grain ต่างกัน ส่วน modifier เป็นแถวใน fact ของตัวเอง ไม่ใช่คอลัมน์ JSON
+  </figcaption>
+</figure>
+
+<h2>6 · การตัดสินใจเรื่อง dimension สามข้อ</h2>
+<h3>ใช้ surrogate key ไม่ใช้ ID จากระบบต้นทาง</h3>
+<p>
+  <code>menu_item_sk</code> คือเลขจำนวนเต็มที่ warehouse ออกให้เอง <code>PEP-L</code> เป็น primary key ไม่ได้
+  เพราะ Pepperoni L ต้องมีสองแถว (329 กับ 349) ID จากต่างระบบก็ชนกันได้ และ warehouse ต้องไม่พังเวลาระบบต้นทางเปลี่ยนชื่อหรือเปลี่ยนเลข
+</p>
+<h3>SCD Type 2 กับสิ่งที่ประวัติสำคัญ</h3>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>menu_item_sk</th><th>menu_item_nk</th><th style="text-align:right">base_price_thb</th><th>valid_from</th><th>valid_to</th><th>is_current</th></tr></thead>
+  <tbody>
+    <tr><td class="t">2</td><td class="t">PEP-L</td><td class="n">329</td><td class="t">2026-01-01</td><td class="t">2026-09-05</td><td class="t">false</td></tr>
+    <tr><td class="t">6</td><td class="t">PEP-L</td><td class="n">349</td><td class="t">2026-09-05</td><td class="t">9999-12-31</td><td class="t">true</td></tr>
+  </tbody>
+</table>
+</div>
+<p>การเปลี่ยนราคาคือการเพิ่มแถวใหม่ ไม่ใช่การเขียนทับ ยอดขายวันศุกร์ชี้ไปที่ key 2 ส่วนวันเสาร์ชี้ไปที่ key 6</p>
+<h3>Star ไม่ใช่ snowflake</h3>
+<p>
+  <code>category</code> และ <code>size_code</code> อยู่ใน <code>DIM_MENU_ITEM</code> เลย join จาก fact ไปหาบริบทแค่ครั้งเดียว
+  และอ่าน dimension แล้วเหมือนอ่านเมนู <code>DIM_STAFF → DIM_ROLE</code> คือ snowflake ตัวเดียวที่เราตั้งใจทำ เพราะ role มี flag ของตัวเอง
+</p>
+
+<h2 class="wide">7 · การโหลด fact หนึ่งแถว</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 250" role="img"
+       aria-label="การโหลดออร์เดอร์ P-1003 บรรทัดที่ 1: channel code ถูก lookup เป็น channel_sk 1, เวลา 01:20 ลบ 10 ชั่วโมงได้วันทำการ 4 ก.ย., เมนูถูก lookup แบบ as-of ได้ key 2 ราคา 329 บาท แล้วด่านตรวจคุณภาพเช็กว่าไม่มี key หายก่อนเพิ่มแถวลง fact">
+    <defs>
+      <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="10"  y="40" width="192" height="170" rx="3"/>
+      <rect x="252" y="40" width="192" height="170" rx="3"/>
+      <rect x="494" y="40" width="192" height="170" rx="3" stroke="var(--ember)" stroke-width="2"/>
+      <rect x="736" y="40" width="192" height="170" rx="3" stroke="var(--ember)" stroke-width="2"/>
+      <rect x="978" y="40" width="192" height="170" rx="3"/>
+    </g>
+    <g font-size="12" font-weight="700" fill="currentColor">
+      <text x="20"  y="62">แถวจาก staging</text>
+      <text x="262" y="62">lookup ช่องทาง</text>
+      <text x="504" y="62">วันทำการ</text>
+      <text x="746" y="62">lookup เมนูแบบ as-of</text>
+      <text x="988" y="62">ด่านตรวจ → แถว fact</text>
+    </g>
+    <g stroke="var(--rule)" stroke-width="1">
+      <line x1="20"  y1="70" x2="192"  y2="70"/>
+      <line x1="262" y1="70" x2="434"  y2="70"/>
+      <line x1="504" y1="70" x2="676"  y2="70"/>
+      <line x1="746" y1="70" x2="918"  y2="70"/>
+      <line x1="988" y1="70" x2="1160" y2="70"/>
+    </g>
+    <g class="m" font-size="10.5" fill="currentColor">
+      <text x="20" y="92">P-1003 · line 1</text>
+      <text x="20" y="108">channel_code QR_DINEIN</text>
+      <text x="20" y="124">order_ts 2026-09-05 01:20</text>
+      <text x="20" y="140">menu_item_nk PEP-L</text>
+      <text x="20" y="156">qty 1 · paid 329</text>
+
+      <text x="262" y="92">QR_DINEIN</text>
+      <text x="262" y="108">→ channel_sk 1</text>
+
+      <text x="504" y="92">01:20 − 10 h</text>
+      <text x="504" y="124">→ date_sk 20260904</text>
+
+      <text x="746" y="108">→ menu_item_sk 2 (329)</text>
+      <text x="746" y="174" fill="var(--ember)">valid_from ≤ day</text>
+      <text x="746" y="190" fill="var(--ember)">&lt; valid_to</text>
+
+      <text x="988" y="150">order_sk · menu_item_sk 2</text>
+      <text x="988" y="166">qty 1 · unit_price 329</text>
+    </g>
+    <g font-size="10.5" fill="currentColor">
+      <text x="20" y="190" fill="var(--ink-2)">มีแต่ business key</text>
+      <text x="262" y="190" fill="var(--ink-2)">lookup ธรรมดา</text>
+      <text x="504" y="108">→ ศุกร์ 4 ก.ย.</text>
+      <text x="504" y="174" fill="var(--ember)">กฎอยู่ที่นี่ครั้งเดียว</text>
+      <text x="504" y="190" fill="var(--ember)">ใช้ร่วมกันทุกคน</text>
+      <text x="746" y="92">PEP-L ที่ใช้ได้ในวันที่ 4 ก.ย.</text>
+      <text x="746" y="124" fill="var(--ink-2)">ไม่ใช่ 6 (349 เริ่ม 5 ก.ย.)</text>
+      <text x="988" y="92">มี key เป็น NULL ไหม?</text>
+      <text x="988" y="108">→ หยุดการโหลด</text>
+      <text x="988" y="134">ถ้าไม่มี ให้เพิ่มแถว:</text>
+      <text x="988" y="190" fill="var(--ink-2)">มีแต่ surrogate key</text>
+    </g>
+    <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#arr2)">
+      <line x1="202" y1="125" x2="250" y2="125"/>
+      <line x1="444" y1="125" x2="492" y2="125"/>
+      <line x1="686" y1="125" x2="734" y2="125"/>
+      <line x1="928" y1="125" x2="976" y2="125"/>
+    </g>
+  </svg>
+  </div>
+  <figcaption>
+    การโหลด fact ทำแบบเดิมทุกครั้ง: เปลี่ยน business key ทุกตัวเป็น surrogate key แล้วเก็บตัวเลขไว้ P-1003 สั่งตอนตี 1:20 ของวันที่ 5
+    จึงเป็นของวันทำการวันศุกร์ และได้ราคาของวันศุกร์
+  </figcaption>
+</figure>
+
+<h2>8 · กฎ 5 ข้อในการออกแบบ fact table</h2>
+<p>ทุกข้อเป็นการตัดสินใจที่อยู่ใน README อยู่แล้ว ในโน้ตบุ๊กเราตั้งใจทำให้แต่ละข้อพัง เพื่อให้เห็นว่ามันปกป้องอะไรไว้</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>กฎ</th><th>ถ้าฝ่าฝืน…</th><th>เราใช้ตรงไหน</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="zt">1 · ตารางละหนึ่ง grain</td>
+      <td>join ออร์เดอร์กับบรรทัดแล้ว sum คอมมิชชัน: คอมมิชชัน Grab วันศุกร์จะเป็น <strong>403.5</strong> แทนที่จะเป็น <strong>257.1</strong> เพราะ GF-201 มีสองบรรทัด</td>
+      <td><code>FCT_ORDER</code> กับ <code>FCT_ORDER_LINE</code>; ส่วนลดระดับตะกร้าถูกกระจายลงบรรทัด (<code>pro_rata</code>) ไม่ใช่คัดลอก</td>
+    </tr>
+    <tr>
+      <td class="zt">2 · snapshot ค่าที่เปลี่ยนได้</td>
+      <td>รายได้ Pepperoni L วันศุกร์: จ่ายจริง <strong>1,037</strong> ถ้าใช้ราคาเมนูวันนี้ได้ <strong>1,047</strong> การขึ้นราคาไปเขียนวันศุกร์ใหม่ ถ้าใช้ราคาตั้งของวันศุกร์ (SCD2) ได้ <strong>987</strong> ส่วนต่าง 50 บาทคือราคาที่ Grab บวกเพิ่ม</td>
+      <td><code>unit_price_thb</code>, <code>price_delta_thb</code>, <code>unit_cost_thb</code>, <code>ot_multiplier_applied</code></td>
+    </tr>
+    <tr>
+      <td class="zt">3 · list ต้องเป็นตาราง</td>
+      <td>ถ้าเก็บ modifier เป็น text ชีสเพิ่มจะไม่ถูกนับเป็นการใช้วัตถุดิบ variance มอซซาเรลลาวันศุกร์จะเป็น <strong>−100 กรัม</strong> แทนที่จะเป็น <strong>−20 กรัม</strong> แย่ลงห้าเท่า และผู้จัดการจะไปตามหาคนขโมย</td>
+      <td><code>FCT_ORDER_LINE_MODIFIER</code> + <code>BRG_MODIFIER_RECIPE</code>; <code>BRG_SUPPLIER_DELIVERY_DAY</code></td>
+    </tr>
+    <tr>
+      <td class="zt">4 · รู้ว่าอะไรบวกได้</td>
+      <td>บวกยอดนับชีสรายวันพฤหัสถึงเสาร์: "เรามีชีส <strong>16.3 กิโล</strong>" แต่ในตู้เย็นมี <strong>5.2 กิโล</strong> ส่วน <code>AVG(unit_price)</code> ได้ 357.00 แต่ค่าเฉลี่ยจริงคือ 361.86</td>
+      <td><code>qty_delta</code> แบบมีเครื่องหมาย (บวกได้) กับ <code>qty_counted</code> (เป็นระดับ); เก็บ <code>regular_hours</code> กับ <code>ot_hours</code> แยกกัน</td>
+    </tr>
+    <tr>
+      <td class="zt">5 · FK หนึ่งตัวต่อหนึ่งแหล่ง</td>
+      <td>ใช้ <code>source_ref_sk</code> ตัวเดียวร่วมกัน แล้วการรับชีส 2 กิโลไป join เข้ากับพิซซ่าในออร์เดอร์ P-1001 ไม่มี error เลย ได้แค่แถวผิดที่ดูน่าเชื่อ</td>
+      <td>FK สี่ตัวแยกกันใน <code>FCT_INVENTORY_MOVEMENT</code> พร้อม CHECK ว่าตั้งค่าได้อย่างมากหนึ่งตัว</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<div class="callout">
+  <b>กฎข้อ 2 ในบรรทัดเดียว</b><br>
+  snapshot ตอบว่า <em>เกิดอะไรขึ้น</em> ส่วน SCD2 ตอบว่า <em>ตอนนั้นอะไรจริง</em> เราตั้งใจเก็บไว้ทั้งสองแบบ
+</div>
+
+<h2>9 · fact table 4 ประเภท และเราใช้แบบไหน</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ประเภท</th><th>หนึ่งแถวคือ…</th><th>แถวเปลี่ยนได้ไหม?</th><th>ของเรา</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Transaction</td><td>หนึ่งเหตุการณ์ ณ เวลาที่เกิด</td><td>ไม่เลย</td><td><code>FCT_ORDER_LINE</code>, <code>FCT_PAYMENT</code>, <code>FCT_ORDER_EVENT</code>, <code>FCT_INVENTORY_MOVEMENT</code>, <code>FCT_PURCHASE_ORDER_LINE</code>, <code>FCT_SHIFT</code></td></tr>
+    <tr><td class="z">Periodic snapshot</td><td>สถานะของบางอย่าง ทุกช่วงเวลา</td><td>ไม่เลย เพิ่มแถวใหม่ทุกช่วง</td><td><code>FCT_INVENTORY_COUNT</code> (ทุกปิดร้าน)</td></tr>
+    <tr><td class="z">Accumulating snapshot</td><td>หนึ่งกระบวนการ หนึ่งคอลัมน์ต่อหนึ่งขั้น</td><td><strong>ได้</strong> อัปเดตเมื่อถึงขั้นถัดไป</td><td><code>mart_delivery_sla</code> สร้างจาก <code>FCT_ORDER_EVENT</code></td></tr>
+    <tr><td class="z">Factless</td><td>บางอย่างเกิดขึ้นหรือเป็นไปได้</td><td>นาน ๆ ครั้ง</td><td><code>BRG_CHANNEL_MENU_ITEM</code> ใช้เป็นตาราง coverage</td></tr>
+  </tbody>
+</table>
+</div>
+<ul>
+  <li><strong>เราเก็บ event log แล้วสร้าง accumulating snapshot จากมัน</strong> ขั้นใหม่ (เช่น Grab เพิ่ม <code>driver_arrived</code>) เป็นแค่ค่าใหม่ในแถว ไม่ใช่คอลัมน์ใหม่ และ log ไม่ต้องถูกอัปเดตเลย</li>
+  <li><strong>สต็อกคงเหลือคำนวณจาก movement</strong> ผลบวกสะสมของ <code>qty_delta</code> ได้ snapshot รายวัน การนับจริงเป็นตัวตรวจ และส่วนต่างระหว่างสองค่าคือ KPI ของเสีย</li>
+  <li><strong>ตาราง coverage หาสิ่งที่ไม่ได้เกิดขึ้น</strong> ลงขายลบด้วยขายได้: Pepperoni M ไม่มีออร์เดอร์จาก Grab เลย และฮาวายเอี้ยนขายได้ทางโทรศัพท์แต่ไม่เคยขายได้ที่โต๊ะ fact การขายตัวไหนก็บอกเรื่องนี้ไม่ได้</li>
+</ul>
+
+<h2 class="wide">10 · fact table ทุกตัวในโมเดลของเรา</h2>
+<div class="wide table-scroll">
+<table>
+  <thead><tr><th>Fact table</th><th>ประเภท</th><th>Grain: หนึ่งแถว =</th><th>Measure</th><th>ทำไมต้องมี ทำไมหน้าตาแบบนี้</th></tr></thead>
+  <tbody>
+    <tr><td class="z">FCT_ORDER</td><td>transaction</td><td>ออร์เดอร์หนึ่งใบ ทุกช่องทาง</td><td>ยอดขาย ส่วนลด ค่าส่ง คอมมิชชัน รายได้สุทธิ</td><td>เงินระดับออร์เดอร์ต้องไม่ซ้ำในทุกบรรทัด รายได้สุทธิคือเงินที่ร้านได้จริง</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE</td><td>transaction</td><td>เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</td><td>quantity, line_net; unit_price (snapshot)</td><td>grain ของการพยากรณ์คือ เมนู × วัน × ช่องทาง ยอดขายจึงต้องอยู่ระดับเมนู</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>transaction</td><td>modifier หนึ่งตัวบนบรรทัดหนึ่งบรรทัด</td><td>quantity; price_delta (snapshot)</td><td>เคยเป็น <code>modifiers_json</code> ถ้าไม่มีตารางนี้ ชีสเพิ่มจะไม่ถูกนับเป็นการใช้สต็อก</td></tr>
+    <tr><td class="z">FCT_PAYMENT</td><td>transaction</td><td>การจ่ายเงินหนึ่งครั้งต่อออร์เดอร์หนึ่งใบ</td><td>amount</td><td>การแบ่งจ่ายเป็นเรื่องปกติ และแพลตฟอร์มโอนเงินให้ช้ากว่าหลายวัน</td></tr>
+    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>การเปลี่ยนสถานะหนึ่งครั้งของออร์เดอร์หนึ่งใบ</td><td>event_ts, duration</td><td>ระยะเวลาไหนก็คือผลต่างของสองแถว ขั้นใหม่ไม่ต้องแก้ schema</td></tr>
+    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อออร์เดอร์หนึ่งใบ</td><td>discount</td><td>ส่วนลดระดับตะกร้าตามที่แพลตฟอร์มรายงาน ต้องกระทบยอดกับตารางระดับบรรทัดได้</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อบรรทัดหนึ่งบรรทัด</td><td>discount (กระจายลงมา)</td><td>ดันส่วนลดลงไปถึงระดับ SKU เพื่อให้ margin ของเมนูเป็นของจริง</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>ใบสั่งซื้อหนึ่งใบถึงซัพพลายเออร์หนึ่งราย</td><td>total cost</td><td>วันที่สั่งกับวันที่รับของชี้ไปที่ <code>DIM_DATE</code> ทั้งคู่ เรียกว่า role-playing dimension</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER_LINE</td><td>transaction</td><td>วัตถุดิบหนึ่งตัวในใบสั่งซื้อหนึ่งใบ</td><td>qty ordered, qty received; unit_cost (snapshot)</td><td>ต้นทุน ณ วันที่ซื้อ food cost % จึงไม่เพี้ยนตามราคาใหม่</td></tr>
+    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>การเคลื่อนไหวหนึ่งครั้งของวัตถุดิบหนึ่งตัว</td><td>qty_delta (มีเครื่องหมาย)</td><td>สต็อกคงเหลือ = <code>SUM(qty_delta)</code> มี FK สี่ตัว หนึ่งตัวต่อเอกสารต้นทางหนึ่งแบบ</td></tr>
+    <tr><td class="z">FCT_INVENTORY_COUNT</td><td>periodic snapshot</td><td>วัตถุดิบหนึ่งตัว ณ ปิดร้านหนึ่งวัน</td><td>counted, expected (ระดับ); variance</td><td>ความจริงทางกายภาพ variance คือ KPI ที่ทั้งโมเดลมีไว้เพื่อสร้าง</td></tr>
+    <tr><td class="z">FCT_SHIFT</td><td>transaction</td><td>กะหนึ่งกะของพนักงานหนึ่งคน</td><td>ชั่วโมงปกติ ชั่วโมง OT ค่าแรง; OT multiplier (snapshot)</td><td>ชั่วโมง OT แพงกว่าจึงแยกเก็บ ตัวคูณเป็นนโยบายจึง snapshot ไว้</td></tr>
+    <tr><td class="z">fct_forecast</td><td>periodic snapshot</td><td>เมนู × วัน × ช่องทาง × รอบการรัน</td><td>forecast_units (บวกข้ามรอบไม่ได้)</td><td>ค่าพยากรณ์เทียบกับของจริงกลายเป็นตารางที่ทำกราฟได้ ออกแบบใน section 11</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>11 · ตัวอย่างการออกแบบ: <code>fct_forecast</code></h2>
+<p>README พูดถึงตาราง forecast แต่ไม่เคยออกแบบ ลองใช้ 4 ขั้นตอนกับของใหม่:</p>
+<ol>
+  <li><strong>Process</strong> โมเดลทำนายความต้องการ การทำนายหนึ่งครั้งคือเหตุการณ์หนึ่ง มีเวลาที่เกิดและมีผลลัพธ์</li>
+  <li><strong>Grain</strong> การพยากรณ์หนึ่งครั้ง ของเมนูหนึ่งรายการ สำหรับวันทำการหนึ่งวัน ในช่องทางหนึ่ง จากการรันโมเดลหนึ่งรอบ รอบการรันต้องอยู่ใน grain เพราะพยากรณ์วันเสาร์ที่ทำวันจันทร์กับที่ทำวันศุกร์เป็นคนละ fact</li>
+  <li><strong>Dimensions</strong> เมนู วันที่ (วันที่ถูกพยากรณ์) และช่องทาง ทั้งสามมีอยู่แล้วสำหรับการขาย เพราะเป็น conformed dimension จึง join ค่าพยากรณ์กับของจริงได้ทันที</li>
+  <li><strong>Facts</strong> <code>forecast_units</code> บวกข้ามเมนู วัน และช่องทางได้ แต่ <strong>บวกข้ามรอบไม่ได้</strong> บวกสองรอบของวันเสาร์เดียวกันได้ 7 ถาด แต่รอบล่าสุดบอก 5</li>
+</ol>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>รอบ</th><th>ช่องทาง</th><th style="text-align:right">พยากรณ์</th><th style="text-align:right">ของจริง</th><th style="text-align:right">คลาดเคลื่อน</th></tr></thead>
+  <tbody>
+    <tr><td class="t">run-0901</td><td class="z">GRAB</td><td class="n">1</td><td class="n">2</td><td class="n bad">−1</td></tr>
+    <tr><td class="t">run-0901</td><td class="z">QR_DINEIN</td><td class="n">1</td><td class="n">2</td><td class="n bad">−1</td></tr>
+    <tr><td class="t">run-0904</td><td class="z">GRAB</td><td class="n">3</td><td class="n">2</td><td class="n bad">+1</td></tr>
+    <tr><td class="t">run-0904</td><td class="z">QR_DINEIN</td><td class="n">2</td><td class="n">2</td><td class="n">0</td></tr>
+  </tbody>
+</table>
+</div>
+<p>รอบที่ใกล้วันกว่าแม่นกว่า คำถาม "โมเดลแม่นขึ้นไหม?" จึงเหลือแค่ <code>GROUP BY forecast_run_id</code> เดียว</p>
+
+<h2>12 · สรุป</h2>
+<div class="two">
+  <div>
+    <h3>ทำไปเพื่ออะไร</h3>
+    <ul>
+      <li>รวมห้าแหล่งให้เป็นรูปแบบเดียว</li>
+      <li>นิยามกฎธุรกิจครั้งเดียว</li>
+      <li>เก็บประวัติที่ POS เขียนทับ</li>
+      <li>จัดรูปข้อมูลให้ถามง่าย</li>
+      <li>ไม่ให้งานวิเคราะห์หนัก ๆ ไปรบกวน POS</li>
+    </ul>
+  </div>
+  <div>
+    <h3>ทำออกมายังไง</h3>
+    <ul>
+      <li>Process → grain → dimension → fact</li>
+      <li>bus matrix ของ conformed dimension</li>
+      <li>surrogate key และ SCD2</li>
+      <li>โหลด fact ด้วยการเปลี่ยน business key เป็น surrogate key ผ่านด่านตรวจคุณภาพ</li>
+    </ul>
+  </div>
+</div>
+<div class="callout">
+  <b>ออกแบบ fact table ในบรรทัดเดียว</b><br>
+  บอก grain ให้ได้ในประโยคเดียว ห้ามปนสอง grain, snapshot ค่าที่เปลี่ยนได้, เปลี่ยน list เป็นตาราง,
+  เก็บเฉพาะสิ่งที่บวกได้ และให้ทุกแหล่งมี key ของตัวเอง
+</div>
+
+</main>
+</body>
+</html>
