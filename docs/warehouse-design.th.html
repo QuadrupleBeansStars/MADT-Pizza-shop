@@ -71,7 +71,7 @@
   p + p { margin-top: 0.85rem; }
   code { font-family: var(--font-mono); font-size: 0.86em; background: var(--zone); padding: 0.05em 0.3em; border-radius: 3px; }
   pre {
-    font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.5;
+    font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.5;
     background: var(--surface); border: 1px solid var(--rule); padding: 0.8rem 1rem;
     overflow-x: auto; margin: 0.5rem 0 0;
   }
@@ -115,7 +115,7 @@
   .two > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; min-width: 0; }
   .two h3 { margin-top: 0; }
   .lang { font-size: 0.82rem; color: var(--ink-2); margin-top: 0.75rem; }
-  .lang a { color: var(--ember); }
+  .lang a, main a { color: var(--ember); }
   @media (max-width: 640px) {
     header.masthead { padding-top: 2.5rem; }
     .two { grid-template-columns: 1fr; }
@@ -126,127 +126,95 @@
 <main>
 
 <header class="masthead">
-  <p class="eyebrow">MADT8102 · Warehouse and fact table design</p>
-  <h1>ออกแบบ Warehouse: ทำไปเพื่ออะไร ทำออกมายังไง และ fact table ข้างใน</h1>
+  <p class="eyebrow">MADT8102 · Pizza shop · Warehouse specification</p>
+  <h1>Warehouse ของโปรเจกต์: ทีมสร้างอะไร และใช้งานยังไง</h1>
   <p class="standfirst">
-    ทำไมร้านพิซซ่าต้องมี warehouse, 4 ขั้นตอนที่เราใช้ออกแบบ และกฎเบื้องหลัง fact table ทั้ง 13 ตัวในโมเดลของเรา
-    ทุกตัวเลขในหน้านี้มาจาก <code>notebooks/warehouse_design.ipynb</code> ซึ่งรันซ้ำได้ทุกค่า
+    warehouse ของโปรเจกต์นี้ ตั้งแต่ข้อมูลต้นทางที่ผ่าน staging แล้ว ไปจนถึง mart ที่เจ้าของร้าน รายการสั่งของ และโมเดลพยากรณ์อ่าน
+    ครอบคลุม dimension, fact table และ mart ทุกตัว ข้อตกลงที่ทุกตารางต้องทำตาม และการโหลดข้อมูลในแต่ละคืน
   </p>
   <div class="meta-strip">
-    <span>วิธีการ <b>Kimball 4 ขั้นตอน</b></span>
-    <span>Schema <b>Star · fact 13 ตัว</b></span>
-    <span>ประวัติ <b>SCD2 + snapshot บน fact</b></span>
-    <span>วัน <b>วันทำการ 10:00–02:00</b></span>
+    <span>ชั้นข้อมูล <b>stg → dw → mart</b></span>
+    <span>โมเดล <b>Star · dimension 10 · fact 13</b></span>
+    <span>Mart <b>6 ตัว</b></span>
+    <span>รอบอัปเดต <b>ทุกคืน 03:00 core · 03:30 mart</b></span>
   </div>
   <p class="lang">English version: <a href="warehouse-design.html">warehouse-design.html</a></p>
 </header>
 
-<h2>1 · ทำ warehouse ไปเพื่ออะไร? ลองถามคำถามเดียว</h2>
+<h2>1 · warehouse คืออะไร และทำไมโปรเจกต์ต้องมี</h2>
 <p>
-  เจ้าของร้านถามว่า <em>วันศุกร์ได้รายได้สุทธิแต่ละช่องทางเท่าไร?</em> สุทธิคือเงินที่ร้านได้จริงหลังหักค่าคอมมิชชันของแอปเดลิเวอรี
-  เราตอบคำถามนี้สองครั้ง: ครั้งแรกถามจาก POS กับไฟล์ export ของ Grab ตรง ๆ ครั้งที่สองถามจาก warehouse
+  warehouse คือ zone Trusted และ Refined ของ data lake ของเรา (<a href="data-flow.th.html">data-flow.th.html</a>):
+  star schema หนึ่งชุดที่มี conformed dimension กับ fact table และมี mart หนึ่งตัวต่อหนึ่งคำถามทางธุรกิจ
+  ที่นี่เป็นที่เดียวที่กฎธุรกิจอยู่ แดชบอร์ด รายการสั่งของ และโมเดลพยากรณ์อ่านจากที่นี่ ไม่อ่านจากระบบต้นทางเลย
 </p>
+<p>เหตุผลเห็นได้ชัดที่สุดจากคำถามเดียว: <em>วันศุกร์ได้รายได้สุทธิแต่ละช่องทางเท่าไร?</em></p>
 <div class="two">
   <div>
-    <h3>ถามจาก source: SQL 30 บรรทัด</h3>
-    <p>query ต้องแบกกฎ 6 ข้อไว้เอง:</p>
-    <ol>
-      <li>รวมข้อมูลสองหน้าตาเข้าด้วยกัน (ตาราง POS กับ CSV ของ Grab)</li>
-      <li>แปลงเวลา UTC ของ Grab เป็นเวลากรุงเทพ</li>
-      <li>วันทำการ: ออร์เดอร์ก่อน 10:00 นับเป็นของเมื่อวาน</li>
-      <li>Grab ซ้ำค่าคอมมิชชันทุกแถว ต้องใช้ <code>MAX</code> ไม่ใช่ <code>SUM</code></li>
-      <li>ราคาชีสเพิ่มซ่อนอยู่ในคอลัมน์ text ต้อง parse เอง</li>
-      <li>POS เรียกว่า <code>QR</code> แต่ที่อื่นเรียก <code>QR_DINEIN</code></li>
-    </ol>
+    <h3>ถามจาก source: 30 บรรทัด</h3>
+    <p>query ต้องแบกกฎ 6 ข้อไว้เอง: รวมข้อมูลสองหน้าตา, แปลง UTC เป็นเวลากรุงเทพ, วันทำการ 10:00–02:00,
+    ใช้ <code>MAX</code> ไม่ใช่ <code>SUM</code> กับค่าคอมมิชชันที่ Grab ซ้ำทุกแถว, parse ราคา modifier ออกจาก text และแปลง <code>QR</code> → <code>QR_DINEIN</code>
+    แถม POS ยังเขียนทับราคาของสัปดาห์ก่อนไปแล้วด้วย</p>
   </div>
   <div>
     <h3>ถามจาก warehouse: 7 บรรทัด</h3>
-    <pre>SELECT c.channel_code,
-       SUM(o.net_revenue_thb)
-FROM dw.fct_order o
-JOIN dw.dim_channel c USING (channel_sk)
-JOIN dw.dim_date d    USING (date_sk)
-WHERE d.calendar_date = '2026-09-04'
-GROUP BY ALL</pre>
-    <p style="margin-top:0.75rem">ไม่มีกฎอยู่ข้างในเลย กฎทั้งหมดถูกใช้ไป <strong>ครั้งเดียว</strong> ตอนโหลดข้อมูล</p>
+    <pre>SELECT channel_code,
+       SUM(net_revenue_thb)
+FROM dw.fct_order
+JOIN dw.dim_channel USING (channel_sk)
+JOIN dw.dim_date USING (date_sk)
+WHERE calendar_date = '2026-09-04'
+GROUP BY channel_code</pre>
   </div>
 </div>
+<p>
+  ได้คำตอบเดียวกัน (Grab 599.9, โทรศัพท์ 408.0, QR 808.0 บาท จากข้อมูลต้นแบบ) กฎทั้งหมดถูกใช้ไปครั้งเดียวตอนโหลด
+  รายงานไหนก็คำนวณผิดไม่ได้
+</p>
+
+<h2>2 · ชั้นข้อมูล และใครอ่านอะไร</h2>
 <div class="table-scroll">
 <table>
-  <thead><tr><th>ช่องทาง ศุกร์ 4 ก.ย.</th><th style="text-align:right">ยอดขาย (บาท)</th><th style="text-align:right">คอมมิชชัน</th><th style="text-align:right">สุทธิ (บาท)</th></tr></thead>
+  <thead><tr><th>ชั้น</th><th>เก็บอะไร</th><th>สร้างเมื่อ</th><th>ใครอ่าน</th></tr></thead>
   <tbody>
-    <tr><td class="z">GRAB</td><td class="n">857.0</td><td class="n">257.1</td><td class="n">599.9</td></tr>
-    <tr><td class="z">PHONE</td><td class="n">408.0</td><td class="n">0.0</td><td class="n">408.0</td></tr>
-    <tr><td class="z">QR_DINEIN</td><td class="n">808.0</td><td class="n">0.0</td><td class="n">808.0</td></tr>
+    <tr><td class="z">raw</td><td>ทุกเรคคอร์ดจากต้นทางตามที่มาถึง พร้อม <code>source_system</code>, <code>ingest_ts</code>, <code>source_file</code> ไม่มีการแก้ไข</td><td>ตอนนำเข้า</td><td>pipeline เท่านั้น</td></tr>
+    <tr><td class="z">stg</td><td>รูปแบบกลางเดียวต่อหนึ่ง entity (หัวออร์เดอร์ บรรทัดออร์เดอร์ modifier movement กะงาน…) แปลง type แล้ว เป็นเวลากรุงเทพ ตัดแถวซ้ำแล้ว</td><td>03:00</td><td>pipeline เท่านั้น</td></tr>
+    <tr><td class="z">dw</td><td>star schema: dimension 10 ตัว bridge 6 ตัว fact 13 ตัว ใช้ surrogate key และเก็บประวัติแบบ SCD2</td><td>03:00</td><td>นักวิเคราะห์ โมเดลพยากรณ์ และงานสร้าง mart</td></tr>
+    <tr><td class="z">mart</td><td>ตารางสรุปล่วงหน้า 6 ตัว หนึ่งตัวต่อหนึ่งคำถาม ที่ grain ที่ผู้ใช้ต้องการ</td><td>03:30</td><td>แดชบอร์ด รายการสั่งของ แคมเปญ</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout">
+  <b>กฎการเข้าถึง</b><br>
+  แดชบอร์ดและเครื่องมือต่าง ๆ อ่านจาก <code>mart</code> เท่านั้น นักวิเคราะห์ query <code>dw</code> ได้เมื่อมีคำถามใหม่
+  นอกจาก pipeline แล้วไม่มีใครอ่าน <code>raw</code> หรือ <code>stg</code> คำถามไหนถูกถามทุกสัปดาห์ ให้ทำเป็น mart
+</div>
+
+<h2>3 · Dimension</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Dimension</th><th>อธิบายอะไร</th><th>ประวัติ</th><th>หมายเหตุ</th></tr></thead>
+  <tbody>
+    <tr><td class="z">DIM_DATE</td><td>วันทำการ</td><td>คงที่</td><td>10:00–02:00 มี flag วันหยุดสุดสัปดาห์และวันหยุดไทย ใช้เป็นวันที่สั่งและวันที่รับของในใบสั่งซื้อด้วย</td></tr>
+    <tr><td class="z">DIM_CHANNEL</td><td>QR, โทรศัพท์, Grab, LINE MAN, ShopeeFood, Robinhood</td><td>Type 1</td><td>ช่องทางของร้านหรือแพลตฟอร์ม อัตราคอมมิชชัน</td></tr>
+    <tr><td class="z">DIM_CUSTOMER</td><td>สมาชิกบนช่องทางของร้าน</td><td>Type 1</td><td>ออร์เดอร์จากแพลตฟอร์มไม่มีข้อมูลลูกค้า โดยตั้งใจ</td></tr>
+    <tr><td class="z">DIM_MENU_ITEM</td><td>หนึ่ง SKU (เมนู × ไซซ์)</td><td><strong>SCD2</strong></td><td>เปลี่ยนราคาหรือสูตรแล้วเพิ่มแถวใหม่</td></tr>
+    <tr><td class="z">DIM_MODIFIER</td><td>ชีสเพิ่ม ไม่ใส่พริก แป้งบาง…</td><td>Type 1</td><td>add / remove / substitute</td></tr>
+    <tr><td class="z">DIM_PROMOTION</td><td>โปรโมชันหนึ่งตัว</td><td>Type 1</td><td>เงื่อนไขและของรางวัลอยู่ใน bridge</td></tr>
+    <tr><td class="z">DIM_INGREDIENT</td><td>มอซซาเรลลา แป้ง เปปเปอโรนี…</td><td>Type 1</td><td>หน่วยฐาน จุดสั่งซื้อ safety stock</td></tr>
+    <tr><td class="z">DIM_SUPPLIER</td><td>ซัพพลายเออร์หนึ่งราย</td><td>Type 1</td><td>lead time ยอดสั่งขั้นต่ำ</td></tr>
+    <tr><td class="z">DIM_STAFF</td><td>พนักงานหนึ่งคน</td><td><strong>SCD2</strong></td><td>ค่าแรง ตำแหน่ง และสิทธิ์ OT เปลี่ยนได้ตามเวลา</td></tr>
+    <tr><td class="z">DIM_ROLE</td><td>pizzaiolo, แคชเชียร์, ไรเดอร์…</td><td>Type 1</td><td>snowflake ตัวเดียวที่ตั้งใจทำ (แยกจาก <code>DIM_STAFF</code>)</td></tr>
   </tbody>
 </table>
 </div>
 <p>
-  ทั้งสอง query ได้ตารางนี้เหมือนกัน ต่างกันตรงที่ฉบับ source จะถูกก็ต่อเมื่อนักวิเคราะห์ทุกคน แดชบอร์ดทุกอัน และโมเดลพยากรณ์
-  จำกฎทั้ง 6 ข้อได้และเขียนเหมือนกันทุกครั้ง ลืมข้อ 4 ค่าคอมมิชชันของ Grab จะเป็นสองเท่า ลืมข้อ 3 ออร์เดอร์ตอนตี 1:20 จะย้ายไปอยู่วันเสาร์
-</p>
-<div class="callout q">
-  <b>ปัญหาข้อที่ 7: ประวัติหายไปแล้ว</b><br>
-  วันเสาร์เจ้าของร้านขึ้นราคา Pepperoni L จาก 329 เป็น 349 บาท แล้ว POS ก็เขียนทับราคาเดิมไป ตอนนี้ตารางเมนูมีแค่ 349
-  คำถาม "margin ก่อนขึ้นราคาเป็นเท่าไร" จะตอบจาก POS ไม่ได้อีกเลย ระบบหน้าร้านตอบว่า <em>ตอนนี้อะไรจริง</em>
-  แต่งานวิเคราะห์ต้องการ <em>ตอนนั้นอะไรจริง</em>
-</div>
-
-<h2>2 · warehouse มีไว้ทำอะไร</h2>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>เหตุผล</th><th>สำหรับร้านพิซซ่า</th><th>อยู่ตรงไหนในโมเดล</th></tr></thead>
-  <tbody>
-    <tr><td class="zt">รวมข้อมูล</td><td>ห้าแหล่ง รูปแบบเดียว ออร์เดอร์จาก Grab กับจาก QR เป็นหนึ่งแถวใน <code>FCT_ORDER</code> เหมือนกัน</td><td><code>DIM_CHANNEL</code>, <code>BRG_CHANNEL_MENU_ITEM</code></td></tr>
-    <tr><td class="zt">นิยามครั้งเดียว</td><td>วันทำการ รายได้สุทธิ และชื่อช่องทาง ถูกคำนวณตอนโหลด ไม่ใช่ในทุกรายงาน</td><td><code>date_sk</code> คือวันทำการ, เก็บ <code>net_revenue_thb</code> ไว้เลย</td></tr>
-    <tr><td class="zt">เก็บประวัติ</td><td>ราคา สูตร และค่าแรงเปลี่ยนได้ แต่ทุกเวอร์ชันถูกเก็บไว้</td><td>SCD2 บน <code>DIM_MENU_ITEM</code>, <code>BRG_RECIPE</code>, <code>DIM_STAFF</code></td></tr>
-    <tr><td class="zt">จัดรูปให้ถามง่าย</td><td>fact อยู่ตรงกลาง บริบทอยู่รอบ ๆ คำถามกลายเป็น <code>GROUP BY</code> สั้น ๆ</td><td><code>FCT_*</code> ทุกตัวกับ <code>DIM_*</code> ของมัน</td></tr>
-    <tr><td class="zt">ไม่รบกวนหน้าร้าน</td><td>งานวิเคราะห์หนัก ๆ ไม่ทำให้ POS ช้าในคืนวันศุกร์</td><td>batch ทุกคืนจาก Raw ไม่ query POS ตรง ๆ</td></tr>
-  </tbody>
-</table>
-</div>
-<div class="two">
-  <div>
-    <h3>ฐานข้อมูลหน้าร้าน (POS)</h3>
-    <ul>
-      <li>สร้างมาเพื่อบันทึกออร์เดอร์ทีละใบให้เร็ว</li>
-      <li>normalize แล้ว มีตารางเล็ก ๆ หลายตาราง</li>
-      <li>เก็บสถานะปัจจุบัน แก้ไขทับที่เดิม</li>
-      <li>คนใช้คือแคชเชียร์กับจอในครัว</li>
-      <li><code>WHERE pos_order_id = 'P-1001'</code></li>
-    </ul>
-  </div>
-  <div>
-    <h3>Warehouse</h3>
-    <ul>
-      <li>สร้างมาเพื่ออ่านข้อมูลจำนวนมากแล้วตอบคำถาม</li>
-      <li>Star schema: dimension กว้าง fact แคบ</li>
-      <li>เก็บทุกเวอร์ชัน fact เพิ่มอย่างเดียว ไม่แก้</li>
-      <li>คนใช้คือเจ้าของร้าน นักวิเคราะห์ โมเดลพยากรณ์</li>
-      <li><code>GROUP BY business_date, channel</code></li>
-    </ul>
-  </div>
-</div>
-
-<h2>3 · เราออกแบบยังไง: 4 ขั้นตอน ตามลำดับ</h2>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>ขั้นตอน</th><th>คำถาม</th><th>คำตอบของร้านพิซซ่าสำหรับ <code>FCT_ORDER_LINE</code></th></tr></thead>
-  <tbody>
-    <tr><td class="zt">1 · Process</td><td>เรากำลังวัด <em>เหตุการณ์</em> ทางธุรกิจอะไร?</td><td>ลูกค้าสั่งเมนูหนึ่งรายการ</td></tr>
-    <tr><td class="zt">2 · Grain</td><td>ข้อมูล <strong>หนึ่งแถว</strong> หมายถึงอะไรกันแน่?</td><td>เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</td></tr>
-    <tr><td class="zt">3 · Dimensions</td><td>ใคร อะไร เมื่อไร ที่ไหน ยังไง?</td><td>วันที่ ช่องทาง ลูกค้า (ผ่านออร์เดอร์) และเมนู</td></tr>
-    <tr><td class="zt">4 · Facts</td><td>ตัวเลขอะไรบ้างที่ถูกต้องที่ grain นั้น?</td><td><code>quantity</code>, <code>unit_price_thb</code>, <code>line_net_thb</code></td></tr>
-  </tbody>
-</table>
-</div>
-<p>
-  ลำดับสำคัญมาก: <strong>กำหนด grain ก่อนเลือกคอลัมน์</strong> ถ้าเริ่มจากไล่คอลัมน์ที่อยากได้
-  จะได้ตารางที่วางเงินระดับออร์เดอร์ (คอมมิชชัน ค่าส่ง) ไว้ข้างเงินระดับบรรทัด (ราคาเมนู) แล้วทุกการ sum หลังจากนั้นก็จะผิด
-  section 7 จะโชว์ว่าผิดไปเท่าไร
+  <strong>Bridge:</strong> <code>BRG_CHANNEL_MENU_ITEM</code> (ชื่อและราคาบนแพลตฟอร์ม → SKU ของเรา),
+  <code>BRG_RECIPE</code> (SCD2) และ <code>BRG_MODIFIER_RECIPE</code> (กรัมต่อหน่วย ของ modifier มีเครื่องหมาย),
+  <code>BRG_PROMOTION_CONDITION</code> และ <code>BRG_PROMOTION_REWARD</code> (กฎเก็บเป็นแถว) และ
+  <code>BRG_SUPPLIER_DELIVERY_DAY</code> (หนึ่งแถวต่อซัพพลายเออร์ต่อวันในสัปดาห์)
 </p>
 
-<h2 class="wide">4 · ขั้นที่ 1 ของทั้งร้าน: bus matrix</h2>
+<h3>Bus matrix: process ไหนใช้ dimension ไหนร่วมกัน</h3>
 <div class="wide table-scroll">
 <table class="matrix">
   <thead><tr><th>Business process → fact table</th><th>Date</th><th>Channel</th><th>Customer</th><th>Menu item</th><th>Modifier</th><th>Promotion</th><th>Ingredient</th><th>Supplier</th><th>Staff</th></tr></thead>
@@ -265,16 +233,11 @@ GROUP BY ALL</pre>
 </table>
 </div>
 <p>
-  แต่ละแถวคือ business process หนึ่งตัว และจะกลายเป็น fact table หนึ่งตัวหรือมากกว่า แต่ละคอลัมน์คือ dimension ที่สร้าง <strong>ครั้งเดียว</strong>
-  แล้วใช้ร่วมกันทุก process เรียกว่า <strong>conformed dimension</strong> และมันคือสิ่งที่ทำให้ fact หลายตัวกลายเป็น warehouse เดียวกัน:
+  dimension ทุกตัวสร้างครั้งเดียวแล้วใช้ร่วมกัน ยอดขายจึงเทียบกับสต็อกได้ (ผ่านเมนูและสูตร) และเทียบกับค่าแรงได้ (ผ่านวันที่)
+  วงจรการสั่งของและการเทียบค่าแรงกับยอดขายจึงเป็นแค่การ join ไม่ใช่โปรเจกต์ใหม่
 </p>
-<ul>
-  <li><strong>Date ใช้ร่วมกันทั้ง 9 process</strong> มี <code>DIM_DATE</code> ตัวเดียวที่ใช้วันทำการ ยอดขาย สต็อก กะ และการสั่งซื้อจึงเรียงตามวันได้เลย โดยไม่มีใครต้องนิยาม "วันศุกร์" ใหม่</li>
-  <li><strong>Menu item เชื่อมการขายกับการเคลื่อนไหวสต็อก</strong> จำนวนที่ขาย × <code>BRG_RECIPE</code> = กรัมของชีสที่ใช้ นี่คือวงจรการสั่งของ</li>
-  <li><strong>Staff เชื่อมการจัดส่ง การนับสต็อก และกะงาน</strong> คำถาม "ใครอยู่กะตอนที่ออร์เดอร์ช้า" จึงเป็นแค่การ join ไม่ใช่โปรเจกต์ใหม่</li>
-</ul>
 
-<h2 class="wide">5 · Star ของการขาย และกายวิภาคของ fact table</h2>
+<h2 class="wide">4 · Star ของการขาย</h2>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 540" role="img"
@@ -411,30 +374,46 @@ GROUP BY ALL</pre>
   </figcaption>
 </figure>
 
-<h2>6 · การตัดสินใจเรื่อง dimension สามข้อ</h2>
-<h3>ใช้ surrogate key ไม่ใช้ ID จากระบบต้นทาง</h3>
-<p>
-  <code>menu_item_sk</code> คือเลขจำนวนเต็มที่ warehouse ออกให้เอง <code>PEP-L</code> เป็น primary key ไม่ได้
-  เพราะ Pepperoni L ต้องมีสองแถว (329 กับ 349) ID จากต่างระบบก็ชนกันได้ และ warehouse ต้องไม่พังเวลาระบบต้นทางเปลี่ยนชื่อหรือเปลี่ยนเลข
-</p>
-<h3>SCD Type 2 กับสิ่งที่ประวัติสำคัญ</h3>
-<div class="table-scroll">
+<h2 class="wide">5 · Fact table</h2>
+<div class="wide table-scroll">
 <table>
-  <thead><tr><th>menu_item_sk</th><th>menu_item_nk</th><th style="text-align:right">base_price_thb</th><th>valid_from</th><th>valid_to</th><th>is_current</th></tr></thead>
+  <thead><tr><th>Fact table</th><th>ประเภท</th><th>Grain: หนึ่งแถว =</th><th>Measure หลัก</th><th>โหลดจาก</th><th>ทำไมหน้าตาแบบนี้</th></tr></thead>
   <tbody>
-    <tr><td class="t">2</td><td class="t">PEP-L</td><td class="n">329</td><td class="t">2026-01-01</td><td class="t">2026-09-05</td><td class="t">false</td></tr>
-    <tr><td class="t">6</td><td class="t">PEP-L</td><td class="n">349</td><td class="t">2026-09-05</td><td class="t">9999-12-31</td><td class="t">true</td></tr>
+    <tr><td class="z">FCT_ORDER</td><td>transaction</td><td>ออร์เดอร์หนึ่งใบ ทุกช่องทาง</td><td>ยอดขาย ส่วนลด ค่าส่ง คอมมิชชัน รายได้สุทธิ</td><td>POS, ไฟล์ export ของแพลตฟอร์ม</td><td>เงินระดับออร์เดอร์อยู่ที่ grain ออร์เดอร์ จึงไม่ซ้ำในทุกบรรทัด</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE</td><td>transaction</td><td>SKU หนึ่งตัวในออร์เดอร์หนึ่งใบ</td><td>quantity, line_net; unit_price (snapshot)</td><td>POS, ไฟล์ export ของแพลตฟอร์ม</td><td>grain ของการพยากรณ์คือ เมนู × วัน × ช่องทาง</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>transaction</td><td>modifier หนึ่งตัวบนบรรทัดหนึ่งบรรทัด</td><td>quantity; price_delta (snapshot)</td><td>POS</td><td>modifier ใช้วัตถุดิบ ถ้าเป็นคอลัมน์ text จะนับไม่ได้</td></tr>
+    <tr><td class="z">FCT_PAYMENT</td><td>transaction</td><td>การจ่ายเงินหนึ่งครั้งต่อออร์เดอร์หนึ่งใบ</td><td>amount; วันที่เงินเข้า</td><td>POS, การโอนเงินของแพลตฟอร์ม</td><td>แบ่งจ่ายได้ เงินจากแพลตฟอร์มเข้าช้ากว่าหลายวัน</td></tr>
+    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>การเปลี่ยนสถานะหนึ่งครั้งของออร์เดอร์หนึ่งใบ</td><td>event_ts, ระยะเวลาจากขั้นก่อน</td><td>สถานะครัวจาก POS, เวลาจากแพลตฟอร์ม</td><td>ระยะเวลาไหนก็คือผลต่างของสองแถว ขั้นใหม่ไม่ต้องเพิ่มคอลัมน์</td></tr>
+    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อออร์เดอร์หนึ่งใบ</td><td>discount</td><td>POS, ไฟล์ export ของแพลตฟอร์ม</td><td>ส่วนลดระดับตะกร้าตามที่รายงาน กระทบยอดกับตารางระดับบรรทัด</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อบรรทัดหนึ่งบรรทัด</td><td>discount (กระจายลงมา)</td><td>คำนวณใน stg</td><td>ส่วนลดต่อ SKU ทำให้ margin ของเมนูเป็นของจริง</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>ใบสั่งซื้อหนึ่งใบถึงซัพพลายเออร์หนึ่งราย</td><td>total cost</td><td>ชีตการสั่งซื้อ</td><td>วันที่สั่งกับวันที่รับของเป็นสองบทบาทของ DIM_DATE</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER_LINE</td><td>transaction</td><td>วัตถุดิบหนึ่งตัวในใบสั่งซื้อหนึ่งใบ</td><td>qty ordered, qty received; unit_cost (snapshot)</td><td>ชีตการสั่งซื้อ</td><td>ต้นทุน ณ วันที่ซื้อ</td></tr>
+    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>การเคลื่อนไหวหนึ่งครั้งของวัตถุดิบหนึ่งตัว</td><td>qty_delta (มีเครื่องหมาย)</td><td>คำนวณจากยอดขาย × สูตร, การรับของ, การนับ, บันทึกของเสีย</td><td>สต็อกคงเหลือ = <code>SUM(qty_delta)</code> มี FK หนึ่งตัวต่อเอกสารต้นทางหนึ่งแบบ</td></tr>
+    <tr><td class="z">FCT_INVENTORY_COUNT</td><td>periodic snapshot</td><td>วัตถุดิบหนึ่งตัว ณ ปิดร้านหนึ่งวัน</td><td>counted, expected; variance</td><td>ฟอร์มนับสต็อก</td><td>ความจริงทางกายภาพ variance คือ KPI ของเสีย</td></tr>
+    <tr><td class="z">FCT_SHIFT</td><td>transaction</td><td>กะหนึ่งกะของพนักงานหนึ่งคน</td><td>ชั่วโมงปกติ ชั่วโมง OT ค่าแรง; OT multiplier (snapshot)</td><td>เครื่องตอกบัตร</td><td>OT แพงกว่าและเป็นค่าแรงส่วนที่คุมได้มากที่สุด</td></tr>
+    <tr><td class="z">fct_forecast</td><td>periodic snapshot</td><td>SKU × วัน × ช่องทาง × รอบการรัน</td><td>forecast_units (บวกข้ามรอบไม่ได้)</td><td>โมเดลพยากรณ์ รายสัปดาห์</td><td>ค่าพยากรณ์เทียบของจริงกลายเป็นตารางที่ติดตามได้</td></tr>
   </tbody>
 </table>
 </div>
-<p>การเปลี่ยนราคาคือการเพิ่มแถวใหม่ ไม่ใช่การเขียนทับ ยอดขายวันศุกร์ชี้ไปที่ key 2 ส่วนวันเสาร์ชี้ไปที่ key 6</p>
-<h3>Star ไม่ใช่ snowflake</h3>
-<p>
-  <code>category</code> และ <code>size_code</code> อยู่ใน <code>DIM_MENU_ITEM</code> เลย join จาก fact ไปหาบริบทแค่ครั้งเดียว
-  และอ่าน dimension แล้วเหมือนอ่านเมนู <code>DIM_STAFF → DIM_ROLE</code> คือ snowflake ตัวเดียวที่เราตั้งใจทำ เพราะ role มี flag ของตัวเอง
-</p>
 
-<h2 class="wide">7 · การโหลด fact หนึ่งแถว</h2>
+<h2>6 · ข้อตกลงที่ทุกตารางต้องทำตาม</h2>
+<p>นี่คือกฎที่ทีมใช้กับทุกตารางใหม่ ตัวเลขมาจากต้นแบบใน <code>notebooks/warehouse_design.ipynb</code> ซึ่งตั้งใจทำให้แต่ละข้อพังเพื่อให้เห็นว่ามันปกป้องอะไร</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ข้อตกลง</th><th>ปกป้องอะไร (ตัวเลขจากต้นแบบ)</th></tr></thead>
+  <tbody>
+    <tr><td class="zt">บอก grain ก่อน</td><td>ทุกตารางมี grain ในประโยคเดียว เงินระดับออร์เดอร์ห้ามอยู่ในแถวระดับบรรทัด ถ้า join แล้ว sum คอมมิชชัน Grab วันศุกร์จะเป็น 403.5 แทน 257.1</td></tr>
+    <tr><td class="zt">snapshot ค่าที่เป็นนโยบาย</td><td>ราคา ต้นทุน และตัวคูณ OT ถูกคัดลอกลง fact ณ ตอนที่เกิด ไม่อย่างนั้นการขึ้นราคาวันเสาร์จะเปลี่ยนรายได้ Pepperoni L วันศุกร์จาก 1,037 เป็น 1,047</td></tr>
+    <tr><td class="zt">list ต้องเป็นตาราง</td><td>ห้ามมี list ในคอลัมน์ เก็บ modifier เป็นแถวทำให้ variance มอซซาเรลลาวันศุกร์เป็น −20 กรัม ถ้าเก็บเป็น text จะเป็น −100 กรัม</td></tr>
+    <tr><td class="zt">เก็บสิ่งที่บวกได้</td><td>fact เก็บส่วนที่บวกได้ อัตราส่วนคำนวณตอน query ค่าที่เป็นระดับอย่างยอดนับสต็อกห้ามบวกข้ามเวลา ("คงเหลือ" 16.3 กิโล แต่ของจริง 5.2 กิโล)</td></tr>
+    <tr><td class="zt">FK หนึ่งตัวต่อแหล่ง</td><td>ห้ามมีคอลัมน์อ้างอิงที่ใช้ร่วมกัน key แบบ polymorphic ทำให้การรับชีส 2 กิโลไป join กับพิซซ่าได้โดยไม่มี error</td></tr>
+    <tr><td class="zt">surrogate key, SCD2</td><td>fact เก็บแต่ key ของ warehouse เมนู สูตร และพนักงานเก็บทุกเวอร์ชัน fact join กับเวอร์ชันที่ใช้ได้ในวันทำการของมัน</td></tr>
+    <tr><td class="zt">วันทำการครั้งเดียว</td><td><code>date_sk</code> ถูกกำหนดตอนโหลด (10:00–02:00) query ปลายทางไม่ต้องคำนวณเวลาเองเลย</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 class="wide">7 · การโหลดในแต่ละคืน</h2>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 250" role="img"
@@ -511,133 +490,162 @@ GROUP BY ALL</pre>
     จึงเป็นของวันทำการวันศุกร์ และได้ราคาของวันศุกร์
   </figcaption>
 </figure>
-
-<h2>8 · กฎ 5 ข้อในการออกแบบ fact table</h2>
-<p>ทุกข้อเป็นการตัดสินใจที่อยู่ใน README อยู่แล้ว ในโน้ตบุ๊กเราตั้งใจทำให้แต่ละข้อพัง เพื่อให้เห็นว่ามันปกป้องอะไรไว้</p>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>กฎ</th><th>ถ้าฝ่าฝืน…</th><th>เราใช้ตรงไหน</th></tr></thead>
-  <tbody>
-    <tr>
-      <td class="zt">1 · ตารางละหนึ่ง grain</td>
-      <td>join ออร์เดอร์กับบรรทัดแล้ว sum คอมมิชชัน: คอมมิชชัน Grab วันศุกร์จะเป็น <strong>403.5</strong> แทนที่จะเป็น <strong>257.1</strong> เพราะ GF-201 มีสองบรรทัด</td>
-      <td><code>FCT_ORDER</code> กับ <code>FCT_ORDER_LINE</code>; ส่วนลดระดับตะกร้าถูกกระจายลงบรรทัด (<code>pro_rata</code>) ไม่ใช่คัดลอก</td>
-    </tr>
-    <tr>
-      <td class="zt">2 · snapshot ค่าที่เปลี่ยนได้</td>
-      <td>รายได้ Pepperoni L วันศุกร์: จ่ายจริง <strong>1,037</strong> ถ้าใช้ราคาเมนูวันนี้ได้ <strong>1,047</strong> การขึ้นราคาไปเขียนวันศุกร์ใหม่ ถ้าใช้ราคาตั้งของวันศุกร์ (SCD2) ได้ <strong>987</strong> ส่วนต่าง 50 บาทคือราคาที่ Grab บวกเพิ่ม</td>
-      <td><code>unit_price_thb</code>, <code>price_delta_thb</code>, <code>unit_cost_thb</code>, <code>ot_multiplier_applied</code></td>
-    </tr>
-    <tr>
-      <td class="zt">3 · list ต้องเป็นตาราง</td>
-      <td>ถ้าเก็บ modifier เป็น text ชีสเพิ่มจะไม่ถูกนับเป็นการใช้วัตถุดิบ variance มอซซาเรลลาวันศุกร์จะเป็น <strong>−100 กรัม</strong> แทนที่จะเป็น <strong>−20 กรัม</strong> แย่ลงห้าเท่า และผู้จัดการจะไปตามหาคนขโมย</td>
-      <td><code>FCT_ORDER_LINE_MODIFIER</code> + <code>BRG_MODIFIER_RECIPE</code>; <code>BRG_SUPPLIER_DELIVERY_DAY</code></td>
-    </tr>
-    <tr>
-      <td class="zt">4 · รู้ว่าอะไรบวกได้</td>
-      <td>บวกยอดนับชีสรายวันพฤหัสถึงเสาร์: "เรามีชีส <strong>16.3 กิโล</strong>" แต่ในตู้เย็นมี <strong>5.2 กิโล</strong> ส่วน <code>AVG(unit_price)</code> ได้ 357.00 แต่ค่าเฉลี่ยจริงคือ 361.86</td>
-      <td><code>qty_delta</code> แบบมีเครื่องหมาย (บวกได้) กับ <code>qty_counted</code> (เป็นระดับ); เก็บ <code>regular_hours</code> กับ <code>ot_hours</code> แยกกัน</td>
-    </tr>
-    <tr>
-      <td class="zt">5 · FK หนึ่งตัวต่อหนึ่งแหล่ง</td>
-      <td>ใช้ <code>source_ref_sk</code> ตัวเดียวร่วมกัน แล้วการรับชีส 2 กิโลไป join เข้ากับพิซซ่าในออร์เดอร์ P-1001 ไม่มี error เลย ได้แค่แถวผิดที่ดูน่าเชื่อ</td>
-      <td>FK สี่ตัวแยกกันใน <code>FCT_INVENTORY_MOVEMENT</code> พร้อม CHECK ว่าตั้งค่าได้อย่างมากหนึ่งตัว</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-<div class="callout">
-  <b>กฎข้อ 2 ในบรรทัดเดียว</b><br>
-  snapshot ตอบว่า <em>เกิดอะไรขึ้น</em> ส่วน SCD2 ตอบว่า <em>ตอนนั้นอะไรจริง</em> เราตั้งใจเก็บไว้ทั้งสองแบบ
-</div>
-
-<h2>9 · fact table 4 ประเภท และเราใช้แบบไหน</h2>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>ประเภท</th><th>หนึ่งแถวคือ…</th><th>แถวเปลี่ยนได้ไหม?</th><th>ของเรา</th></tr></thead>
-  <tbody>
-    <tr><td class="z">Transaction</td><td>หนึ่งเหตุการณ์ ณ เวลาที่เกิด</td><td>ไม่เลย</td><td><code>FCT_ORDER_LINE</code>, <code>FCT_PAYMENT</code>, <code>FCT_ORDER_EVENT</code>, <code>FCT_INVENTORY_MOVEMENT</code>, <code>FCT_PURCHASE_ORDER_LINE</code>, <code>FCT_SHIFT</code></td></tr>
-    <tr><td class="z">Periodic snapshot</td><td>สถานะของบางอย่าง ทุกช่วงเวลา</td><td>ไม่เลย เพิ่มแถวใหม่ทุกช่วง</td><td><code>FCT_INVENTORY_COUNT</code> (ทุกปิดร้าน)</td></tr>
-    <tr><td class="z">Accumulating snapshot</td><td>หนึ่งกระบวนการ หนึ่งคอลัมน์ต่อหนึ่งขั้น</td><td><strong>ได้</strong> อัปเดตเมื่อถึงขั้นถัดไป</td><td><code>mart_delivery_sla</code> สร้างจาก <code>FCT_ORDER_EVENT</code></td></tr>
-    <tr><td class="z">Factless</td><td>บางอย่างเกิดขึ้นหรือเป็นไปได้</td><td>นาน ๆ ครั้ง</td><td><code>BRG_CHANNEL_MENU_ITEM</code> ใช้เป็นตาราง coverage</td></tr>
-  </tbody>
-</table>
-</div>
+<p><strong>ด่านตรวจคุณภาพที่หยุดการโหลด</strong> (รายการเต็มอยู่ใน README §10):</p>
 <ul>
-  <li><strong>เราเก็บ event log แล้วสร้าง accumulating snapshot จากมัน</strong> ขั้นใหม่ (เช่น Grab เพิ่ม <code>driver_arrived</code>) เป็นแค่ค่าใหม่ในแถว ไม่ใช่คอลัมน์ใหม่ และ log ไม่ต้องถูกอัปเดตเลย</li>
-  <li><strong>สต็อกคงเหลือคำนวณจาก movement</strong> ผลบวกสะสมของ <code>qty_delta</code> ได้ snapshot รายวัน การนับจริงเป็นตัวตรวจ และส่วนต่างระหว่างสองค่าคือ KPI ของเสีย</li>
-  <li><strong>ตาราง coverage หาสิ่งที่ไม่ได้เกิดขึ้น</strong> ลงขายลบด้วยขายได้: Pepperoni M ไม่มีออร์เดอร์จาก Grab เลย และฮาวายเอี้ยนขายได้ทางโทรศัพท์แต่ไม่เคยขายได้ที่โต๊ะ fact การขายตัวไหนก็บอกเรื่องนี้ไม่ได้</li>
+  <li>business key ที่หา dimension ไม่เจอ (เช่นเมนูใหม่ของ Grab ที่ยังไม่มีใน <code>BRG_CHANNEL_MENU_ITEM</code>) จะถูกกักไว้พร้อมแจ้งเตือน รายได้ไม่หายไปแบบเงียบ ๆ</li>
+  <li>ส่วนลดระดับบรรทัดต้องรวมได้เท่ากับส่วนลดระดับออร์เดอร์ทุกใบ</li>
+  <li>การเคลื่อนไหวสต็อกแต่ละครั้งมี FK ต้นทางได้อย่างมากหนึ่งตัว และต้องตรงกับ <code>movement_type</code></li>
+  <li>upsert ด้วย <code>(channel_sk, external_order_id)</code> โหลดไฟล์ export ซ้ำก็ไม่ทำให้รายได้เป็นสองเท่า</li>
+  <li>ประมวลผล 3 วันทำการล่าสุดใหม่ทุกคืน เพื่อเก็บออร์เดอร์ที่มาช้า</li>
 </ul>
 
-<h2 class="wide">10 · fact table ทุกตัวในโมเดลของเรา</h2>
+<h2 class="wide">8 · Data mart</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 470" role="img"
+       aria-label="fact table ทางซ้ายป้อนข้อมูลให้ mart 6 ตัวตรงกลาง ซึ่งป้อนให้ผู้ใช้ 4 กลุ่มทางขวา: แดชบอร์ดเจ้าของร้าน โมเดลพยากรณ์ รายการสั่งของ และแคมเปญ LINE โมเดลพยากรณ์เขียน fct_forecast กลับเข้า warehouse">
+    <defs>
+      <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+    <g font-size="12" font-weight="700" fill="var(--ink-2)">
+      <text x="20"  y="24">DW · fact table</text>
+      <text x="430" y="24">MART · ทุกคืน 03:30</text>
+      <text x="860" y="24">ผู้ใช้</text>
+    </g>
+
+    <g fill="var(--surface)" stroke="var(--ember)" stroke-width="1.6">
+      <rect x="20" y="40"  width="300" height="44" rx="3"/>
+      <rect x="20" y="100" width="300" height="44" rx="3"/>
+      <rect x="20" y="160" width="300" height="44" rx="3"/>
+      <rect x="20" y="220" width="300" height="44" rx="3"/>
+      <rect x="20" y="280" width="300" height="44" rx="3"/>
+      <rect x="20" y="340" width="300" height="44" rx="3"/>
+    </g>
+    <g fill="var(--zone)" stroke="currentColor" stroke-width="1.2">
+      <rect x="430" y="40"  width="260" height="44" rx="3"/>
+      <rect x="430" y="100" width="260" height="44" rx="3"/>
+      <rect x="430" y="160" width="260" height="44" rx="3"/>
+      <rect x="430" y="220" width="260" height="44" rx="3"/>
+      <rect x="430" y="280" width="260" height="44" rx="3"/>
+      <rect x="430" y="340" width="260" height="44" rx="3"/>
+    </g>
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="860" y="40"  width="300" height="104" rx="3"/>
+      <rect x="860" y="160" width="300" height="44"  rx="3"/>
+      <rect x="860" y="220" width="300" height="104" rx="3"/>
+      <rect x="860" y="340" width="300" height="44"  rx="3"/>
+    </g>
+
+    <g class="m" font-size="11" fill="currentColor">
+      <text x="32" y="67">FCT_ORDER</text>
+      <text x="32" y="127">FCT_ORDER_LINE (+ _MODIFIER)</text>
+      <text x="32" y="187">FCT_ORDER_LINE_PROMOTION</text>
+      <text x="32" y="247">FCT_ORDER_EVENT</text>
+      <text x="32" y="307">FCT_INVENTORY_MOVEMENT · _COUNT</text>
+      <text x="32" y="367">FCT_SHIFT</text>
+
+      <text x="442" y="67">mart_sales_daily</text>
+      <text x="442" y="127">mart_promotion_performance</text>
+      <text x="442" y="187">mart_customer_rfm</text>
+      <text x="442" y="247">mart_delivery_sla</text>
+      <text x="442" y="307">mart_ingredient_usage_daily</text>
+      <text x="442" y="367">mart_labor_vs_sales</text>
+    </g>
+    <g font-size="12" fill="currentColor">
+      <text x="872" y="64" font-weight="700">แดชบอร์ดเจ้าของร้าน</text>
+      <text x="872" y="82" fill="var(--ink-2)" font-size="10.5">รายได้สุทธิตามช่องทาง · วันนี้เทียบค่าพยากรณ์</text>
+      <text x="872" y="98" fill="var(--ink-2)" font-size="10.5">วัตถุดิบเสี่ยงหมด · เฝ้าดู variance</text>
+      <text x="872" y="114" fill="var(--ink-2)" font-size="10.5">เวลาทำอาหาร p50/p90 · ค่าแรง %</text>
+      <text x="872" y="187" font-weight="700">โมเดลพยากรณ์ความต้องการ</text>
+      <text x="872" y="244" font-weight="700">รายการแนะนำการสั่งของ</text>
+      <text x="872" y="262" fill="var(--ink-2)" font-size="10.5">พยากรณ์ × สูตร − คงเหลือ + safety stock</text>
+      <text x="872" y="278" fill="var(--ink-2)" font-size="10.5">คำนึงถึง lead time และวันส่งของ</text>
+      <text x="872" y="294" fill="var(--ink-2)" font-size="10.5">→ ใบสั่งซื้อที่ผู้จัดการกดอนุมัติได้ในครั้งเดียว</text>
+      <text x="872" y="367" font-weight="700">แคมเปญดึงลูกค้ากลับทาง LINE</text>
+    </g>
+
+    <g stroke="currentColor" stroke-width="1" fill="none" marker-end="url(#arr3)" opacity="0.75">
+      <line x1="320" y1="62"  x2="428" y2="58"/>
+      <line x1="320" y1="122" x2="428" y2="68"/>
+      <line x1="320" y1="122" x2="428" y2="118"/>
+      <line x1="320" y1="182" x2="428" y2="128"/>
+      <line x1="320" y1="66"  x2="428" y2="182"/>
+      <line x1="320" y1="70"  x2="428" y2="238"/>
+      <line x1="320" y1="242" x2="428" y2="248"/>
+      <line x1="320" y1="302" x2="428" y2="302"/>
+      <line x1="320" y1="74"  x2="428" y2="358"/>
+      <line x1="320" y1="362" x2="428" y2="368"/>
+    </g>
+    <g stroke="currentColor" stroke-width="1" fill="none" marker-end="url(#arr3)" opacity="0.75">
+      <line x1="690" y1="56"  x2="858" y2="56"/>
+      <line x1="690" y1="66"  x2="858" y2="182"/>
+      <line x1="690" y1="122" x2="858" y2="74"/>
+      <line x1="690" y1="182" x2="858" y2="360"/>
+      <line x1="690" y1="242" x2="858" y2="94"/>
+      <line x1="690" y1="298" x2="858" y2="112"/>
+      <line x1="690" y1="306" x2="858" y2="300"/>
+      <line x1="690" y1="362" x2="858" y2="130"/>
+    </g>
+    <rect x="20" y="404" width="300" height="44" rx="3" fill="var(--surface)" stroke="var(--ember)" stroke-width="1.6" stroke-dasharray="5 3"/>
+    <text x="32" y="431" font-size="11" fill="currentColor"><tspan class="m">fct_forecast</tspan> (เขียนกลับทุกสัปดาห์)</text>
+    <g stroke="var(--ember)" stroke-width="1.2" fill="none" marker-end="url(#arr3)">
+      <line x1="1010" y1="204" x2="1010" y2="218"/>
+      <path d="M1160 182 H1172 V426 H324" stroke-dasharray="5 4"/>
+    </g>
+    <text x="745" y="418" font-size="10.5" fill="var(--ember)" text-anchor="middle">ค่าพยากรณ์ถูกเขียนกลับ แล้วเทียบกับยอดขายจริง</text>
+  </svg>
+  </div>
+  <figcaption>
+    mart ทุกตัวสร้างจาก dw เท่านั้น ไม่สร้างจาก raw หรือ stg และไม่เพิ่มกฎธุรกิจของตัวเอง mart แต่ละตัวถูกจัดรูปให้ตอบคำถามของผู้ใช้หนึ่งกลุ่ม ที่ grain ที่ผู้ใช้นั้นอ่าน
+  </figcaption>
+</figure>
+
 <div class="wide table-scroll">
 <table>
-  <thead><tr><th>Fact table</th><th>ประเภท</th><th>Grain: หนึ่งแถว =</th><th>Measure</th><th>ทำไมต้องมี ทำไมหน้าตาแบบนี้</th></tr></thead>
+  <thead><tr><th>Mart</th><th>Grain: หนึ่งแถว =</th><th>คอลัมน์</th><th>สร้างจาก</th><th>ใช้ทำอะไร</th></tr></thead>
   <tbody>
-    <tr><td class="z">FCT_ORDER</td><td>transaction</td><td>ออร์เดอร์หนึ่งใบ ทุกช่องทาง</td><td>ยอดขาย ส่วนลด ค่าส่ง คอมมิชชัน รายได้สุทธิ</td><td>เงินระดับออร์เดอร์ต้องไม่ซ้ำในทุกบรรทัด รายได้สุทธิคือเงินที่ร้านได้จริง</td></tr>
-    <tr><td class="z">FCT_ORDER_LINE</td><td>transaction</td><td>เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</td><td>quantity, line_net; unit_price (snapshot)</td><td>grain ของการพยากรณ์คือ เมนู × วัน × ช่องทาง ยอดขายจึงต้องอยู่ระดับเมนู</td></tr>
-    <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>transaction</td><td>modifier หนึ่งตัวบนบรรทัดหนึ่งบรรทัด</td><td>quantity; price_delta (snapshot)</td><td>เคยเป็น <code>modifiers_json</code> ถ้าไม่มีตารางนี้ ชีสเพิ่มจะไม่ถูกนับเป็นการใช้สต็อก</td></tr>
-    <tr><td class="z">FCT_PAYMENT</td><td>transaction</td><td>การจ่ายเงินหนึ่งครั้งต่อออร์เดอร์หนึ่งใบ</td><td>amount</td><td>การแบ่งจ่ายเป็นเรื่องปกติ และแพลตฟอร์มโอนเงินให้ช้ากว่าหลายวัน</td></tr>
-    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>การเปลี่ยนสถานะหนึ่งครั้งของออร์เดอร์หนึ่งใบ</td><td>event_ts, duration</td><td>ระยะเวลาไหนก็คือผลต่างของสองแถว ขั้นใหม่ไม่ต้องแก้ schema</td></tr>
-    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อออร์เดอร์หนึ่งใบ</td><td>discount</td><td>ส่วนลดระดับตะกร้าตามที่แพลตฟอร์มรายงาน ต้องกระทบยอดกับตารางระดับบรรทัดได้</td></tr>
-    <tr><td class="z">FCT_ORDER_LINE_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อบรรทัดหนึ่งบรรทัด</td><td>discount (กระจายลงมา)</td><td>ดันส่วนลดลงไปถึงระดับ SKU เพื่อให้ margin ของเมนูเป็นของจริง</td></tr>
-    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>ใบสั่งซื้อหนึ่งใบถึงซัพพลายเออร์หนึ่งราย</td><td>total cost</td><td>วันที่สั่งกับวันที่รับของชี้ไปที่ <code>DIM_DATE</code> ทั้งคู่ เรียกว่า role-playing dimension</td></tr>
-    <tr><td class="z">FCT_PURCHASE_ORDER_LINE</td><td>transaction</td><td>วัตถุดิบหนึ่งตัวในใบสั่งซื้อหนึ่งใบ</td><td>qty ordered, qty received; unit_cost (snapshot)</td><td>ต้นทุน ณ วันที่ซื้อ food cost % จึงไม่เพี้ยนตามราคาใหม่</td></tr>
-    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>การเคลื่อนไหวหนึ่งครั้งของวัตถุดิบหนึ่งตัว</td><td>qty_delta (มีเครื่องหมาย)</td><td>สต็อกคงเหลือ = <code>SUM(qty_delta)</code> มี FK สี่ตัว หนึ่งตัวต่อเอกสารต้นทางหนึ่งแบบ</td></tr>
-    <tr><td class="z">FCT_INVENTORY_COUNT</td><td>periodic snapshot</td><td>วัตถุดิบหนึ่งตัว ณ ปิดร้านหนึ่งวัน</td><td>counted, expected (ระดับ); variance</td><td>ความจริงทางกายภาพ variance คือ KPI ที่ทั้งโมเดลมีไว้เพื่อสร้าง</td></tr>
-    <tr><td class="z">FCT_SHIFT</td><td>transaction</td><td>กะหนึ่งกะของพนักงานหนึ่งคน</td><td>ชั่วโมงปกติ ชั่วโมง OT ค่าแรง; OT multiplier (snapshot)</td><td>ชั่วโมง OT แพงกว่าจึงแยกเก็บ ตัวคูณเป็นนโยบายจึง snapshot ไว้</td></tr>
-    <tr><td class="z">fct_forecast</td><td>periodic snapshot</td><td>เมนู × วัน × ช่องทาง × รอบการรัน</td><td>forecast_units (บวกข้ามรอบไม่ได้)</td><td>ค่าพยากรณ์เทียบกับของจริงกลายเป็นตารางที่ทำกราฟได้ ออกแบบใน section 11</td></tr>
+    <tr><td class="z">mart_sales_daily</td><td>วันทำการ × ช่องทาง × SKU</td><td>units_sold, orders, gross_sales_thb, discount_thb, net_sales_thb และชื่อเมนู หมวด ไซซ์</td><td>FCT_ORDER_LINE, FCT_ORDER, dims; ไม่รวมออร์เดอร์ที่ยกเลิก</td><td>แดชบอร์ดยอดขาย; ข้อมูลฝึกโมเดลพยากรณ์</td></tr>
+    <tr><td class="z">mart_ingredient_usage_daily</td><td>วันทำการ × วัตถุดิบ</td><td>recipe_usage, modifier_usage, theoretical_usage, expected_on_hand, counted_on_hand, variance_qty, variance_value_thb, waste_pct</td><td>FCT_INVENTORY_MOVEMENT, FCT_INVENTORY_COUNT</td><td>รายการสั่งของ เฝ้าดู variance และ % ของเสีย</td></tr>
+    <tr><td class="z">mart_delivery_sla</td><td>ออร์เดอร์หนึ่งใบ</td><td>ช่องทาง วันทำการ ชั่วโมงที่สั่ง เวลา placed / accepted / prep_complete / pickup / delivered, prep_min, to_pickup_min, lead_time_min</td><td>FCT_ORDER_EVENT แบบ pivot, FCT_ORDER</td><td>เวลาทำอาหารและเวลาส่ง p50 / p90 ตามช่องทางและชั่วโมง</td></tr>
+    <tr><td class="z">mart_customer_rfm</td><td>ลูกค้าหนึ่งคน (ช่องทางของร้าน)</td><td>last_order_date, recency_days, frequency_90d, monetary_90d_thb, คะแนน R / F / M, segment</td><td>FCT_ORDER ที่มี customer_sk</td><td>แบ่งกลุ่มลูกค้าและแคมเปญดึงกลับทาง LINE ระบุชัดว่าเฉพาะช่องทางของร้าน</td></tr>
+    <tr><td class="z">mart_labor_vs_sales</td><td>วันทำการ × ชั่วโมง</td><td>staff_on_shift, labour_hours, ot_hours, labour_cost_thb, ot_cost_thb, net_sales_thb, labour_cost_pct, orders_per_labour_hour</td><td>FCT_SHIFT, FCT_ORDER</td><td>ค่าแรง % สัดส่วน OT ชั่วโมงที่คนไม่พอ</td></tr>
+    <tr><td class="z">mart_promotion_performance</td><td>โปรโมชัน × วันทำการ × SKU</td><td>units_discounted, discount_thb (ร้านจ่าย vs แพลตฟอร์มจ่าย), net_sales_after_discount_thb, margin_after_discount_thb</td><td>FCT_ORDER_LINE_PROMOTION, FCT_ORDER_LINE, BRG_PROMOTION_REWARD</td><td>ค่าส่วนลดต่อ SKU และโปรคุ้มหรือไม่</td></tr>
   </tbody>
 </table>
 </div>
+<p>
+  คอลัมน์ของ mart ถูกคำนวณใหม่ทุกคืนจาก <code>dw</code> mart จึงลบแล้วสร้างใหม่ได้เสมอ
+  อัตราส่วนอย่าง <code>labour_cost_pct</code> และ <code>waste_pct</code> เก็บคู่กับตัวเศษและตัวส่วน เพื่อให้รวมเป็นรายสัปดาห์หรือรายเดือนได้ถูกต้อง
+</p>
 
-<h2>11 · ตัวอย่างการออกแบบ: <code>fct_forecast</code></h2>
-<p>README พูดถึงตาราง forecast แต่ไม่เคยออกแบบ ลองใช้ 4 ขั้นตอนกับของใหม่:</p>
-<ol>
-  <li><strong>Process</strong> โมเดลทำนายความต้องการ การทำนายหนึ่งครั้งคือเหตุการณ์หนึ่ง มีเวลาที่เกิดและมีผลลัพธ์</li>
-  <li><strong>Grain</strong> การพยากรณ์หนึ่งครั้ง ของเมนูหนึ่งรายการ สำหรับวันทำการหนึ่งวัน ในช่องทางหนึ่ง จากการรันโมเดลหนึ่งรอบ รอบการรันต้องอยู่ใน grain เพราะพยากรณ์วันเสาร์ที่ทำวันจันทร์กับที่ทำวันศุกร์เป็นคนละ fact</li>
-  <li><strong>Dimensions</strong> เมนู วันที่ (วันที่ถูกพยากรณ์) และช่องทาง ทั้งสามมีอยู่แล้วสำหรับการขาย เพราะเป็น conformed dimension จึง join ค่าพยากรณ์กับของจริงได้ทันที</li>
-  <li><strong>Facts</strong> <code>forecast_units</code> บวกข้ามเมนู วัน และช่องทางได้ แต่ <strong>บวกข้ามรอบไม่ได้</strong> บวกสองรอบของวันเสาร์เดียวกันได้ 7 ถาด แต่รอบล่าสุดบอก 5</li>
-</ol>
+<h2>9 · ตารางเวลาทุกคืน</h2>
 <div class="table-scroll">
 <table>
-  <thead><tr><th>รอบ</th><th>ช่องทาง</th><th style="text-align:right">พยากรณ์</th><th style="text-align:right">ของจริง</th><th style="text-align:right">คลาดเคลื่อน</th></tr></thead>
+  <thead><tr><th>เวลา</th><th>งาน</th><th>ทำอะไร</th></tr></thead>
   <tbody>
-    <tr><td class="t">run-0901</td><td class="z">GRAB</td><td class="n">1</td><td class="n">2</td><td class="n bad">−1</td></tr>
-    <tr><td class="t">run-0901</td><td class="z">QR_DINEIN</td><td class="n">1</td><td class="n">2</td><td class="n bad">−1</td></tr>
-    <tr><td class="t">run-0904</td><td class="z">GRAB</td><td class="n">3</td><td class="n">2</td><td class="n bad">+1</td></tr>
-    <tr><td class="t">run-0904</td><td class="z">QR_DINEIN</td><td class="n">2</td><td class="n">2</td><td class="n">0</td></tr>
+    <tr><td class="t">ทุก 5 นาที</td><td class="z">ingest POS</td><td>คัดลอกออร์เดอร์จาก POS เข้า raw</td></tr>
+    <tr><td class="t">03:00</td><td class="z">load dw</td><td>raw → stg → dimension แล้วตามด้วย fact สำหรับ 3 วันทำการล่าสุด ต้องผ่านทุกด่านตรวจ ไม่อย่างนั้นจะไม่เผยแพร่อะไรเลย</td></tr>
+    <tr><td class="t">03:30</td><td class="z">build marts</td><td>สร้าง mart ทั้ง 6 ตัวใหม่จาก dw</td></tr>
+    <tr><td class="t">06:00</td><td class="z">ingest exports</td><td>ไฟล์ export ของแพลตฟอร์ม (T+1) ยอดนับสต็อก กะงาน และใบสั่งซื้อ เข้า raw แล้วถูกโหลดในรอบ 03:00 ถัดไป</td></tr>
+    <tr><td class="t">รายสัปดาห์</td><td class="z">forecast</td><td>อ่าน <code>mart_sales_daily</code> แล้วเขียน <code>fct_forecast</code></td></tr>
   </tbody>
 </table>
 </div>
-<p>รอบที่ใกล้วันกว่าแม่นกว่า คำถาม "โมเดลแม่นขึ้นไหม?" จึงเหลือแค่ <code>GROUP BY forecast_run_id</code> เดียว</p>
 
-<h2>12 · สรุป</h2>
-<div class="two">
-  <div>
-    <h3>ทำไปเพื่ออะไร</h3>
-    <ul>
-      <li>รวมห้าแหล่งให้เป็นรูปแบบเดียว</li>
-      <li>นิยามกฎธุรกิจครั้งเดียว</li>
-      <li>เก็บประวัติที่ POS เขียนทับ</li>
-      <li>จัดรูปข้อมูลให้ถามง่าย</li>
-      <li>ไม่ให้งานวิเคราะห์หนัก ๆ ไปรบกวน POS</li>
-    </ul>
-  </div>
-  <div>
-    <h3>ทำออกมายังไง</h3>
-    <ul>
-      <li>Process → grain → dimension → fact</li>
-      <li>bus matrix ของ conformed dimension</li>
-      <li>surrogate key และ SCD2</li>
-      <li>โหลด fact ด้วยการเปลี่ยน business key เป็น surrogate key ผ่านด่านตรวจคุณภาพ</li>
-    </ul>
-  </div>
-</div>
-<div class="callout">
-  <b>ออกแบบ fact table ในบรรทัดเดียว</b><br>
-  บอก grain ให้ได้ในประโยคเดียว ห้ามปนสอง grain, snapshot ค่าที่เปลี่ยนได้, เปลี่ยน list เป็นตาราง,
-  เก็บเฉพาะสิ่งที่บวกได้ และให้ทุกแหล่งมี key ของตัวเอง
+<h2>10 · สถานะการสร้างตอนนี้</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>ส่วน</th><th>สถานะ</th></tr></thead>
+  <tbody>
+    <tr><td class="zt">โมเดลเต็ม</td><td>ออกแบบแล้ว: ER diagram ใน README (รูปที่ 2–5) และหน้านี้</td></tr>
+    <tr><td class="zt">pipeline แบบ zone</td><td>มีต้นแบบครบทั้งเส้นใน <code>notebooks/data_flow_demo.ipynb</code> (ออร์เดอร์ และ mart สองตัว)</td></tr>
+    <tr><td class="zt">star การขาย, modifier, สต็อก, event, forecast</td><td>มีต้นแบบใน <code>notebooks/warehouse_design.ipynb</code></td></tr>
+    <tr><td class="zt">การชำระเงิน, โปรโมชัน, การสั่งซื้อ, กะงาน</td><td>ออกแบบแล้ว ยังไม่ได้ทำต้นแบบ</td></tr>
+    <tr><td class="zt">Mart</td><td><code>mart_sales_daily</code> และ <code>mart_ingredient_usage_daily</code> มีต้นแบบแล้ว (นับแค่การใช้ตามสูตร) อีก 4 ตัวกำหนดสเปกไว้ข้างบน</td></tr>
+  </tbody>
+</table>
 </div>
 
 </main>

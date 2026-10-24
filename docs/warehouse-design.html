@@ -73,7 +73,7 @@
   p + p { margin-top: 0.85rem; }
   code { font-family: var(--font-mono); font-size: 0.86em; background: var(--zone); padding: 0.05em 0.3em; border-radius: 3px; }
   pre {
-    font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.5;
+    font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.5;
     background: var(--surface); border: 1px solid var(--rule); padding: 0.8rem 1rem;
     overflow-x: auto; margin: 0.5rem 0 0;
   }
@@ -115,7 +115,7 @@
   .two > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.9rem 1.1rem; min-width: 0; }
   .two h3 { margin-top: 0; }
   .lang { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-2); margin-top: 0.75rem; }
-  .lang a { color: var(--ember); }
+  .lang a, main a { color: var(--ember); }
   @media (max-width: 640px) {
     header.masthead { padding-top: 2.5rem; }
     .two { grid-template-columns: 1fr; }
@@ -126,129 +126,96 @@
 <main>
 
 <header class="masthead">
-  <p class="eyebrow">MADT8102 · Warehouse and fact table design</p>
-  <h1>Warehouse design: why we built one, how, and the fact tables inside it</h1>
+  <p class="eyebrow">MADT8102 · Pizza shop · Warehouse specification</p>
+  <h1>The warehouse: what the team builds and how it gets used</h1>
   <p class="standfirst">
-    Why the pizza shop needs a warehouse at all, the four steps we used to design it, and the rules
-    behind each of the 13 fact tables in our model. Every number on this page comes out of
-    <code>notebooks/warehouse_design.ipynb</code>, where each one can be rerun.
+    The warehouse for this project, from staged source data to the marts the owner, the reorder list and the
+    forecast model read. It covers every dimension, fact table and mart, the conventions every table follows,
+    and how a nightly load runs.
   </p>
   <div class="meta-strip">
-    <span>Method <b>Kimball, 4 steps</b></span>
-    <span>Schema <b>Star · 13 fact tables</b></span>
-    <span>History <b>SCD2 + snapshots on facts</b></span>
-    <span>Day <b>Business day 10:00–02:00</b></span>
+    <span>Layers <b>stg → dw → mart</b></span>
+    <span>Model <b>Star · 10 dims · 13 facts</b></span>
+    <span>Marts <b>6</b></span>
+    <span>Refresh <b>Nightly 03:00 core · 03:30 marts</b></span>
   </div>
   <p class="lang">ฉบับภาษาไทย: <a href="warehouse-design.th.html">warehouse-design.th.html</a></p>
 </header>
 
-<h2>1 · Why build a warehouse? Ask one question</h2>
+<h2>1 · What it is and why the project needs it</h2>
 <p>
-  The owner asks: <em>what was our net revenue by channel on Friday?</em> Net means what the shop keeps after the
-  delivery app's commission. We answered it twice: once straight from the POS and the Grab export, once from the warehouse.
+  The warehouse is the Trusted and Refined zones of our data lake (<a href="data-flow.html">data-flow.html</a>):
+  one star schema of conformed dimensions and fact tables, plus one mart per business question. It is the only
+  place business rules live. Dashboards, the reorder list and the forecast model read from it and never from a source system.
 </p>
+<p>The reason is easiest to see with one question: <em>what was net revenue by channel on Friday?</em></p>
 <div class="two">
   <div>
-    <h3>From the sources: 30 lines of SQL</h3>
-    <p>The query has to carry six rules by itself:</p>
-    <ol>
-      <li>Union two different shapes (POS tables, Grab CSV)</li>
-      <li>Convert Grab's UTC to Bangkok time</li>
-      <li>Business day: an order before 10:00 belongs to yesterday</li>
-      <li>Grab repeats commission on every item row: <code>MAX</code>, not <code>SUM</code></li>
-      <li>Extra-cheese prices sit inside a text column, so it has to be parsed</li>
-      <li>The POS says <code>QR</code>, everyone else says <code>QR_DINEIN</code></li>
-    </ol>
+    <h3>Asked of the sources: 30 lines</h3>
+    <p>The query has to carry six rules itself: union two shapes, UTC → Bangkok, business day 10:00–02:00,
+    <code>MAX</code> not <code>SUM</code> on Grab's repeated commission, parse modifier prices out of text, map <code>QR</code> → <code>QR_DINEIN</code>.
+    The POS has also already overwritten last week's prices.</p>
   </div>
   <div>
-    <h3>From the warehouse: 7 lines</h3>
-    <pre>SELECT c.channel_code,
-       SUM(o.net_revenue_thb)
-FROM dw.fct_order o
-JOIN dw.dim_channel c USING (channel_sk)
-JOIN dw.dim_date d    USING (date_sk)
-WHERE d.calendar_date = '2026-09-04'
-GROUP BY ALL</pre>
-    <p style="margin-top:0.75rem">No rules in it at all. They were all applied <strong>once</strong>, when the data was loaded.</p>
+    <h3>Asked of the warehouse: 7 lines</h3>
+    <pre>SELECT channel_code,
+       SUM(net_revenue_thb)
+FROM dw.fct_order
+JOIN dw.dim_channel USING (channel_sk)
+JOIN dw.dim_date USING (date_sk)
+WHERE calendar_date = '2026-09-04'
+GROUP BY channel_code</pre>
   </div>
 </div>
+<p>
+  Same answer (Grab 599.9, phone 408.0, QR 808.0 THB on the prototype data). The rules were applied once, at load time,
+  so no report can get them wrong.
+</p>
+
+<h2>2 · Layers, and who reads what</h2>
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Channel, Friday 4 Sep</th><th style="text-align:right">Gross THB</th><th style="text-align:right">Commission</th><th style="text-align:right">Net THB</th></tr></thead>
+  <thead><tr><th>Layer</th><th>Holds</th><th>Built</th><th>Read by</th></tr></thead>
   <tbody>
-    <tr><td class="z">GRAB</td><td class="n">857.0</td><td class="n">257.1</td><td class="n">599.9</td></tr>
-    <tr><td class="z">PHONE</td><td class="n">408.0</td><td class="n">0.0</td><td class="n">408.0</td></tr>
-    <tr><td class="z">QR_DINEIN</td><td class="n">808.0</td><td class="n">0.0</td><td class="n">808.0</td></tr>
+    <tr><td class="z">raw</td><td>Every source record as it arrived, plus <code>source_system</code>, <code>ingest_ts</code>, <code>source_file</code>. Never edited.</td><td>On ingest</td><td>The pipeline only</td></tr>
+    <tr><td class="z">stg</td><td>One common shape per entity (order header, order line, line modifier, movement, shift…), typed, in Bangkok time, deduplicated.</td><td>03:00</td><td>The pipeline only</td></tr>
+    <tr><td class="z">dw</td><td>The star schema: 10 dimensions, 6 bridges, 13 fact tables. Surrogate keys, SCD2 history.</td><td>03:00</td><td>Analysts, the forecast model, mart builds</td></tr>
+    <tr><td class="z">mart</td><td>Six pre-aggregated tables, one per question, at the grain the consumer needs.</td><td>03:30</td><td>Dashboard, reorder list, campaigns</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="callout">
+  <b>Access rule</b><br>
+  Dashboards and tools read <code>mart</code> only. Analysts may query <code>dw</code> for new questions. Nothing outside the
+  pipeline reads <code>raw</code> or <code>stg</code>. When a new question gets asked every week, it becomes a mart.
+</div>
+
+<h2>3 · Dimensions</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Dimension</th><th>Describes</th><th>History</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td class="z">DIM_DATE</td><td>The business day</td><td>Static</td><td>10:00–02:00; carries weekend and Thai holiday flags. Also used as order date and received date on POs.</td></tr>
+    <tr><td class="z">DIM_CHANNEL</td><td>QR, phone, Grab, LINE MAN, ShopeeFood, Robinhood</td><td>Type 1</td><td>Own vs aggregator, commission rate</td></tr>
+    <tr><td class="z">DIM_CUSTOMER</td><td>Members on own channels</td><td>Type 1</td><td>Aggregator orders have no customer, by design</td></tr>
+    <tr><td class="z">DIM_MENU_ITEM</td><td>One SKU (item × size)</td><td><strong>SCD2</strong></td><td>Price and recipe changes add rows</td></tr>
+    <tr><td class="z">DIM_MODIFIER</td><td>Extra cheese, no chili, thin crust…</td><td>Type 1</td><td>add / remove / substitute</td></tr>
+    <tr><td class="z">DIM_PROMOTION</td><td>One promotion</td><td>Type 1</td><td>Conditions and rewards live in bridges</td></tr>
+    <tr><td class="z">DIM_INGREDIENT</td><td>Mozzarella, flour, pepperoni…</td><td>Type 1</td><td>Base unit, reorder point, safety stock</td></tr>
+    <tr><td class="z">DIM_SUPPLIER</td><td>One supplier</td><td>Type 1</td><td>Lead time, minimum order</td></tr>
+    <tr><td class="z">DIM_STAFF</td><td>One staff member</td><td><strong>SCD2</strong></td><td>Wage, role and OT eligibility change over time</td></tr>
+    <tr><td class="z">DIM_ROLE</td><td>Pizzaiolo, cashier, rider…</td><td>Type 1</td><td>The one deliberate snowflake (off <code>DIM_STAFF</code>)</td></tr>
   </tbody>
 </table>
 </div>
 <p>
-  Both queries return this table. The difference is that the source version only works if every analyst, every dashboard
-  and the forecast model remember all six rules and write them the same way. Forget rule 4 and Grab's commission
-  doubles. Forget rule 3 and the 01:20 order moves to Saturday.
-</p>
-<div class="callout q">
-  <b>The seventh problem: history is gone</b><br>
-  The owner raised Pepperoni L from 329 to 349 THB on Saturday, and the POS overwrote the price. Its menu table now
-  says 349 and nothing else. "What was margin before the price rise?" can never be answered from the POS again.
-  An operational system answers <em>what is true now</em>. Analysis needs <em>what was true then</em>.
-</div>
-
-<h2>2 · What a warehouse is for</h2>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>Reason</th><th>For the pizza shop</th><th>Where it is in our model</th></tr></thead>
-  <tbody>
-    <tr><td class="z">Integrate</td><td>Five sources, one shape. A Grab order and a QR order are both one row in <code>FCT_ORDER</code>.</td><td><code>DIM_CHANNEL</code>, <code>BRG_CHANNEL_MENU_ITEM</code></td></tr>
-    <tr><td class="z">Define once</td><td>Business day, net revenue and channel names are calculated at load time, not in every report.</td><td><code>date_sk</code> is the business day; <code>net_revenue_thb</code> is stored</td></tr>
-    <tr><td class="z">Keep history</td><td>Prices, recipes and wages change. Every version is kept.</td><td>SCD2 on <code>DIM_MENU_ITEM</code>, <code>BRG_RECIPE</code>, <code>DIM_STAFF</code></td></tr>
-    <tr><td class="z">Shape for questions</td><td>Facts in the middle, context around them. Questions become short <code>GROUP BY</code>s.</td><td>Every <code>FCT_*</code> with its <code>DIM_*</code></td></tr>
-    <tr><td class="z">Protect the shop</td><td>Heavy analysis never slows the POS on a Friday night.</td><td>Nightly batch from Raw, never queries the POS live</td></tr>
-  </tbody>
-</table>
-</div>
-<div class="two">
-  <div>
-    <h3>Operational DB (the POS)</h3>
-    <ul>
-      <li>Built to write one order fast</li>
-      <li>Normalized: many small tables</li>
-      <li>Current state; updates in place</li>
-      <li>Used by the cashier and kitchen screen</li>
-      <li><code>WHERE pos_order_id = 'P-1001'</code></li>
-    </ul>
-  </div>
-  <div>
-    <h3>Warehouse</h3>
-    <ul>
-      <li>Built to read many rows and answer a question</li>
-      <li>Star schema: wide dimensions, narrow facts</li>
-      <li>Every version kept; facts are append-only</li>
-      <li>Used by the owner, analyst, forecast model</li>
-      <li><code>GROUP BY business_date, channel</code></li>
-    </ul>
-  </div>
-</div>
-
-<h2>3 · How we designed it: four steps, in order</h2>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>Step</th><th>Question</th><th>Pizza shop answer for <code>FCT_ORDER_LINE</code></th></tr></thead>
-  <tbody>
-    <tr><td class="z">1 · Process</td><td>What business <em>event</em> are we measuring?</td><td>A customer orders a menu item</td></tr>
-    <tr><td class="z">2 · Grain</td><td>What does <strong>one row</strong> mean, exactly?</td><td>One menu item on one order</td></tr>
-    <tr><td class="z">3 · Dimensions</td><td>Who, what, when, where, how?</td><td>Date, channel, customer (through the order), menu item</td></tr>
-    <tr><td class="z">4 · Facts</td><td>What numbers, true at that grain?</td><td><code>quantity</code>, <code>unit_price_thb</code>, <code>line_net_thb</code></td></tr>
-  </tbody>
-</table>
-</div>
-<p>
-  The order matters: <strong>grain before columns.</strong> If you start by listing the columns you want, you end up putting
-  order-level money (commission, delivery fee) next to line-level money (item price) in one table, and every
-  sum after that is wrong. Section 7 shows by how much.
+  <strong>Bridges:</strong> <code>BRG_CHANNEL_MENU_ITEM</code> (platform names and prices → our SKU),
+  <code>BRG_RECIPE</code> (SCD2) and <code>BRG_MODIFIER_RECIPE</code> (grams per unit, signed for modifiers),
+  <code>BRG_PROMOTION_CONDITION</code> and <code>BRG_PROMOTION_REWARD</code> (rules as rows), and
+  <code>BRG_SUPPLIER_DELIVERY_DAY</code> (one row per supplier per weekday).
 </p>
 
-<h2 class="wide">4 · Step 1 for the whole shop: the bus matrix</h2>
+<h3>Bus matrix: which processes share which dimensions</h3>
 <div class="wide table-scroll">
 <table class="matrix">
   <thead><tr><th>Business process → fact tables</th><th>Date</th><th>Channel</th><th>Customer</th><th>Menu item</th><th>Modifier</th><th>Promotion</th><th>Ingredient</th><th>Supplier</th><th>Staff</th></tr></thead>
@@ -267,17 +234,11 @@ GROUP BY ALL</pre>
 </table>
 </div>
 <p>
-  Each row is a business process and becomes one or more fact tables. Each column is a dimension built <strong>once</strong>
-  and shared by every process that uses it. Those are <strong>conformed dimensions</strong>, and they are what turn
-  separate fact tables into one warehouse:
+  Every dimension is built once and shared. That is what lets sales line up with stock (through menu item and recipe)
+  and with labour (through date), so the reorder loop and labour-vs-sales are joins rather than projects.
 </p>
-<ul>
-  <li><strong>Date is shared by all nine.</strong> One <code>DIM_DATE</code> on the business day, so sales, stock, shifts and purchases line up by day without anyone redefining "Friday".</li>
-  <li><strong>Menu item links Sell to Move stock.</strong> Units sold × <code>BRG_RECIPE</code> = grams of cheese used. That is the reorder loop.</li>
-  <li><strong>Staff links Deliver, Count and Work.</strong> "Who was on shift when tickets ran late" is a join, not a project.</li>
-</ul>
 
-<h2 class="wide">5 · The sales star, and the anatomy of a fact table</h2>
+<h2 class="wide">4 · The sales star</h2>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 540" role="img"
@@ -422,32 +383,46 @@ GROUP BY ALL</pre>
   </figcaption>
 </figure>
 
-<h2>6 · Three dimension decisions</h2>
-<h3>Surrogate keys, not the source's ID</h3>
-<p>
-  <code>menu_item_sk</code> is an integer the warehouse assigns. <code>PEP-L</code> cannot be the primary key because
-  Pepperoni L needs two rows (329 and 349). Source IDs also collide across systems, and the warehouse must not break
-  when a source renames or renumbers something.
-</p>
-<h3>SCD Type 2 where history matters</h3>
-<div class="table-scroll">
+<h2 class="wide">5 · Fact tables</h2>
+<div class="wide table-scroll">
 <table>
-  <thead><tr><th>menu_item_sk</th><th>menu_item_nk</th><th style="text-align:right">base_price_thb</th><th>valid_from</th><th>valid_to</th><th>is_current</th></tr></thead>
+  <thead><tr><th>Fact table</th><th>Type</th><th>Grain: one row =</th><th>Key measures</th><th>Loaded from</th><th>Why this shape</th></tr></thead>
   <tbody>
-    <tr><td class="t">2</td><td class="t">PEP-L</td><td class="n">329</td><td class="t">2026-01-01</td><td class="t">2026-09-05</td><td class="t">false</td></tr>
-    <tr><td class="t">6</td><td class="t">PEP-L</td><td class="n">349</td><td class="t">2026-09-05</td><td class="t">9999-12-31</td><td class="t">true</td></tr>
+    <tr><td class="z">FCT_ORDER</td><td>transaction</td><td>one order, any channel</td><td>gross, discount, delivery fee, commission, net revenue</td><td>POS, aggregator exports</td><td>Order-level money stays at order grain, so it never repeats per line</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE</td><td>transaction</td><td>one SKU on one order</td><td>quantity, line_net; unit_price (snapshot)</td><td>POS, aggregator exports</td><td>Forecast grain is item × day × channel</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>transaction</td><td>one modifier on one order line</td><td>quantity; price_delta (snapshot)</td><td>POS</td><td>Modifiers consume stock; a text column could not be counted</td></tr>
+    <tr><td class="z">FCT_PAYMENT</td><td>transaction</td><td>one tender on one order</td><td>amount; settlement date</td><td>POS, platform payouts</td><td>Split tenders; platform money settles days later</td></tr>
+    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>one status change of one order</td><td>event_ts, duration from previous</td><td>POS kitchen status, aggregator timestamps</td><td>Any duration is two rows apart; new milestones need no new column</td></tr>
+    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>one promotion on one order</td><td>discount</td><td>POS, aggregator exports</td><td>Basket discount as reported; reconciles with the line table</td></tr>
+    <tr><td class="z">FCT_ORDER_LINE_PROMOTION</td><td>transaction</td><td>one promotion on one order line</td><td>discount (allocated)</td><td>Derived in stg</td><td>Discount per SKU, so item margin is real</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>one PO to one supplier</td><td>total cost</td><td>Purchasing sheet</td><td>Order date and received date are two roles of DIM_DATE</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER_LINE</td><td>transaction</td><td>one ingredient on one PO</td><td>qty ordered, qty received; unit_cost (snapshot)</td><td>Purchasing sheet</td><td>Cost at time of purchase</td></tr>
+    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>one movement of one ingredient</td><td>qty_delta (signed)</td><td>Derived from sales × recipes; receipts; counts; waste log</td><td>Stock on hand = <code>SUM(qty_delta)</code>; one explicit FK per source document</td></tr>
+    <tr><td class="z">FCT_INVENTORY_COUNT</td><td>periodic snapshot</td><td>one ingredient at one daily close</td><td>counted, expected; variance</td><td>Stock count form</td><td>Physical truth; variance is the waste KPI</td></tr>
+    <tr><td class="z">FCT_SHIFT</td><td>transaction</td><td>one shift by one staff member</td><td>regular hours, OT hours, costs; OT multiplier (snapshot)</td><td>Timeclock</td><td>OT costs more and is the most controllable labour line</td></tr>
+    <tr><td class="z">fct_forecast</td><td>periodic snapshot</td><td>SKU × day × channel × forecast run</td><td>forecast_units (not additive across runs)</td><td>Forecast model, weekly</td><td>Predicted vs actual becomes a table we can track</td></tr>
   </tbody>
 </table>
 </div>
-<p>A price change adds a row instead of overwriting one. Friday's sales point at key 2, Saturday's at key 6.</p>
-<h3>Star, not snowflake</h3>
-<p>
-  <code>category</code> and <code>size_code</code> sit directly on <code>DIM_MENU_ITEM</code>. One join from a fact to its
-  context, and the dimension reads like the menu. <code>DIM_STAFF → DIM_ROLE</code> is our one deliberate snowflake,
-  because a role has flags of its own.
-</p>
 
-<h2 class="wide">7 · How a fact row gets loaded</h2>
+<h2>6 · Conventions every table follows</h2>
+<p>These are the rules the team applies to every new table. The figures come from the prototype in <code>notebooks/warehouse_design.ipynb</code>, where each rule is broken on purpose to show what it protects.</p>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Convention</th><th>What it protects (prototype figure)</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Grain stated first</td><td>Every table has a one-sentence grain. Order money never sits on line rows: joining and summing would put Grab's Friday commission at 403.5 instead of 257.1.</td></tr>
+    <tr><td class="z">Policy is snapshotted</td><td>Price, cost and OT multiplier are copied onto the fact when they happen. Otherwise Saturday's price rise rewrites Friday's Pepperoni L revenue from 1,037 to 1,047.</td></tr>
+    <tr><td class="z">Lists become tables</td><td>No list in a column. Modifiers as rows put Friday's mozzarella variance at −20 g; as text it would read −100 g.</td></tr>
+    <tr><td class="z">Store what adds up</td><td>Facts hold additive parts; ratios are computed when queried. Levels like stock counts are never summed over time (16.3 kg "on hand" vs 5.2 kg real).</td></tr>
+    <tr><td class="z">One FK per source</td><td>No shared reference column. A polymorphic key joined a 2 kg cheese delivery to a pizza with no error.</td></tr>
+    <tr><td class="z">Surrogate keys, SCD2</td><td>Facts hold warehouse keys only. Menu items, recipes and staff keep every version; facts join to the version valid on their business day.</td></tr>
+    <tr><td class="z">Business day once</td><td><code>date_sk</code> is assigned at load (10:00–02:00). No query downstream does time arithmetic.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 class="wide">7 · How a nightly load works</h2>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 250" role="img"
@@ -522,133 +497,166 @@ GROUP BY ALL</pre>
     ordered at 01:20 on the 5th, so it belongs to Friday's business day and to Friday's price.
   </figcaption>
 </figure>
-
-<h2>8 · Five rules for designing a fact table</h2>
-<p>Each rule is a decision already in our README. The notebook breaks each one on purpose to show what it protects.</p>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>Rule</th><th>Break it and…</th><th>Where we applied it</th></tr></thead>
-  <tbody>
-    <tr>
-      <td class="z">1 · One grain per table</td>
-      <td>Join orders to lines and sum commission: Grab's Friday commission reads <strong>403.5</strong> instead of <strong>257.1</strong>, because GF-201 has two lines.</td>
-      <td><code>FCT_ORDER</code> vs <code>FCT_ORDER_LINE</code>; basket discounts are allocated down to lines (<code>pro_rata</code>), not copied</td>
-    </tr>
-    <tr>
-      <td class="z">2 · Snapshot what can change</td>
-      <td>Friday's Pepperoni L revenue: paid <strong>1,037</strong>. At today's menu price: <strong>1,047</strong>, so the price rise rewrites Friday. At Friday's list price (SCD2): <strong>987</strong>, and the 50 THB gap is the Grab price uplift.</td>
-      <td><code>unit_price_thb</code>, <code>price_delta_thb</code>, <code>unit_cost_thb</code>, <code>ot_multiplier_applied</code></td>
-    </tr>
-    <tr>
-      <td class="z">3 · A list becomes a table</td>
-      <td>Leave modifiers as text and extra cheese never counts as usage. Friday's mozzarella variance reads <strong>−100 g</strong> instead of <strong>−20 g</strong>, five times worse, and the manager looks for a thief.</td>
-      <td><code>FCT_ORDER_LINE_MODIFIER</code> + <code>BRG_MODIFIER_RECIPE</code>; <code>BRG_SUPPLIER_DELIVERY_DAY</code></td>
-    </tr>
-    <tr>
-      <td class="z">4 · Know what adds up</td>
-      <td>Sum the daily cheese counts for Thu to Sat: "we have <strong>16.3 kg</strong>". The fridge holds <strong>5.2 kg</strong>. <code>AVG(unit_price)</code> gives 357.00; the true average is 361.86.</td>
-      <td>Signed <code>qty_delta</code> (additive) vs <code>qty_counted</code> (a level); <code>regular_hours</code> and <code>ot_hours</code> stored apart</td>
-    </tr>
-    <tr>
-      <td class="z">5 · One FK per source</td>
-      <td>One shared <code>source_ref_sk</code> joins a 2 kg cheese delivery to order P-1001's pizza. No error, just a wrong row that looks plausible.</td>
-      <td>Four explicit FKs on <code>FCT_INVENTORY_MOVEMENT</code>, with a CHECK that at most one is set</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-<div class="callout">
-  <b>Rule 2 in one line</b><br>
-  A snapshot answers <em>what happened</em>; SCD2 answers <em>what was true</em>. We keep both on purpose.
-</div>
-
-<h2>9 · Four kinds of fact table, and which ones we use</h2>
-<div class="table-scroll">
-<table>
-  <thead><tr><th>Type</th><th>One row is…</th><th>Rows change?</th><th>Ours</th></tr></thead>
-  <tbody>
-    <tr><td class="z">Transaction</td><td>one event, when it happened</td><td>Never</td><td><code>FCT_ORDER_LINE</code>, <code>FCT_PAYMENT</code>, <code>FCT_ORDER_EVENT</code>, <code>FCT_INVENTORY_MOVEMENT</code>, <code>FCT_PURCHASE_ORDER_LINE</code>, <code>FCT_SHIFT</code></td></tr>
-    <tr><td class="z">Periodic snapshot</td><td>the state of something, every period</td><td>Never; one new row per period</td><td><code>FCT_INVENTORY_COUNT</code> (daily close)</td></tr>
-    <tr><td class="z">Accumulating snapshot</td><td>one process, one column per milestone</td><td><strong>Yes</strong>, as milestones happen</td><td><code>mart_delivery_sla</code>, built from <code>FCT_ORDER_EVENT</code></td></tr>
-    <tr><td class="z">Factless</td><td>that something happened or was possible</td><td>Rarely</td><td><code>BRG_CHANNEL_MENU_ITEM</code> as a coverage table</td></tr>
-  </tbody>
-</table>
-</div>
+<p><strong>Quality gates that stop the load</strong> (full list in README §10):</p>
 <ul>
-  <li><strong>We store the event log and build the accumulating snapshot from it.</strong> A new milestone (Grab adds <code>driver_arrived</code>) is a new value in a row, not a new column, and the log never needs updating.</li>
-  <li><strong>Stock on hand is derived from movements.</strong> A running sum of <code>qty_delta</code> gives the daily snapshot. The physical count is the check, and the gap between them is the waste KPI.</li>
-  <li><strong>Coverage finds what didn't happen.</strong> Listed minus sold: Pepperoni M got no Grab orders, and Hawaiian sells by phone but never at the table. No sales fact can show you that.</li>
+  <li>A business key with no dimension match (e.g. a new Grab item not in <code>BRG_CHANNEL_MENU_ITEM</code>) goes to quarantine, with an alert. Revenue is never silently dropped.</li>
+  <li>Line-level discounts must sum to the order-level discount for every order.</li>
+  <li>At most one source FK per inventory movement, matching <code>movement_type</code>.</li>
+  <li>Upsert on <code>(channel_sk, external_order_id)</code>, so a re-downloaded export cannot double revenue.</li>
+  <li>The last 3 business days are reprocessed every night to catch late-arriving orders.</li>
 </ul>
 
-<h2 class="wide">10 · Every fact table in our model</h2>
+<h2 class="wide">8 · Data marts</h2>
+<figure class="wide">
+  <div class="diagram-scroll">
+  <svg viewBox="0 0 1180 470" role="img"
+       aria-label="Fact tables on the left feed six marts in the middle, which feed four consumers on the right: the owner dashboard, the demand forecast, LINE campaigns and the reorder suggestion. The forecast writes fct_forecast back into the warehouse.">
+    <defs>
+      <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+    <g font-size="11" font-weight="600" letter-spacing="2" fill="var(--ink-2)">
+      <text x="20"  y="24">DW · FACT TABLES</text>
+      <text x="430" y="24">MART · NIGHTLY 03:30</text>
+      <text x="860" y="24">CONSUMERS</text>
+    </g>
+
+    <g fill="var(--surface)" stroke="var(--ember)" stroke-width="1.6">
+      <rect x="20" y="40"  width="300" height="44" rx="3"/>
+      <rect x="20" y="100" width="300" height="44" rx="3"/>
+      <rect x="20" y="160" width="300" height="44" rx="3"/>
+      <rect x="20" y="220" width="300" height="44" rx="3"/>
+      <rect x="20" y="280" width="300" height="44" rx="3"/>
+      <rect x="20" y="340" width="300" height="44" rx="3"/>
+    </g>
+    <g fill="var(--zone)" stroke="currentColor" stroke-width="1.2">
+      <rect x="430" y="40"  width="260" height="44" rx="3"/>
+      <rect x="430" y="100" width="260" height="44" rx="3"/>
+      <rect x="430" y="160" width="260" height="44" rx="3"/>
+      <rect x="430" y="220" width="260" height="44" rx="3"/>
+      <rect x="430" y="280" width="260" height="44" rx="3"/>
+      <rect x="430" y="340" width="260" height="44" rx="3"/>
+    </g>
+    <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
+      <rect x="860" y="40"  width="300" height="104" rx="3"/>
+      <rect x="860" y="160" width="300" height="44"  rx="3"/>
+      <rect x="860" y="220" width="300" height="104" rx="3"/>
+      <rect x="860" y="340" width="300" height="44"  rx="3"/>
+    </g>
+
+    <g font-size="11" fill="currentColor">
+      <text x="32" y="67">FCT_ORDER</text>
+      <text x="32" y="127">FCT_ORDER_LINE (+ _MODIFIER)</text>
+      <text x="32" y="187">FCT_ORDER_LINE_PROMOTION</text>
+      <text x="32" y="247">FCT_ORDER_EVENT</text>
+      <text x="32" y="307">FCT_INVENTORY_MOVEMENT · _COUNT</text>
+      <text x="32" y="367">FCT_SHIFT</text>
+
+      <text x="442" y="67">mart_sales_daily</text>
+      <text x="442" y="127">mart_promotion_performance</text>
+      <text x="442" y="187">mart_customer_rfm</text>
+      <text x="442" y="247">mart_delivery_sla</text>
+      <text x="442" y="307">mart_ingredient_usage_daily</text>
+      <text x="442" y="367">mart_labor_vs_sales</text>
+
+      <text x="872" y="64" font-weight="600">Owner dashboard</text>
+      <text x="872" y="82" fill="var(--ink-2)" font-size="10">net revenue by channel · today vs forecast</text>
+      <text x="872" y="98" fill="var(--ink-2)" font-size="10">items at risk · variance watch</text>
+      <text x="872" y="114" fill="var(--ink-2)" font-size="10">prep time p50/p90 · labour cost %</text>
+      <text x="872" y="187" font-weight="600">Demand forecast model</text>
+      <text x="872" y="244" font-weight="600">Reorder suggestion</text>
+      <text x="872" y="262" fill="var(--ink-2)" font-size="10">forecast × recipe − on hand + safety stock</text>
+      <text x="872" y="278" fill="var(--ink-2)" font-size="10">respects lead time and delivery days</text>
+      <text x="872" y="294" fill="var(--ink-2)" font-size="10">→ a PO the manager approves in one tap</text>
+      <text x="872" y="367" font-weight="600">LINE win-back campaigns</text>
+    </g>
+
+    <!-- facts -> marts -->
+    <g stroke="currentColor" stroke-width="1" fill="none" marker-end="url(#arr3)" opacity="0.75">
+      <line x1="320" y1="62"  x2="428" y2="58"/>
+      <line x1="320" y1="122" x2="428" y2="68"/>
+      <line x1="320" y1="122" x2="428" y2="118"/>
+      <line x1="320" y1="182" x2="428" y2="128"/>
+      <line x1="320" y1="66"  x2="428" y2="182"/>
+      <line x1="320" y1="70"  x2="428" y2="238"/>
+      <line x1="320" y1="242" x2="428" y2="248"/>
+      <line x1="320" y1="302" x2="428" y2="302"/>
+      <line x1="320" y1="74"  x2="428" y2="358"/>
+      <line x1="320" y1="362" x2="428" y2="368"/>
+    </g>
+    <!-- marts -> consumers -->
+    <g stroke="currentColor" stroke-width="1" fill="none" marker-end="url(#arr3)" opacity="0.75">
+      <line x1="690" y1="56"  x2="858" y2="56"/>
+      <line x1="690" y1="66"  x2="858" y2="182"/>
+      <line x1="690" y1="122" x2="858" y2="74"/>
+      <line x1="690" y1="182" x2="858" y2="360"/>
+      <line x1="690" y1="242" x2="858" y2="94"/>
+      <line x1="690" y1="298" x2="858" y2="112"/>
+      <line x1="690" y1="306" x2="858" y2="300"/>
+      <line x1="690" y1="362" x2="858" y2="130"/>
+    </g>
+    <!-- forecast: feeds reorder, written back to dw -->
+    <rect x="20" y="404" width="300" height="44" rx="3" fill="var(--surface)" stroke="var(--ember)" stroke-width="1.6" stroke-dasharray="5 3"/>
+    <text x="32" y="431" font-size="11" fill="currentColor">fct_forecast (written back weekly)</text>
+    <g stroke="var(--ember)" stroke-width="1.2" fill="none" marker-end="url(#arr3)">
+      <line x1="1010" y1="204" x2="1010" y2="218"/>
+      <path d="M1160 182 H1172 V426 H324" stroke-dasharray="5 4"/>
+    </g>
+    <text x="745" y="418" font-size="10" fill="var(--ember)" text-anchor="middle">forecast written back, then scored against actual sales</text>
+  </svg>
+  </div>
+  <figcaption>
+    Each mart is built only from dw, never from raw or stg, and adds no business rules of its own. A mart is shaped
+    for one consumer's question, at the grain that consumer reads.
+  </figcaption>
+</figure>
+
 <div class="wide table-scroll">
 <table>
-  <thead><tr><th>Fact table</th><th>Type</th><th>Grain: one row =</th><th>Measures</th><th>Why it exists, why this shape</th></tr></thead>
+  <thead><tr><th>Mart</th><th>Grain: one row =</th><th>Columns</th><th>Built from</th><th>Used for</th></tr></thead>
   <tbody>
-    <tr><td class="z">FCT_ORDER</td><td>transaction</td><td>one order, any channel</td><td>gross, discount, delivery fee, commission, net revenue</td><td>Order-level money must not repeat per line. Net revenue is what the shop actually banks.</td></tr>
-    <tr><td class="z">FCT_ORDER_LINE</td><td>transaction</td><td>one menu item on one order</td><td>quantity, line_net; unit_price (snapshot)</td><td>Forecast grain is item × day × channel, so sales must be item-level.</td></tr>
-    <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>transaction</td><td>one modifier on one order line</td><td>quantity; price_delta (snapshot)</td><td>Used to be <code>modifiers_json</code>. Without it, extra cheese never counts as stock usage.</td></tr>
-    <tr><td class="z">FCT_PAYMENT</td><td>transaction</td><td>one tender on one order</td><td>amount</td><td>Split payments are normal; platform payouts settle days later.</td></tr>
-    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>one status change of one order</td><td>event_ts, duration</td><td>Any duration is the difference of two rows; a new milestone needs no schema change.</td></tr>
-    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>one promotion on one order</td><td>discount</td><td>Basket discount as the platform reports it. Must reconcile with the line-level table.</td></tr>
-    <tr><td class="z">FCT_ORDER_LINE_PROMOTION</td><td>transaction</td><td>one promotion on one order line</td><td>discount (allocated)</td><td>Pushes discount down to the SKU so item margin is real.</td></tr>
-    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>one PO to one supplier</td><td>total cost</td><td>Order date and received date both point at <code>DIM_DATE</code>: a role-playing dimension.</td></tr>
-    <tr><td class="z">FCT_PURCHASE_ORDER_LINE</td><td>transaction</td><td>one ingredient on one PO</td><td>qty ordered, qty received; unit_cost (snapshot)</td><td>Cost at time of purchase, so food cost % doesn't drift.</td></tr>
-    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>one movement of one ingredient</td><td>qty_delta (signed)</td><td>Stock on hand = <code>SUM(qty_delta)</code>. Four explicit FKs, one per kind of source document.</td></tr>
-    <tr><td class="z">FCT_INVENTORY_COUNT</td><td>periodic snapshot</td><td>one ingredient at one daily close</td><td>counted, expected (levels); variance</td><td>Physical truth. Variance is the KPI the whole model exists to produce.</td></tr>
-    <tr><td class="z">FCT_SHIFT</td><td>transaction</td><td>one shift by one staff member</td><td>regular hours, OT hours, costs; OT multiplier (snapshot)</td><td>An OT hour costs more, so it is split out; the multiplier is policy, so it is snapshotted.</td></tr>
-    <tr><td class="z">fct_forecast</td><td>periodic snapshot</td><td>item × day × channel × forecast run</td><td>forecast_units (not additive across runs)</td><td>Predicted vs actual becomes a table we can chart. Designed in section 11.</td></tr>
+    <tr><td class="z">mart_sales_daily</td><td>business date × channel × SKU</td><td>units_sold, orders, gross_sales_thb, discount_thb, net_sales_thb, plus item name, category, size</td><td>FCT_ORDER_LINE, FCT_ORDER, dims; cancelled excluded</td><td>Sales dashboard; training data for the forecast</td></tr>
+    <tr><td class="z">mart_ingredient_usage_daily</td><td>business date × ingredient</td><td>recipe_usage, modifier_usage, theoretical_usage, expected_on_hand, counted_on_hand, variance_qty, variance_value_thb, waste_pct</td><td>FCT_INVENTORY_MOVEMENT, FCT_INVENTORY_COUNT</td><td>Reorder suggestion, variance watch, waste %</td></tr>
+    <tr><td class="z">mart_delivery_sla</td><td>one order</td><td>channel, business date, order hour, placed / accepted / prep_complete / pickup / delivered timestamps, prep_min, to_pickup_min, lead_time_min</td><td>FCT_ORDER_EVENT pivoted, FCT_ORDER</td><td>Prep and lead time p50 / p90 by channel and hour</td></tr>
+    <tr><td class="z">mart_customer_rfm</td><td>one customer (own channels)</td><td>last_order_date, recency_days, frequency_90d, monetary_90d_thb, R / F / M scores, segment</td><td>FCT_ORDER where customer_sk is set</td><td>Segmentation and LINE win-back campaigns. Labelled own-channel only</td></tr>
+    <tr><td class="z">mart_labor_vs_sales</td><td>business date × hour</td><td>staff_on_shift, labour_hours, ot_hours, labour_cost_thb, ot_cost_thb, net_sales_thb, labour_cost_pct, orders_per_labour_hour</td><td>FCT_SHIFT, FCT_ORDER</td><td>Labour cost %, OT share, understaffed hours</td></tr>
+    <tr><td class="z">mart_promotion_performance</td><td>promotion × business date × SKU</td><td>units_discounted, discount_thb (shop vs platform funded), net_sales_after_discount_thb, margin_after_discount_thb</td><td>FCT_ORDER_LINE_PROMOTION, FCT_ORDER_LINE, BRG_PROMOTION_REWARD</td><td>Discount spend per SKU, whether a promo pays for itself</td></tr>
   </tbody>
 </table>
 </div>
+<p>
+  Mart columns are recalculated each night from <code>dw</code>, so a mart can always be dropped and rebuilt.
+  Ratios such as <code>labour_cost_pct</code> and <code>waste_pct</code> are stored alongside their numerator and
+  denominator, so they can be re-aggregated to week or month correctly.
+</p>
 
-<h2>11 · Worked example: designing <code>fct_forecast</code></h2>
-<p>The README mentions a forecast table but never designs it. The four steps, applied to something new:</p>
-<ol>
-  <li><strong>Process.</strong> The model predicts demand. A prediction is an event: it happened at a time and has a result.</li>
-  <li><strong>Grain.</strong> One forecast of one menu item, for one business day, on one channel, from one model run. The run belongs in the grain: a Monday forecast for Saturday and a Friday forecast for Saturday are different facts.</li>
-  <li><strong>Dimensions.</strong> Menu item, date (the day forecast), channel: all three already exist for sales. Because they are conformed, forecast joins straight to actual.</li>
-  <li><strong>Facts.</strong> <code>forecast_units</code>. Additive across items, days and channels, but <strong>not across runs</strong>. Summing two runs for one Saturday gives 7 pizzas; the latest run says 5.</li>
-</ol>
+<h2>9 · Nightly schedule</h2>
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Run</th><th>Channel</th><th style="text-align:right">Forecast</th><th style="text-align:right">Actual</th><th style="text-align:right">Error</th></tr></thead>
+  <thead><tr><th>Time</th><th>Job</th><th>Does</th></tr></thead>
   <tbody>
-    <tr><td class="t">run-0901</td><td class="z">GRAB</td><td class="n">1</td><td class="n">2</td><td class="n bad">−1</td></tr>
-    <tr><td class="t">run-0901</td><td class="z">QR_DINEIN</td><td class="n">1</td><td class="n">2</td><td class="n bad">−1</td></tr>
-    <tr><td class="t">run-0904</td><td class="z">GRAB</td><td class="n">3</td><td class="n">2</td><td class="n bad">+1</td></tr>
-    <tr><td class="t">run-0904</td><td class="z">QR_DINEIN</td><td class="n">2</td><td class="n">2</td><td class="n">0</td></tr>
+    <tr><td class="t">every 5 min</td><td class="z">ingest POS</td><td>POS orders copied into raw</td></tr>
+    <tr><td class="t">03:00</td><td class="z">load dw</td><td>raw → stg → dimensions, then facts, for the last 3 business days. Gates must pass or nothing is published</td></tr>
+    <tr><td class="t">03:30</td><td class="z">build marts</td><td>All six marts rebuilt from dw</td></tr>
+    <tr><td class="t">06:00</td><td class="z">ingest exports</td><td>Aggregator exports (T+1), stock counts, shifts, POs into raw; picked up by the next 03:00 load</td></tr>
+    <tr><td class="t">weekly</td><td class="z">forecast</td><td>Reads <code>mart_sales_daily</code>, writes <code>fct_forecast</code></td></tr>
   </tbody>
 </table>
 </div>
-<p>The later run was closer. "Is the model getting better?" is now one <code>GROUP BY forecast_run_id</code>.</p>
 
-<h2>12 · Summary</h2>
-<div class="two">
-  <div>
-    <h3>Why</h3>
-    <ul>
-      <li>Integrate five sources into one shape</li>
-      <li>Define business rules once</li>
-      <li>Keep history the POS overwrites</li>
-      <li>Shape data for questions</li>
-      <li>Keep heavy analysis off the POS</li>
-    </ul>
-  </div>
-  <div>
-    <h3>How</h3>
-    <ul>
-      <li>Process → grain → dimensions → facts</li>
-      <li>Bus matrix of conformed dimensions</li>
-      <li>Surrogate keys and SCD2</li>
-      <li>Load facts by swapping business keys for surrogate keys, behind a quality gate</li>
-    </ul>
-  </div>
-</div>
-<div class="callout">
-  <b>Fact table design in one line</b><br>
-  Say the grain in one sentence, never mix two grains, snapshot what can change, turn lists into tables,
-  store only what adds up, and give every source its own key.
+<h2>10 · Where the build stands</h2>
+<div class="table-scroll">
+<table>
+  <thead><tr><th>Part</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="z">Full model</td><td>Designed: README ER diagrams (figures 2–5) and this page</td></tr>
+    <tr><td class="z">Zone pipeline</td><td>Prototyped end to end in <code>notebooks/data_flow_demo.ipynb</code> (orders, two marts)</td></tr>
+    <tr><td class="z">Sales star, modifiers, stock, events, forecast</td><td>Prototyped in <code>notebooks/warehouse_design.ipynb</code></td></tr>
+    <tr><td class="z">Payments, promotions, purchasing, shifts</td><td>Designed, not yet prototyped</td></tr>
+    <tr><td class="z">Marts</td><td><code>mart_sales_daily</code> and <code>mart_ingredient_usage_daily</code> prototyped (recipe usage only); the other four specified above</td></tr>
+  </tbody>
+</table>
 </div>
 
 </main>
