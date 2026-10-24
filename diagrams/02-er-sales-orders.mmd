@@ -1,149 +1,130 @@
 %% Fig. 2 - ER model: sales and orders (star schema)
 %% Grain:
-%%   FCT_ORDER       - one row per order (any channel)
-%%   FCT_ORDER_LINE  - one row per menu item per order
-%%   FCT_ORDER_EVENT - one row per status transition per order
-%%   FCT_PAYMENT     - one row per tender per order
-%%   FCT_ORDER_LINE_PROMOTION - one row per order line per promotion
+%%   FCT_ORDER                - one row per order (any channel)
+%%   FCT_ORDER_LINE           - one row per menu item per order
 %%   FCT_ORDER_LINE_MODIFIER  - one row per modifier per order line
+%% Every fact carries its own dimension keys; facts never point at other facts.
+%% order_number / line_number are degenerate dimensions. Compare facts by drilling across.
+%% Every dimension has special-case rows: 0 = Not applicable, 1 = Unknown, 2 = Invalid.
+%% Payments, order events and basket promotions are in Fig. 6; line promotions in Fig. 5.
 erDiagram
   DIM_DATE ||--o{ FCT_ORDER : "business day"
   DIM_CHANNEL ||--o{ FCT_ORDER : "sold via"
-  DIM_CUSTOMER ||--o{ FCT_ORDER : "placed by (own channels only)"
-  FCT_ORDER ||--|{ FCT_ORDER_LINE : contains
-  FCT_ORDER ||--o{ FCT_ORDER_EVENT : "tracked by"
-  FCT_ORDER ||--|{ FCT_PAYMENT : "settled by"
-  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by (basket-level)"
-  DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : applied
-  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_PROMOTION : "discounted by (SKU-level)"
-  DIM_PROMOTION ||--o{ FCT_ORDER_LINE_PROMOTION : applied
+  DIM_CUSTOMER ||--o{ FCT_ORDER : "placed by"
+  DIM_ORDER_INFO ||--o{ FCT_ORDER : "status"
+  DIM_DATE ||--o{ FCT_ORDER_LINE : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_LINE : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_ORDER_LINE : "placed by"
   DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
+  DIM_ORDER_INFO ||--o{ FCT_ORDER_LINE : "status"
+  DIM_DATE ||--o{ FCT_ORDER_LINE_MODIFIER : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_LINE_MODIFIER : "sold via"
+  DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE_MODIFIER : "on item"
+  DIM_MODIFIER ||--o{ FCT_ORDER_LINE_MODIFIER : "applied as"
   DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
   DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
-  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_MODIFIER : "customised by"
-  DIM_MODIFIER ||--o{ FCT_ORDER_LINE_MODIFIER : "applied as"
-  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
 
   DIM_DATE {
-    int date_sk PK
-    date calendar_date
+    int date_key PK "yyyymmdd; 0 = not applicable"
+    date full_date
+    string day_name
     int day_of_week
-    boolean is_weekend
-    boolean is_thai_holiday
+    string weekend_flag "Weekend or Weekday"
+    string holiday_flag "Thai holiday or Not a holiday"
+    int month_number
     string month_name
+    string quarter "hierarchy: day > month > quarter > year"
+    int year
+    string row_type "Day, Not applicable, Unknown"
   }
   DIM_CHANNEL {
-    int channel_sk PK
-    string channel_code UK "QR_DINEIN, GRAB, LINEMAN, SHOPEE, ROBINHOOD, PHONE"
-    string channel_type "dine_in or delivery"
-    boolean is_own_channel
+    int channel_key PK
+    string channel_code UK "QR_DINEIN, PHONE, GRAB, LINEMAN, SHOPEE, ROBINHOOD"
+    string channel_name "QR dine-in, Phone, Grab..."
+    string channel_type "Dine-in or Delivery - hierarchy level"
+    string channel_ownership "Own channel or Aggregator"
     decimal commission_rate_pct
+    string row_type
   }
   DIM_CUSTOMER {
-    int customer_sk PK
+    int customer_key PK "0 = Not applicable (no identified customer)"
     string customer_nk UK "membership or phone hash"
     date first_order_date
     string signup_source
-    boolean is_member
+    string membership "Member or Non-member"
+    string rfm_segment "behavioral dimension, refreshed monthly"
+    date rfm_segment_as_of
+    string row_type "Customer, Not applicable, Unknown"
   }
   DIM_MENU_ITEM {
-    int menu_item_sk PK
+    int menu_item_key PK
     string menu_item_nk "stable business key"
     string item_name
-    string category "pizza, chicken, side, drink"
-    string size_code
+    string category "hierarchy: SKU > item > category"
+    string size_code "M, L"
+    string size_name "Medium, Large"
     decimal base_price_thb
     date valid_from "SCD2"
     date valid_to "SCD2"
-    boolean is_current
+    string current_flag "Current or Expired"
+    string row_type "Menu item, Unknown, Invalid"
   }
   BRG_CHANNEL_MENU_ITEM {
-    int channel_menu_sk PK
-    int channel_sk FK
-    int menu_item_sk FK
+    int channel_key FK
+    int menu_item_key FK
     string platform_item_id "aggregator's own id"
+    string platform_item_name
     decimal channel_price_thb "uplifted platform price"
-    boolean is_listed
+    string listing_status "Listed or Not listed"
   }
-  DIM_PROMOTION {
-    int promotion_sk PK
-    string promo_code
-    string promo_name
-    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
-    string funded_by "shop or platform"
-    string stacking_group "which promos may combine"
-    int priority "resolution order when several qualify"
-    date start_date
-    date end_date
+  DIM_MODIFIER {
+    int modifier_key PK
+    string modifier_nk UK
+    string modifier_name "extra cheese, no chili, thin crust"
+    string modifier_type "add, remove, substitute"
+    string applies_to_category "pizza, chicken, drink"
+    decimal default_price_delta_thb
+    string active_flag "Active or Retired"
+    string row_type
+  }
+  DIM_ORDER_INFO {
+    int order_info_key PK "junk dimension"
+    string order_status "completed, cancelled, refunded"
+    string cancellation_flag "Cancelled or Not cancelled"
   }
   FCT_ORDER {
-    bigint order_sk PK
-    string external_order_id "platform natural key"
-    int channel_sk FK
-    int date_sk FK
-    int customer_sk FK "null for aggregator orders"
+    int date_key FK
+    int channel_key FK
+    int customer_key FK "0 for aggregator and walk-in orders, never NULL"
+    int order_info_key FK
+    string order_number "degenerate: platform order id"
     timestamp order_ts
     decimal gross_amount_thb
     decimal discount_amount_thb
     decimal delivery_fee_thb
     decimal commission_amount_thb
     decimal net_revenue_thb
-    string order_status
-    boolean is_cancelled
   }
   FCT_ORDER_LINE {
-    bigint order_line_sk PK
-    bigint order_sk FK
-    int menu_item_sk FK
+    int date_key FK
+    int channel_key FK
+    int customer_key FK
+    int menu_item_key FK "version valid on the business day"
+    int order_info_key FK
+    string order_number "degenerate"
+    int line_number "degenerate"
     int quantity
     decimal unit_price_thb "price at time of order"
     decimal line_discount_thb
     decimal line_net_thb
   }
-  DIM_MODIFIER {
-    int modifier_sk PK
-    string modifier_nk UK
-    string modifier_name "extra cheese, no chili, thin crust"
-    string modifier_type "add, remove, substitute"
-    string applies_to_category "pizza, chicken, drink"
-    decimal default_price_delta_thb
-    boolean is_active
-  }
   FCT_ORDER_LINE_MODIFIER {
-    bigint order_line_modifier_sk PK
-    bigint order_line_sk FK
-    int modifier_sk FK
+    int date_key FK
+    int channel_key FK
+    int menu_item_key FK
+    int modifier_key FK
+    string order_number "degenerate"
+    int line_number "degenerate"
     int quantity "double extra cheese is qty 2"
     decimal price_delta_thb "snapshot, not joined"
-  }
-  FCT_ORDER_EVENT {
-    bigint order_event_sk PK
-    bigint order_sk FK
-    string event_type "placed, accepted, prep_start, prep_complete, courier_pickup, delivered, cancelled"
-    timestamp event_ts
-    int staff_sk FK
-    int duration_from_prev_sec
-  }
-  FCT_PAYMENT {
-    bigint payment_sk PK
-    bigint order_sk FK
-    string tender_type "cash, promptpay_qr, card, platform_settled"
-    decimal amount_thb
-    timestamp paid_ts
-    date settlement_date "platform payouts lag"
-  }
-  FCT_ORDER_PROMOTION {
-    bigint order_promo_sk PK
-    bigint order_sk FK
-    int promotion_sk FK
-    decimal discount_amount_thb "basket-level total"
-  }
-  FCT_ORDER_LINE_PROMOTION {
-    bigint order_line_promo_sk PK
-    bigint order_line_sk FK "the SKU-level grain"
-    bigint order_sk FK "degenerate, saves a join"
-    int promotion_sk FK
-    decimal discount_amount_thb "allocated to this line"
-    string allocation_method "explicit or pro_rata"
-    boolean is_reward_line "true if this line IS the free item"
   }

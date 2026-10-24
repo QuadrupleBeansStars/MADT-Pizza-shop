@@ -81,6 +81,7 @@
   .diagram-scroll { overflow-x: auto; }
   figure svg { display: block; width: 100%; height: auto; min-width: 760px; color: var(--ink); font-family: var(--font-th); }
   figure svg .m { font-family: var(--font-mono); }
+  figure svg .t { font-family: var(--font-th); }
   figcaption { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.75rem; max-width: 80ch; }
 
   table {
@@ -129,23 +130,24 @@
   <p class="eyebrow">MADT8102 · Pizza shop · Warehouse specification</p>
   <h1>Warehouse ของโปรเจกต์: ทีมสร้างอะไร และใช้งานยังไง</h1>
   <p class="standfirst">
-    warehouse ของโปรเจกต์นี้ ตั้งแต่ข้อมูลต้นทางที่ผ่าน staging แล้ว ไปจนถึง mart ที่เจ้าของร้าน รายการสั่งของ และโมเดลพยากรณ์อ่าน
-    ครอบคลุม dimension, fact table และ mart ทุกตัว ข้อตกลงที่ทุกตารางต้องทำตาม และการโหลดข้อมูลในแต่ละคืน
+    warehouse ของโปรเจกต์นี้ ตั้งแต่ข้อมูลต้นทางที่ผ่าน staging แล้ว ไปจนถึง aggregate table ที่เจ้าของร้าน รายการสั่งของ และโมเดลพยากรณ์อ่าน
+    ครอบคลุม dimension, fact table และ data mart ทุกตัว ข้อตกลงเชิง dimensional ที่ทุกตารางต้องทำตาม (MADT8102 บทที่ 5) และการโหลดข้อมูลในแต่ละคืน
   </p>
   <div class="meta-strip">
-    <span>ชั้นข้อมูล <b>stg → dw → mart</b></span>
-    <span>โมเดล <b>Star · dimension 10 · fact 13</b></span>
-    <span>Mart <b>6 ตัว</b></span>
-    <span>รอบอัปเดต <b>ทุกคืน 03:00 core · 03:30 mart</b></span>
+    <span>สถาปัตยกรรม <b>Kimball dimensional DW</b></span>
+    <span>โมเดล <b>Star · dimension 16 · fact 13</b></span>
+    <span>Data mart <b>5 · aggregate 6</b></span>
+    <span>รอบอัปเดต <b>ทุกคืน 03:00 core · 03:30 aggregate</b></span>
   </div>
   <p class="lang">English version: <a href="warehouse-design.html">warehouse-design.html</a></p>
 </header>
 
 <h2>1 · warehouse คืออะไร และทำไมโปรเจกต์ต้องมี</h2>
 <p>
-  warehouse คือ zone Trusted และ Refined ของ data lake ของเรา (<a href="data-flow.th.html">data-flow.th.html</a>):
-  star schema หนึ่งชุดที่มี conformed dimension กับ fact table และมี mart หนึ่งตัวต่อหนึ่งคำถามทางธุรกิจ
-  ที่นี่เป็นที่เดียวที่กฎธุรกิจอยู่ แดชบอร์ด รายการสั่งของ และโมเดลพยากรณ์อ่านจากที่นี่ ไม่อ่านจากระบบต้นทางเลย
+  warehouse คือ zone Trusted และ Refined ของ data lake ของเรา (<a href="data-flow.th.html">data-flow.th.html</a>)
+  ในสามสถาปัตยกรรมของบทที่ 5 ของเราคือ <strong>Kimball dimensional data warehouse</strong>: star schema ชุดเดียวบน conformed dimension
+  ที่ระดับละเอียดที่สุดที่เราได้รับ และนักวิเคราะห์ query ได้โดยตรง <strong>data mart คือ subject area ภายใน warehouse</strong>
+  (Sales, Delivery, Customer, Inventory and purchasing, Labour) แต่ละตัวมี aggregate table ให้บริการ ที่นี่เป็นที่เดียวที่กฎธุรกิจอยู่ แดชบอร์ด รายการสั่งของ และโมเดลพยากรณ์อ่านจากที่นี่ ไม่อ่านจากระบบต้นทางเลย
 </p>
 <p>เหตุผลเห็นได้ชัดที่สุดจากคำถามเดียว: <em>วันศุกร์ได้รายได้สุทธิแต่ละช่องทางเท่าไร?</em></p>
 <div class="two">
@@ -160,9 +162,9 @@
     <pre>SELECT channel_code,
        SUM(net_revenue_thb)
 FROM dw.fct_order
-JOIN dw.dim_channel USING (channel_sk)
-JOIN dw.dim_date USING (date_sk)
-WHERE calendar_date = '2026-09-04'
+JOIN dw.dim_channel USING (channel_key)
+JOIN dw.dim_date USING (date_key)
+WHERE full_date = '2026-09-04'
 GROUP BY channel_code</pre>
   </div>
 </div>
@@ -178,32 +180,38 @@ GROUP BY channel_code</pre>
   <tbody>
     <tr><td class="z">raw</td><td>ทุกเรคคอร์ดจากต้นทางตามที่มาถึง พร้อม <code>source_system</code>, <code>ingest_ts</code>, <code>source_file</code> ไม่มีการแก้ไข</td><td>ตอนนำเข้า</td><td>pipeline เท่านั้น</td></tr>
     <tr><td class="z">stg</td><td>รูปแบบกลางเดียวต่อหนึ่ง entity (หัวออร์เดอร์ บรรทัดออร์เดอร์ modifier movement กะงาน…) แปลง type แล้ว เป็นเวลากรุงเทพ ตัดแถวซ้ำแล้ว</td><td>03:00</td><td>pipeline เท่านั้น</td></tr>
-    <tr><td class="z">dw</td><td>star schema: dimension 10 ตัว bridge 6 ตัว fact 13 ตัว ใช้ surrogate key และเก็บประวัติแบบ SCD2</td><td>03:00</td><td>นักวิเคราะห์ โมเดลพยากรณ์ และงานสร้าง mart</td></tr>
-    <tr><td class="z">mart</td><td>ตารางสรุปล่วงหน้า 6 ตัว หนึ่งตัวต่อหนึ่งคำถาม ที่ grain ที่ผู้ใช้ต้องการ</td><td>03:30</td><td>แดชบอร์ด รายการสั่งของ แคมเปญ</td></tr>
+    <tr><td class="z">dw</td><td>star schema: dimension 16 ตัว (conformed 9 ตัว junk หรือตัวเล็ก 7 ตัว) bridge 6 ตัว fact 13 ตัว ใช้ surrogate key แบบ <code>_key</code> เก็บประวัติแบบ SCD2 และใช้ special-case row แทน key ที่เป็น NULL</td><td>03:00</td><td>นักวิเคราะห์ โมเดลพยากรณ์ และงานสร้าง aggregate</td></tr>
+    <tr><td class="z">agg</td><td>aggregate table 6 ตัว (<code>mart_*</code>) หนึ่งตัวต่อหนึ่งคำถาม แต่ละตัวให้บริการ data mart หนึ่งตัว ที่ grain ที่ผู้ใช้ต้องการ</td><td>03:30</td><td>แดชบอร์ด รายการสั่งของ แคมเปญ</td></tr>
   </tbody>
 </table>
 </div>
 <div class="callout">
   <b>กฎการเข้าถึง</b><br>
-  แดชบอร์ดและเครื่องมือต่าง ๆ อ่านจาก <code>mart</code> เท่านั้น นักวิเคราะห์ query <code>dw</code> ได้เมื่อมีคำถามใหม่
-  นอกจาก pipeline แล้วไม่มีใครอ่าน <code>raw</code> หรือ <code>stg</code> คำถามไหนถูกถามทุกสัปดาห์ ให้ทำเป็น mart
+  แดชบอร์ดและเครื่องมือต่าง ๆ อ่านจาก aggregate table นักวิเคราะห์ query star ใน <code>dw</code> ได้โดยตรง ซึ่งสถาปัตยกรรมแบบ Kimball อนุญาตไว้ชัดเจน
+  นอกจาก pipeline แล้วไม่มีใครอ่าน <code>raw</code> หรือ <code>stg</code> คำถามไหนถูกถามทุกสัปดาห์ ให้ทำเป็น aggregate table
 </div>
 
 <h2>3 · Dimension</h2>
+<p>
+  dimension ทุกตัวมี surrogate key แบบ <code>_key</code> และ natural key แบบ <code>_nk</code> เก็บ flag เป็นค่าที่อ่านออก
+  ("Weekend" / "Weekday" ไม่ใช่ true / false) เก็บรหัสคู่กับคำอธิบาย และมี <strong>special-case row</strong> สามแถว:
+  <strong>0 = ไม่เกี่ยวข้อง</strong>, <strong>1 = ไม่ทราบ</strong>, <strong>2 = ไม่ถูกต้อง</strong> fact จึงไม่มี key ที่เป็น NULL เลย
+</p>
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Dimension</th><th>อธิบายอะไร</th><th>ประวัติ</th><th>หมายเหตุ</th></tr></thead>
+  <thead><tr><th>Dimension</th><th>อธิบายอะไร</th><th>ประวัติ</th><th>Hierarchy และหมายเหตุ</th></tr></thead>
   <tbody>
-    <tr><td class="z">DIM_DATE</td><td>วันทำการ</td><td>คงที่</td><td>10:00–02:00 มี flag วันหยุดสุดสัปดาห์และวันหยุดไทย ใช้เป็นวันที่สั่งและวันที่รับของในใบสั่งซื้อด้วย</td></tr>
-    <tr><td class="z">DIM_CHANNEL</td><td>QR, โทรศัพท์, Grab, LINE MAN, ShopeeFood, Robinhood</td><td>Type 1</td><td>ช่องทางของร้านหรือแพลตฟอร์ม อัตราคอมมิชชัน</td></tr>
-    <tr><td class="z">DIM_CUSTOMER</td><td>สมาชิกบนช่องทางของร้าน</td><td>Type 1</td><td>ออร์เดอร์จากแพลตฟอร์มไม่มีข้อมูลลูกค้า โดยตั้งใจ</td></tr>
-    <tr><td class="z">DIM_MENU_ITEM</td><td>หนึ่ง SKU (เมนู × ไซซ์)</td><td><strong>SCD2</strong></td><td>เปลี่ยนราคาหรือสูตรแล้วเพิ่มแถวใหม่</td></tr>
+    <tr><td class="z">DIM_DATE</td><td>วันทำการ</td><td>คงที่</td><td>วัน › เดือน › ไตรมาส › ปี มี flag วันหยุดสุดสัปดาห์และวันหยุดไทย ใช้สองบทบาท (role) ในการชำระเงินและใบสั่งซื้อ</td></tr>
+    <tr><td class="z">DIM_CHANNEL</td><td>QR, โทรศัพท์, Grab, LINE MAN, ShopeeFood, Robinhood</td><td>Type 1</td><td>ช่องทาง › ประเภทช่องทาง (Dine-in / Delivery) ช่องทางของร้านหรือแพลตฟอร์ม อัตราคอมมิชชัน</td></tr>
+    <tr><td class="z">DIM_CUSTOMER</td><td>สมาชิกบนช่องทางของร้าน</td><td>Type 1</td><td>แถว 0 สำหรับออร์เดอร์ที่ไม่มีลูกค้าระบุตัว <code>rfm_segment</code> คือ behavioral dimension อัปเดตทุกเดือน</td></tr>
+    <tr><td class="z">DIM_MENU_ITEM</td><td>หนึ่ง SKU (เมนู × ไซซ์)</td><td><strong>SCD2</strong></td><td>SKU › เมนู › หมวด เปลี่ยนราคาหรือสูตรแล้วเพิ่มแถวใหม่</td></tr>
     <tr><td class="z">DIM_MODIFIER</td><td>ชีสเพิ่ม ไม่ใส่พริก แป้งบาง…</td><td>Type 1</td><td>add / remove / substitute</td></tr>
-    <tr><td class="z">DIM_PROMOTION</td><td>โปรโมชันหนึ่งตัว</td><td>Type 1</td><td>เงื่อนไขและของรางวัลอยู่ใน bridge</td></tr>
-    <tr><td class="z">DIM_INGREDIENT</td><td>มอซซาเรลลา แป้ง เปปเปอโรนี…</td><td>Type 1</td><td>หน่วยฐาน จุดสั่งซื้อ safety stock</td></tr>
+    <tr><td class="z">DIM_PROMOTION</td><td>โปรโมชันหนึ่งตัว</td><td>Type 1</td><td>แถว 0 = ไม่มีโปรโมชัน เงื่อนไขและของรางวัลอยู่ใน bridge</td></tr>
+    <tr><td class="z">DIM_INGREDIENT</td><td>มอซซาเรลลา แป้ง เปปเปอโรนี…</td><td>Type 1</td><td>วัตถุดิบ › หมวด เก็บชื่อซัพพลายเออร์หลักไว้เลย ไม่ทำเป็น snowflake</td></tr>
     <tr><td class="z">DIM_SUPPLIER</td><td>ซัพพลายเออร์หนึ่งราย</td><td>Type 1</td><td>lead time ยอดสั่งขั้นต่ำ</td></tr>
-    <tr><td class="z">DIM_STAFF</td><td>พนักงานหนึ่งคน</td><td><strong>SCD2</strong></td><td>ค่าแรง ตำแหน่ง และสิทธิ์ OT เปลี่ยนได้ตามเวลา</td></tr>
-    <tr><td class="z">DIM_ROLE</td><td>pizzaiolo, แคชเชียร์, ไรเดอร์…</td><td>Type 1</td><td>snowflake ตัวเดียวที่ตั้งใจทำ (แยกจาก <code>DIM_STAFF</code>)</td></tr>
+    <tr><td class="z">DIM_STAFF</td><td>พนักงานหนึ่งคน</td><td><strong>SCD2</strong></td><td>พนักงาน › ตำแหน่ง › ส่วนงาน รวมตำแหน่งไว้ในตารางเดียว (ไม่มี snowflake) ค่าแรง ตำแหน่ง และสิทธิ์ OT เปลี่ยนได้ตามเวลา</td></tr>
+    <tr><td class="z">Junk dimension</td><td>รหัสและ flag ที่มีค่าไม่กี่แบบ</td><td>คงที่</td><td><code>DIM_ORDER_INFO</code>, <code>DIM_PAYMENT_INFO</code>, <code>DIM_PROMO_APPLICATION</code>, <code>DIM_MOVEMENT_INFO</code>, <code>DIM_PO_INFO</code>, <code>DIM_SHIFT_INFO</code></td></tr>
+    <tr><td class="z">DIM_EVENT_TYPE</td><td>การเปลี่ยนสถานะออร์เดอร์</td><td>คงที่</td><td>ลำดับและช่วง (Kitchen / Delivery)</td></tr>
   </tbody>
 </table>
 </div>
@@ -214,34 +222,37 @@ GROUP BY channel_code</pre>
   <code>BRG_SUPPLIER_DELIVERY_DAY</code> (หนึ่งแถวต่อซัพพลายเออร์ต่อวันในสัปดาห์)
 </p>
 
-<h3>Bus matrix: process ไหนใช้ dimension ไหนร่วมกัน</h3>
+<h3>Conformance matrix: fact ไหน conform กับ dimension ระดับไหน</h3>
 <div class="wide table-scroll">
 <table class="matrix">
-  <thead><tr><th>Business process → fact table</th><th>Date</th><th>Channel</th><th>Customer</th><th>Menu item</th><th>Modifier</th><th>Promotion</th><th>Ingredient</th><th>Supplier</th><th>Staff</th></tr></thead>
+  <thead><tr><th>Fact table</th><th>day</th><th>month</th><th>quarter</th><th>channel</th><th>type</th><th>customer</th><th>SKU</th><th>category</th><th>modifier</th><th>promotion</th><th>ingredient</th><th>ingr. cat.</th><th>supplier</th><th>staff</th><th>role</th><th>order_number</th></tr></thead>
   <tbody>
-    <tr><td>ขายออร์เดอร์ · <code>FCT_ORDER</code>, <code>FCT_ORDER_LINE</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td></tr>
-    <tr><td>ปรับแต่งเมนู · <code>FCT_ORDER_LINE_MODIFIER</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td></tr>
-    <tr><td>รับชำระเงิน · <code>FCT_PAYMENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-    <tr><td>ให้ส่วนลด · <code>FCT_ORDER(_LINE)_PROMOTION</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td></td><td></td><td></td></tr>
-    <tr><td>ทำอาหาร / จัดส่ง · <code>FCT_ORDER_EVENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
-    <tr><td>ซื้อวัตถุดิบ · <code>FCT_PURCHASE_ORDER(_LINE)</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
-    <tr><td>สต็อกเคลื่อนไหว · <code>FCT_INVENTORY_MOVEMENT</code></td><td class="y">✓</td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
-    <tr><td>นับสต็อก · <code>FCT_INVENTORY_COUNT</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td></td><td class="y">✓</td></tr>
-    <tr><td>เข้ากะ · <code>FCT_SHIFT</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
-    <tr class="total"><td>จำนวน process ที่ใช้ dimension นี้</td><td>9</td><td>5</td><td>5</td><td>4</td><td>2</td><td>1</td><td>3</td><td>2</td><td>3</td></tr>
+    <tr><td><code>FCT_ORDER</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_LINE</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_LINE_MODIFIER</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_PAYMENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_PROMOTION</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_LINE_PROMOTION</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_EVENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_PURCHASE_ORDER(_LINE)</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td></tr>
+    <tr><td><code>FCT_INVENTORY_MOVEMENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td></tr>
+    <tr><td><code>FCT_INVENTORY_COUNT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
+    <tr><td><code>FCT_SHIFT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
+    <tr><td><code>fct_forecast</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="total"><td>จำนวน fact ที่ conform</td><td>12</td><td>12</td><td>12</td><td>8</td><td>8</td><td>4</td><td>5</td><td>5</td><td>2</td><td>2</td><td>3</td><td>3</td><td>2</td><td>3</td><td>3</td><td>7</td></tr>
   </tbody>
 </table>
 </div>
 <p>
-  dimension ทุกตัวสร้างครั้งเดียวแล้วใช้ร่วมกัน ยอดขายจึงเทียบกับสต็อกได้ (ผ่านเมนูและสูตร) และเทียบกับค่าแรงได้ (ผ่านวันที่)
-  วงจรการสั่งของและการเทียบค่าแรงกับยอดขายจึงเป็นแค่การ join ไม่ใช่โปรเจกต์ใหม่
+  dimension ทุกตัวสร้างครั้งเดียวแล้วใช้ร่วมกันในทุกระดับของ hierarchy ยอดขายจึงเทียบกับสต็อกได้ (ผ่านเมนูและสูตร) และเทียบกับค่าแรงได้ (ผ่านวันที่)
+  ด้วยการ drill across วงจรการสั่งของและการเทียบค่าแรงกับยอดขายจึงเป็น query ปกติ ไม่ใช่โปรเจกต์ใหม่ ถ้าไม่มี conformance warehouse จะกลายเป็นเกาะข้อมูล
 </p>
 
 <h2 class="wide">4 · Star ของการขาย</h2>
 <figure class="wide">
   <div class="diagram-scroll">
-  <svg viewBox="0 0 1180 540" role="img"
-       aria-label="FCT_ORDER อยู่ระหว่าง DIM_DATE, DIM_CHANNEL และ DIM_CUSTOMER ส่วน FCT_ORDER_LINE ชี้ไปที่ FCT_ORDER และ DIM_MENU_ITEM และ FCT_ORDER_LINE_MODIFIER ห้อยจากบรรทัดออร์เดอร์และชี้ไปที่ DIM_MODIFIER fact แต่ละตัวแสดง key, degenerate key และ measure">
+  <svg viewBox="0 0 1180 560" role="img"
+       aria-label="FCT_ORDER ทางซ้ายและ FCT_ORDER_LINE ทางขวาชี้ตรงไปที่ dimension ที่ใช้ร่วมกันตรงกลาง: DIM_DATE, DIM_CHANNEL, DIM_CUSTOMER และ junk dimension DIM_ORDER_INFO FCT_ORDER_LINE ยังชี้ไปที่ DIM_MENU_ITEM ส่วน FCT_ORDER_LINE_MODIFIER ชี้ไปที่ DIM_MENU_ITEM และ DIM_MODIFIER ไม่มี fact ตัวไหนชี้ไปที่ fact อีกตัว">
     <defs>
       <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -249,128 +260,154 @@ GROUP BY channel_code</pre>
     </defs>
 
     <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
-      <rect x="20"  y="40"  width="210" height="110" rx="3"/>
-      <rect x="20"  y="200" width="210" height="110" rx="3"/>
-      <rect x="20"  y="360" width="210" height="96"  rx="3"/>
-      <rect x="960" y="40"  width="200" height="150" rx="3"/>
-      <rect x="960" y="420" width="200" height="90"  rx="3"/>
+      <rect x="350" y="20"  width="232" height="104" rx="3"/>
+      <rect x="350" y="140" width="232" height="104" rx="3"/>
+      <rect x="350" y="260" width="232" height="104" rx="3"/>
+      <rect x="350" y="380" width="232" height="80"  rx="3"/>
+      <rect x="960" y="20"  width="200" height="172" rx="3"/>
+      <rect x="960" y="420" width="200" height="96"  rx="3"/>
     </g>
     <g fill="var(--surface)" stroke="var(--ember)" stroke-width="2">
-      <rect x="300" y="130" width="250" height="250" rx="3"/>
-      <rect x="640" y="130" width="250" height="250" rx="3"/>
-      <rect x="640" y="420" width="250" height="90"  rx="3"/>
+      <rect x="20"  y="110" width="260" height="232" rx="3"/>
+      <rect x="650" y="110" width="260" height="252" rx="3"/>
+      <rect x="650" y="420" width="260" height="124" rx="3"/>
     </g>
 
     <g class="m" font-size="12" font-weight="600" letter-spacing="1" fill="currentColor">
-      <text x="30"  y="62">DIM_DATE</text>
-      <text x="30"  y="222">DIM_CHANNEL</text>
-      <text x="30"  y="382">DIM_CUSTOMER</text>
-      <text x="970" y="62">DIM_MENU_ITEM</text>
+      <text x="360" y="42">DIM_DATE</text>
+      <text x="360" y="162">DIM_CHANNEL</text>
+      <text x="360" y="282">DIM_CUSTOMER</text>
+      <text x="360" y="402">DIM_ORDER_INFO (junk)</text>
+      <text x="970" y="42">DIM_MENU_ITEM</text>
       <text x="970" y="442">DIM_MODIFIER</text>
     </g>
     <g class="m" font-size="12" font-weight="600" letter-spacing="1" fill="var(--ember)">
-      <text x="310" y="152">FCT_ORDER</text>
-      <text x="650" y="152">FCT_ORDER_LINE</text>
-      <text x="650" y="442">FCT_ORDER_LINE_MODIFIER</text>
+      <text x="30"  y="132">FCT_ORDER</text>
+      <text x="660" y="132">FCT_ORDER_LINE</text>
+      <text x="660" y="442">FCT_ORDER_LINE_MODIFIER</text>
     </g>
     <g font-size="10.5" fill="var(--ink-2)">
-      <text x="310" y="168">grain: หนึ่งแถวต่อหนึ่งออร์เดอร์</text>
-      <text x="650" y="168">grain: เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</text>
-      <text x="650" y="458">grain: modifier หนึ่งตัวต่อหนึ่งบรรทัด</text>
+      <text x="30"  y="148">grain: หนึ่งแถวต่อหนึ่งออร์เดอร์</text>
+      <text x="660" y="148">grain: เมนูหนึ่งรายการในออร์เดอร์หนึ่งใบ</text>
+      <text x="660" y="458">grain: modifier หนึ่งตัวต่อหนึ่งบรรทัด</text>
     </g>
     <g stroke="var(--rule)" stroke-width="1">
-      <line x1="30"  y1="70"  x2="220"  y2="70"/>
-      <line x1="30"  y1="230" x2="220"  y2="230"/>
-      <line x1="30"  y1="390" x2="220"  y2="390"/>
-      <line x1="970" y1="70"  x2="1150" y2="70"/>
+      <line x1="360" y1="50"  x2="572"  y2="50"/>
+      <line x1="360" y1="170" x2="572"  y2="170"/>
+      <line x1="360" y1="290" x2="572"  y2="290"/>
+      <line x1="360" y1="410" x2="572"  y2="410"/>
+      <line x1="970" y1="50"  x2="1150" y2="50"/>
       <line x1="970" y1="450" x2="1150" y2="450"/>
-      <line x1="310" y1="176" x2="540"  y2="176"/>
-      <line x1="650" y1="176" x2="880"  y2="176"/>
-      <line x1="650" y1="466" x2="880"  y2="466"/>
+      <line x1="30"  y1="156" x2="270"  y2="156"/>
+      <line x1="660" y1="156" x2="900"  y2="156"/>
+      <line x1="660" y1="466" x2="900"  y2="466"/>
     </g>
 
+    <!-- dimension bodies -->
     <g class="m" font-size="10.5" fill="currentColor">
-      <text x="30" y="90">date_sk PK = วันทำการ</text>
-      <text x="30" y="106">calendar_date</text>
-      <text x="30" y="122">day_of_week · is_weekend</text>
-      <text x="30" y="138">is_thai_holiday</text>
+      <text x="360" y="70">date_key PK = business day</text>
+      <text x="360" y="86">full_date · weekend_flag</text>
+      <text x="360" y="102">holiday_flag</text>
+      <text x="360" y="118" fill="var(--ember)">day › month › quarter › year</text>
 
-      <text x="30" y="250">channel_sk PK</text>
-      <text x="30" y="266">channel_code</text>
-      <text x="30" y="282">is_own_channel</text>
-      <text x="30" y="298">commission_rate_pct</text>
+      <text x="360" y="190">channel_key PK</text>
+      <text x="360" y="206">channel_code · channel_name</text>
+      <text x="360" y="222">channel_ownership</text>
+      <text x="360" y="238" fill="var(--ember)">channel › channel_type</text>
 
-      <text x="30" y="410">customer_sk PK</text>
-      <text x="30" y="426">customer_nk</text>
-      <text x="30" y="442">is_member</text>
+      <text x="360" y="310">customer_key PK</text>
+      <text x="360" y="326">customer_nk · membership</text>
+      <text x="360" y="342">rfm_segment (behavioral)</text>
+      <text x="360" y="358" fill="var(--ember)" class="t">แถว 0 = ไม่มีลูกค้าระบุตัว</text>
 
-      <text x="970" y="90">menu_item_sk PK</text>
-      <text x="970" y="106">menu_item_nk</text>
-      <text x="970" y="122">item_name · category · size</text>
-      <text x="970" y="138">base_price_thb</text>
-      <text x="970" y="160" fill="var(--ember)">valid_from · valid_to</text>
+      <text x="360" y="430">order_info_key PK</text>
+      <text x="360" y="446">order_status · cancellation_flag</text>
 
-      <text x="970" y="470">modifier_sk PK</text>
+      <text x="970" y="70">menu_item_key PK</text>
+      <text x="970" y="86">menu_item_nk</text>
+      <text x="970" y="102">item_name · size_name</text>
+      <text x="970" y="118">base_price_thb</text>
+      <text x="970" y="134" fill="var(--ember)">SKU › item › category</text>
+      <text x="970" y="156" fill="var(--ember)">valid_from · valid_to</text>
+      <text x="970" y="172" fill="var(--ember)" class="t">SCD2: PEP-L = แถว 102, 106</text>
+
+      <text x="970" y="470">modifier_key PK</text>
       <text x="970" y="486">modifier_name</text>
       <text x="970" y="502">modifier_type</text>
     </g>
-    <text x="970" y="176" font-size="10.5" fill="var(--ember)">SCD2: PEP-L มี 2 แถว</text>
 
+    <!-- fact bodies: keys in ink, degenerate in grey, measures in basil -->
     <g class="m" font-size="10.5" fill="currentColor">
-      <text x="310" y="196">order_sk PK</text>
-      <text x="310" y="228">date_sk FK</text>
-      <text x="310" y="244">channel_sk FK</text>
-      <text x="650" y="196">order_line_sk PK</text>
-      <text x="650" y="212">order_sk FK</text>
-      <text x="650" y="486">order_line_sk FK · modifier_sk FK</text>
-    </g>
-    <g font-size="10.5" fill="currentColor">
-      <text x="310" y="260"><tspan class="m">customer_sk FK</tspan> (Grab เป็น null)</text>
-      <text x="650" y="228"><tspan class="m">menu_item_sk FK</tspan> (as-of)</text>
+      <text x="30" y="176">date_key FK</text>
+      <text x="30" y="192">channel_key FK</text>
+      <text x="30" y="208">customer_key FK (0, ไม่ NULL)</text>
+      <text x="30" y="224">order_info_key FK</text>
+
+      <text x="660" y="176">date_key FK</text>
+      <text x="660" y="192">channel_key FK</text>
+      <text x="660" y="208">customer_key FK</text>
+      <text x="660" y="224">menu_item_key FK (as-of)</text>
+      <text x="660" y="240">order_info_key FK</text>
+
+      <text x="660" y="484">date_key · channel_key FK</text>
+      <text x="660" y="500">menu_item_key · modifier_key FK</text>
     </g>
     <g class="m" font-size="10.5" fill="var(--ink-2)">
-      <text x="310" y="212">external_order_id (degenerate)</text>
-      <text x="650" y="244">line_no (degenerate)</text>
+      <text x="30"  y="240">order_number (degenerate)</text>
+      <text x="660" y="256">order_number · line_number</text>
+      <text x="660" y="516">order_number · line_number</text>
     </g>
     <g class="m" font-size="10.5" fill="var(--basil)">
-      <text x="310" y="290">gross_amount_thb</text>
-      <text x="310" y="306">discount_amount_thb</text>
-      <text x="310" y="322">delivery_fee_thb</text>
-      <text x="310" y="338">commission_amount_thb</text>
-      <text x="310" y="354">net_revenue_thb</text>
+      <text x="30" y="262">gross_amount_thb</text>
+      <text x="30" y="278">discount_amount_thb</text>
+      <text x="30" y="294">delivery_fee_thb</text>
+      <text x="30" y="310">commission_amount_thb</text>
+      <text x="30" y="326">net_revenue_thb</text>
 
-      <text x="650" y="290">quantity</text>
-      <text x="650" y="306">unit_price_thb (snapshot)</text>
-      <text x="650" y="322">line_discount_thb</text>
-      <text x="650" y="338">line_net_thb</text>
+      <text x="660" y="280">quantity</text>
+      <text x="660" y="296">unit_price_thb (snapshot)</text>
+      <text x="660" y="312">line_discount_thb</text>
+      <text x="660" y="328">line_net_thb</text>
 
-      <text x="650" y="502">quantity · price_delta_thb (snapshot)</text>
+      <text x="660" y="532">quantity · price_delta_thb (snapshot)</text>
     </g>
 
+    <!-- FK arrows, fact -> dimension -->
     <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
-      <path d="M300 224 C 265 224, 265 95, 232 95"/>
-      <path d="M300 240 C 265 240, 265 255, 232 255"/>
-      <path d="M300 256 C 265 256, 265 408, 232 408"/>
-      <path d="M640 208 C 600 208, 590 192, 552 192"/>
-      <path d="M890 224 C 925 224, 925 115, 958 115"/>
-      <line x1="765" y1="380" x2="765" y2="418"/>
-      <line x1="890" y1="482" x2="958" y2="482"/>
+      <path d="M280 172 C 315 172, 315 72, 348 72"/>
+      <path d="M280 188 C 315 188, 315 192, 348 192"/>
+      <path d="M280 204 C 315 204, 315 312, 348 312"/>
+      <path d="M280 220 C 315 220, 315 420, 348 420"/>
+      <path d="M650 172 C 615 172, 615 72, 584 72"/>
+      <path d="M650 188 C 615 188, 615 192, 584 192"/>
+      <path d="M650 204 C 615 204, 615 312, 584 312"/>
+      <path d="M650 236 C 615 236, 615 420, 584 420"/>
+      <path d="M910 220 C 935 220, 935 105, 958 105"/>
+      <path d="M910 496 C 940 496, 1060 300, 1060 194"/>
+      <line x1="910" y1="476" x2="958" y2="476"/>
     </g>
 
-    <g font-size="10.5">
-      <rect x="300" y="420" width="14" height="10" fill="var(--surface)" stroke="var(--ember)" stroke-width="2"/>
-      <text x="322" y="429" fill="currentColor">fact: เหตุการณ์ แคบ ยาว เพิ่มอย่างเดียว</text>
-      <rect x="300" y="440" width="14" height="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
-      <text x="322" y="449" fill="currentColor">dimension: บริบท กว้าง สั้น</text>
-      <text x="300" y="474" fill="currentColor">key / FK</text>
-      <text x="360" y="474" fill="var(--ink-2)">degenerate</text>
-      <text x="440" y="474" fill="var(--basil)">measure</text>
+    <!-- legend -->
+    <g font-size="10">
+      <rect x="20" y="380" width="14" height="10" fill="var(--surface)" stroke="var(--ember)" stroke-width="2"/>
+      <text x="42" y="389" fill="currentColor">fact: เหตุการณ์ ลึก เพิ่มอย่างเดียว</text>
+      <rect x="20" y="400" width="14" height="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+      <text x="42" y="409" fill="currentColor">dimension: บริบท กว้าง</text>
+      <text x="20" y="432" fill="currentColor">key / FK</text>
+      <text x="80" y="432" fill="var(--ink-2)">degenerate</text>
+      <text x="160" y="432" fill="var(--basil)">measure</text>
+      <text x="240" y="432" fill="var(--ember)">hierarchy</text>
+      <text x="20" y="456" fill="currentColor">ทุก dimension: 0 ไม่เกี่ยวข้อง</text>
+      <text x="20" y="472" fill="currentColor">1 ไม่ทราบ · 2 ไม่ถูกต้อง</text>
+      <text x="20" y="496" fill="currentColor">fact ไม่ชี้ไปที่ fact:</text>
+      <text x="20" y="512" fill="currentColor">เทียบกันด้วยการ drill across</text>
     </g>
   </svg>
   </div>
   <figcaption>
-    ส่วนการขายจากรูปที่ 2 ใน README แบบย่อ เงินระดับออร์เดอร์อยู่ใน FCT_ORDER เงินระดับบรรทัดอยู่ใน FCT_ORDER_LINE
-    แยกเป็นสองตารางเพราะ grain ต่างกัน ส่วน modifier เป็นแถวใน fact ของตัวเอง ไม่ใช่คอลัมน์ JSON
+    ส่วนการขายจากรูปที่ 2 ใน README แบบย่อ fact ทั้งสองตัวชี้ตรงไปที่ conformed dimension ที่ใช้ร่วมกัน เงินระดับออร์เดอร์อยู่ใน FCT_ORDER
+    เงินระดับบรรทัดอยู่ใน FCT_ORDER_LINE และเทียบกันด้วยการ drill across ผ่าน order_number หรือ conformed dimension
+    fact ของ modifier ก็มี key วันที่และช่องทางด้วย (ไม่ได้วาดลูกศร)
   </figcaption>
 </figure>
 
@@ -383,12 +420,12 @@ GROUP BY channel_code</pre>
     <tr><td class="z">FCT_ORDER_LINE</td><td>transaction</td><td>SKU หนึ่งตัวในออร์เดอร์หนึ่งใบ</td><td>quantity, line_net; unit_price (snapshot)</td><td>POS, ไฟล์ export ของแพลตฟอร์ม</td><td>grain ของการพยากรณ์คือ เมนู × วัน × ช่องทาง</td></tr>
     <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>transaction</td><td>modifier หนึ่งตัวบนบรรทัดหนึ่งบรรทัด</td><td>quantity; price_delta (snapshot)</td><td>POS</td><td>modifier ใช้วัตถุดิบ ถ้าเป็นคอลัมน์ text จะนับไม่ได้</td></tr>
     <tr><td class="z">FCT_PAYMENT</td><td>transaction</td><td>การจ่ายเงินหนึ่งครั้งต่อออร์เดอร์หนึ่งใบ</td><td>amount; วันที่เงินเข้า</td><td>POS, การโอนเงินของแพลตฟอร์ม</td><td>แบ่งจ่ายได้ เงินจากแพลตฟอร์มเข้าช้ากว่าหลายวัน</td></tr>
-    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>การเปลี่ยนสถานะหนึ่งครั้งของออร์เดอร์หนึ่งใบ</td><td>event_ts, ระยะเวลาจากขั้นก่อน</td><td>สถานะครัวจาก POS, เวลาจากแพลตฟอร์ม</td><td>ระยะเวลาไหนก็คือผลต่างของสองแถว ขั้นใหม่ไม่ต้องเพิ่มคอลัมน์</td></tr>
-    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อออร์เดอร์หนึ่งใบ</td><td>discount</td><td>POS, ไฟล์ export ของแพลตฟอร์ม</td><td>ส่วนลดระดับตะกร้าตามที่รายงาน กระทบยอดกับตารางระดับบรรทัด</td></tr>
+    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>การเปลี่ยนสถานะหนึ่งครั้งของออร์เดอร์หนึ่งใบ</td><td>event_ts, ระยะเวลาจากขั้นก่อน</td><td>สถานะครัวจาก POS, เวลาจากแพลตฟอร์ม</td><td>ระยะเวลาไหนก็คือผลต่างของสองแถว ขั้นใหม่คือแถวใหม่ใน <code>DIM_EVENT_TYPE</code></td></tr>
+    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อออร์เดอร์หนึ่งใบ</td><td>discount</td><td>POS, ไฟล์ export ของแพลตฟอร์ม</td><td>ส่วนลดระดับตะกร้าตามที่รายงาน กระทบยอดกับตารางระดับบรรทัดด้วยการ drill across</td></tr>
     <tr><td class="z">FCT_ORDER_LINE_PROMOTION</td><td>transaction</td><td>โปรโมชันหนึ่งตัวต่อบรรทัดหนึ่งบรรทัด</td><td>discount (กระจายลงมา)</td><td>คำนวณใน stg</td><td>ส่วนลดต่อ SKU ทำให้ margin ของเมนูเป็นของจริง</td></tr>
-    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>ใบสั่งซื้อหนึ่งใบถึงซัพพลายเออร์หนึ่งราย</td><td>total cost</td><td>ชีตการสั่งซื้อ</td><td>วันที่สั่งกับวันที่รับของเป็นสองบทบาทของ DIM_DATE</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>ใบสั่งซื้อหนึ่งใบถึงซัพพลายเออร์หนึ่งราย</td><td>total cost</td><td>ชีตการสั่งซื้อ</td><td>วันที่สั่งกับวันที่รับของเป็นสองบทบาท (role) ของ <code>DIM_DATE</code></td></tr>
     <tr><td class="z">FCT_PURCHASE_ORDER_LINE</td><td>transaction</td><td>วัตถุดิบหนึ่งตัวในใบสั่งซื้อหนึ่งใบ</td><td>qty ordered, qty received; unit_cost (snapshot)</td><td>ชีตการสั่งซื้อ</td><td>ต้นทุน ณ วันที่ซื้อ</td></tr>
-    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>การเคลื่อนไหวหนึ่งครั้งของวัตถุดิบหนึ่งตัว</td><td>qty_delta (มีเครื่องหมาย)</td><td>คำนวณจากยอดขาย × สูตร, การรับของ, การนับ, บันทึกของเสีย</td><td>สต็อกคงเหลือ = <code>SUM(qty_delta)</code> มี FK หนึ่งตัวต่อเอกสารต้นทางหนึ่งแบบ</td></tr>
+    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>การเคลื่อนไหวหนึ่งครั้งของวัตถุดิบหนึ่งตัว</td><td>qty_delta (มีเครื่องหมาย)</td><td>คำนวณจากยอดขาย × สูตร, การรับของ, การนับ, บันทึกของเสีย</td><td>สต็อกคงเหลือ = <code>SUM(qty_delta)</code> ใช้ key ของ dimension สำหรับวิเคราะห์ และรหัสเอกสารต้นทางแบบ degenerate สำหรับตามย้อนกลับ</td></tr>
     <tr><td class="z">FCT_INVENTORY_COUNT</td><td>periodic snapshot</td><td>วัตถุดิบหนึ่งตัว ณ ปิดร้านหนึ่งวัน</td><td>counted, expected; variance</td><td>ฟอร์มนับสต็อก</td><td>ความจริงทางกายภาพ variance คือ KPI ของเสีย</td></tr>
     <tr><td class="z">FCT_SHIFT</td><td>transaction</td><td>กะหนึ่งกะของพนักงานหนึ่งคน</td><td>ชั่วโมงปกติ ชั่วโมง OT ค่าแรง; OT multiplier (snapshot)</td><td>เครื่องตอกบัตร</td><td>OT แพงกว่าและเป็นค่าแรงส่วนที่คุมได้มากที่สุด</td></tr>
     <tr><td class="z">fct_forecast</td><td>periodic snapshot</td><td>SKU × วัน × ช่องทาง × รอบการรัน</td><td>forecast_units (บวกข้ามรอบไม่ได้)</td><td>โมเดลพยากรณ์ รายสัปดาห์</td><td>ค่าพยากรณ์เทียบของจริงกลายเป็นตารางที่ติดตามได้</td></tr>
@@ -397,18 +434,21 @@ GROUP BY channel_code</pre>
 </div>
 
 <h2>6 · ข้อตกลงที่ทุกตารางต้องทำตาม</h2>
-<p>นี่คือกฎที่ทีมใช้กับทุกตารางใหม่ ตัวเลขมาจากต้นแบบใน <code>notebooks/warehouse_design.ipynb</code> ซึ่งตั้งใจทำให้แต่ละข้อพังเพื่อให้เห็นว่ามันปกป้องอะไร</p>
+<p>นี่คือกฎจากบทที่ 5 ที่ทีมใช้กับทุกตารางใหม่ ตัวเลขมาจากต้นแบบใน <code>notebooks/warehouse_design.ipynb</code> ซึ่งตั้งใจทำให้แต่ละข้อพังเพื่อให้เห็นว่ามันปกป้องอะไร</p>
 <div class="table-scroll">
 <table>
   <thead><tr><th>ข้อตกลง</th><th>ปกป้องอะไร (ตัวเลขจากต้นแบบ)</th></tr></thead>
   <tbody>
-    <tr><td class="zt">บอก grain ก่อน</td><td>ทุกตารางมี grain ในประโยคเดียว เงินระดับออร์เดอร์ห้ามอยู่ในแถวระดับบรรทัด ถ้า join แล้ว sum คอมมิชชัน Grab วันศุกร์จะเป็น 403.5 แทน 257.1</td></tr>
+    <tr><td class="zt">grain ก่อน, drill across</td><td>fact ทุกตัวมี grain ในประโยคเดียว fact ที่ grain ต่างกันอยู่คนละตาราง เทียบ fact สองตัวด้วยการ drill across ไม่ join กันตรง ๆ ถ้า join ออร์เดอร์กับบรรทัด คอมมิชชัน Grab วันศุกร์จะเป็น 403.5 แทน 257.1</td></tr>
+    <tr><td class="zt">ไม่มี key ที่เป็น NULL</td><td>ใช้ special-case row แทน ถ้า <code>customer_key</code> เป็น NULL รายได้ 2,327 จาก 3,782 บาทจะหายไปจากรายงานตามสถานะสมาชิกโดยไม่มี error ถ้าใช้แถว 0 จะแสดงว่า "ไม่เกี่ยวข้อง"</td></tr>
+    <tr><td class="zt">ข้อมูลที่มาช้าต้องถูกโหลด</td><td>เมนูที่ยังไม่ได้ map ถูกโหลดเข้าแถว 1 "ไม่ทราบ" พร้อมแจ้งเตือน แล้วค่อยชี้ใหม่ทีหลัง ถ้ากักไว้ยอดขายจะต่ำกว่าความจริง</td></tr>
+    <tr><td class="zt">fact ชี้ไปที่ dimension</td><td>fact ทุกตัวมี key ไปหาทุก dimension ที่ใช้วิเคราะห์ และไม่มี key ไปหา fact ตัวอื่น การตามย้อนกลับใช้รหัสเอกสารแบบ degenerate ที่ ETL เป็นคนตรวจ</td></tr>
     <tr><td class="zt">snapshot ค่าที่เป็นนโยบาย</td><td>ราคา ต้นทุน และตัวคูณ OT ถูกคัดลอกลง fact ณ ตอนที่เกิด ไม่อย่างนั้นการขึ้นราคาวันเสาร์จะเปลี่ยนรายได้ Pepperoni L วันศุกร์จาก 1,037 เป็น 1,047</td></tr>
     <tr><td class="zt">list ต้องเป็นตาราง</td><td>ห้ามมี list ในคอลัมน์ เก็บ modifier เป็นแถวทำให้ variance มอซซาเรลลาวันศุกร์เป็น −20 กรัม ถ้าเก็บเป็น text จะเป็น −100 กรัม</td></tr>
-    <tr><td class="zt">เก็บสิ่งที่บวกได้</td><td>fact เก็บส่วนที่บวกได้ อัตราส่วนคำนวณตอน query ค่าที่เป็นระดับอย่างยอดนับสต็อกห้ามบวกข้ามเวลา ("คงเหลือ" 16.3 กิโล แต่ของจริง 5.2 กิโล)</td></tr>
-    <tr><td class="zt">FK หนึ่งตัวต่อแหล่ง</td><td>ห้ามมีคอลัมน์อ้างอิงที่ใช้ร่วมกัน key แบบ polymorphic ทำให้การรับชีส 2 กิโลไป join กับพิซซ่าได้โดยไม่มี error</td></tr>
-    <tr><td class="zt">surrogate key, SCD2</td><td>fact เก็บแต่ key ของ warehouse เมนู สูตร และพนักงานเก็บทุกเวอร์ชัน fact join กับเวอร์ชันที่ใช้ได้ในวันทำการของมัน</td></tr>
-    <tr><td class="zt">วันทำการครั้งเดียว</td><td><code>date_sk</code> ถูกกำหนดตอนโหลด (10:00–02:00) query ปลายทางไม่ต้องคำนวณเวลาเองเลย</td></tr>
+    <tr><td class="zt">เก็บสิ่งที่บวกได้</td><td>measure ที่บวกไม่ได้ต้องแยกเป็นส่วนที่บวกได้ ค่าที่เป็นระดับอย่างยอดนับสต็อกห้ามบวกข้ามเวลา ("คงเหลือ" 16.3 กิโล แต่ของจริง 5.2 กิโล)</td></tr>
+    <tr><td class="zt">junk และ degenerate</td><td>รหัสและ flag ที่มีค่าไม่กี่แบบไปอยู่ใน junk dimension เหลือไว้ใน fact เฉพาะรหัสธุรกรรมที่เป็น degenerate dimension</td></tr>
+    <tr><td class="zt">ไม่มี snowflake</td><td>attribute ที่เกี่ยวข้องกันเก็บไว้ด้วยกันแบบซ้ำซ้อนได้ ETL เป็นคนดูแลความถูกต้องของการอ้างอิง ตำแหน่งงานอยู่ใน <code>DIM_STAFF</code></td></tr>
+    <tr><td class="zt">วันทำการครั้งเดียว</td><td><code>date_key</code> ถูกกำหนดตอนโหลด (10:00–02:00) query ปลายทางไม่ต้องคำนวณเวลาเองเลย</td></tr>
   </tbody>
 </table>
 </div>
@@ -417,7 +457,7 @@ GROUP BY channel_code</pre>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 250" role="img"
-       aria-label="การโหลดออร์เดอร์ P-1003 บรรทัดที่ 1: channel code ถูก lookup เป็น channel_sk 1, เวลา 01:20 ลบ 10 ชั่วโมงได้วันทำการ 4 ก.ย., เมนูถูก lookup แบบ as-of ได้ key 2 ราคา 329 บาท แล้วด่านตรวจคุณภาพเช็กว่าไม่มี key หายก่อนเพิ่มแถวลง fact">
+       aria-label="การโหลดออร์เดอร์ P-1003 บรรทัดที่ 1: channel code ถูก lookup เป็น channel_key 101, เวลา 01:20 ลบ 10 ชั่วโมงได้วันทำการ 4 ก.ย., ลูกค้า walk-in ได้แถว 0, เมนูถูก lookup แบบ as-of ได้ key 102 ราคา 329 บาท ถ้า key ไหนหาไม่เจอจะไปที่แถว Unknown พร้อมแจ้งเตือน">
     <defs>
       <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -432,7 +472,7 @@ GROUP BY channel_code</pre>
     </g>
     <g font-size="12" font-weight="700" fill="currentColor">
       <text x="20"  y="62">แถวจาก staging</text>
-      <text x="262" y="62">lookup ช่องทาง</text>
+      <text x="262" y="62">ช่องทาง, ลูกค้า</text>
       <text x="504" y="62">วันทำการ</text>
       <text x="746" y="62">lookup เมนูแบบ as-of</text>
       <text x="988" y="62">ด่านตรวจ → แถว fact</text>
@@ -452,17 +492,18 @@ GROUP BY channel_code</pre>
       <text x="20" y="156">qty 1 · paid 329</text>
 
       <text x="262" y="92">QR_DINEIN</text>
-      <text x="262" y="108">→ channel_sk 1</text>
+      <text x="262" y="108">→ channel_key 101</text>
+      <text x="262" y="150">→ customer_key 0</text>
 
       <text x="504" y="92">01:20 − 10 h</text>
-      <text x="504" y="124">→ date_sk 20260904</text>
+      <text x="504" y="124">→ date_key 20260904</text>
 
-      <text x="746" y="108">→ menu_item_sk 2 (329)</text>
+      <text x="746" y="108">→ menu_item_key 102 (329)</text>
       <text x="746" y="174" fill="var(--ember)">valid_from ≤ day</text>
       <text x="746" y="190" fill="var(--ember)">&lt; valid_to</text>
 
-      <text x="988" y="150">order_sk · menu_item_sk 2</text>
-      <text x="988" y="166">qty 1 · unit_price 329</text>
+      <text x="988" y="150">date · channel · item 102</text>
+      <text x="988" y="166">customer 0 · qty 1 · 329</text>
     </g>
     <g font-size="10.5" fill="currentColor">
       <text x="20" y="190" fill="var(--ink-2)">มีแต่ business key</text>
@@ -471,10 +512,11 @@ GROUP BY channel_code</pre>
       <text x="504" y="174" fill="var(--ember)">กฎอยู่ที่นี่ครั้งเดียว</text>
       <text x="504" y="190" fill="var(--ember)">ใช้ร่วมกันทุกคน</text>
       <text x="746" y="92">PEP-L ที่ใช้ได้ในวันที่ 4 ก.ย.</text>
-      <text x="746" y="124" fill="var(--ink-2)">ไม่ใช่ 6 (349 เริ่ม 5 ก.ย.)</text>
-      <text x="988" y="92">มี key เป็น NULL ไหม?</text>
-      <text x="988" y="108">→ หยุดการโหลด</text>
-      <text x="988" y="134">ถ้าไม่มี ให้เพิ่มแถว:</text>
+      <text x="746" y="124" fill="var(--ink-2)">ไม่ใช่ 106 (349 เริ่ม 5 ก.ย.)</text>
+      <text x="988" y="92">หา key ไม่เจอ?</text>
+      <text x="262" y="134">ไม่มีรหัสสมาชิก</text>
+      <text x="988" y="108">→ แถว 1 ไม่ทราบ + แจ้งเตือน</text>
+      <text x="988" y="134">เพิ่มแถว ไม่มี NULL:</text>
       <text x="988" y="190" fill="var(--ink-2)">มีแต่ surrogate key</text>
     </g>
     <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#arr2)">
@@ -487,19 +529,24 @@ GROUP BY channel_code</pre>
   </div>
   <figcaption>
     การโหลด fact ทำแบบเดิมทุกครั้ง: เปลี่ยน business key ทุกตัวเป็น surrogate key แล้วเก็บตัวเลขไว้ P-1003 สั่งตอนตี 1:20 ของวันที่ 5
-    จึงเป็นของวันทำการวันศุกร์ และได้ราคาของวันศุกร์
+    จึงเป็นของวันทำการวันศุกร์ และได้ราคาของวันศุกร์ และเพราะไม่มีรหัสสมาชิก customer key จึงเป็นแถว 0 "ไม่เกี่ยวข้อง"
   </figcaption>
 </figure>
-<p><strong>ด่านตรวจคุณภาพที่หยุดการโหลด</strong> (รายการเต็มอยู่ใน README §10):</p>
+<p><strong>การตรวจคุณภาพทุกครั้งที่โหลด</strong> (รายการเต็มอยู่ใน README §10):</p>
 <ul>
-  <li>business key ที่หา dimension ไม่เจอ (เช่นเมนูใหม่ของ Grab ที่ยังไม่มีใน <code>BRG_CHANNEL_MENU_ITEM</code>) จะถูกกักไว้พร้อมแจ้งเตือน รายได้ไม่หายไปแบบเงียบ ๆ</li>
-  <li>ส่วนลดระดับบรรทัดต้องรวมได้เท่ากับส่วนลดระดับออร์เดอร์ทุกใบ</li>
-  <li>การเคลื่อนไหวสต็อกแต่ละครั้งมี FK ต้นทางได้อย่างมากหนึ่งตัว และต้องตรงกับ <code>movement_type</code></li>
-  <li>upsert ด้วย <code>(channel_sk, external_order_id)</code> โหลดไฟล์ export ซ้ำก็ไม่ทำให้รายได้เป็นสองเท่า</li>
+  <li>คอลัมน์ใน fact ห้ามเป็น NULL business key ที่หา dimension ไม่เจอ (เช่นเมนูใหม่ของ Grab ที่ยังไม่มีใน <code>BRG_CHANNEL_MENU_ITEM</code>) จะถูกโหลดเข้าแถว 1 "ไม่ทราบ" พร้อมแจ้งเตือน แล้วชี้ใหม่เมื่อ map แล้ว รายได้ไม่หายและไม่ต่ำกว่าความจริง</li>
+  <li>ส่วนลดระดับบรรทัดต้องรวมได้เท่ากับส่วนลดระดับออร์เดอร์ทุกใบ ตรวจด้วยการ drill across ผ่าน <code>order_number</code> ข้อนี้ถ้าไม่ผ่านจะหยุดทั้ง batch</li>
+  <li>เอกสารต้นทางของการเคลื่อนไหวสต็อกทุกครั้งต้องมีอยู่จริงใน fact ที่ชนิดเอกสารระบุ และเครื่องหมายของ <code>qty_delta</code> ต้องตรงกับทิศทาง</li>
+  <li>upsert ด้วย <code>(channel_key, order_number)</code> โหลดไฟล์ export ซ้ำก็ไม่ทำให้รายได้เป็นสองเท่า</li>
   <li>ประมวลผล 3 วันทำการล่าสุดใหม่ทุกคืน เพื่อเก็บออร์เดอร์ที่มาช้า</li>
 </ul>
 
-<h2 class="wide">8 · Data mart</h2>
+<h2 class="wide">8 · Data mart และ aggregate table</h2>
+<p>
+  ในความหมายของบทที่ 5 data mart คือ subject area ของ warehouse ไม่ใช่ฐานข้อมูลแยก ของเรามี <strong>Sales</strong>, <strong>Delivery</strong>,
+  <strong>Customer</strong>, <strong>Inventory and purchasing</strong> และ <strong>Labour</strong> แต่ละตัวคือชุด star ของเรื่องนั้น
+  บวกกับ aggregate table (<code>mart_*</code>) ที่ให้บริการผู้ใช้ของมัน
+</p>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 470" role="img"
@@ -511,7 +558,7 @@ GROUP BY channel_code</pre>
     </defs>
     <g font-size="12" font-weight="700" fill="var(--ink-2)">
       <text x="20"  y="24">DW · fact table</text>
-      <text x="430" y="24">MART · ทุกคืน 03:30</text>
+      <text x="430" y="24">AGGREGATE · ทุกคืน 03:30</text>
       <text x="860" y="24">ผู้ใช้</text>
     </g>
 
@@ -546,12 +593,12 @@ GROUP BY channel_code</pre>
       <text x="32" y="307">FCT_INVENTORY_MOVEMENT · _COUNT</text>
       <text x="32" y="367">FCT_SHIFT</text>
 
-      <text x="442" y="67">mart_sales_daily</text>
-      <text x="442" y="127">mart_promotion_performance</text>
-      <text x="442" y="187">mart_customer_rfm</text>
-      <text x="442" y="247">mart_delivery_sla</text>
-      <text x="442" y="307">mart_ingredient_usage_daily</text>
-      <text x="442" y="367">mart_labor_vs_sales</text>
+      <text x="442" y="67">Sales · mart_sales_daily</text>
+      <text x="442" y="127">Sales · mart_promotion_perf.</text>
+      <text x="442" y="187">Customer · mart_customer_rfm</text>
+      <text x="442" y="247">Delivery · mart_delivery_sla</text>
+      <text x="442" y="307">Inventory · mart_ingr._usage</text>
+      <text x="442" y="367">Labour · mart_labor_vs_sales</text>
     </g>
     <g font-size="12" fill="currentColor">
       <text x="872" y="64" font-weight="700">แดชบอร์ดเจ้าของร้าน</text>
@@ -598,25 +645,25 @@ GROUP BY channel_code</pre>
   </svg>
   </div>
   <figcaption>
-    mart ทุกตัวสร้างจาก dw เท่านั้น ไม่สร้างจาก raw หรือ stg และไม่เพิ่มกฎธุรกิจของตัวเอง mart แต่ละตัวถูกจัดรูปให้ตอบคำถามของผู้ใช้หนึ่งกลุ่ม ที่ grain ที่ผู้ใช้นั้นอ่าน
+    aggregate table ทุกตัวสร้างจาก star ใน dw เท่านั้น ไม่สร้างจาก raw หรือ stg และไม่เพิ่มกฎธุรกิจของตัวเอง แต่ละตัวถูกจัดรูปให้ตอบคำถามของผู้ใช้หนึ่งกลุ่ม ที่ grain ที่ผู้ใช้นั้นอ่าน และให้บริการ data mart ตามป้ายที่ติดไว้
   </figcaption>
 </figure>
 
 <div class="wide table-scroll">
 <table>
-  <thead><tr><th>Mart</th><th>Grain: หนึ่งแถว =</th><th>คอลัมน์</th><th>สร้างจาก</th><th>ใช้ทำอะไร</th></tr></thead>
+  <thead><tr><th>Aggregate table</th><th>Grain: หนึ่งแถว =</th><th>คอลัมน์</th><th>สร้างจาก</th><th>ใช้ทำอะไร</th></tr></thead>
   <tbody>
-    <tr><td class="z">mart_sales_daily</td><td>วันทำการ × ช่องทาง × SKU</td><td>units_sold, orders, gross_sales_thb, discount_thb, net_sales_thb และชื่อเมนู หมวด ไซซ์</td><td>FCT_ORDER_LINE, FCT_ORDER, dims; ไม่รวมออร์เดอร์ที่ยกเลิก</td><td>แดชบอร์ดยอดขาย; ข้อมูลฝึกโมเดลพยากรณ์</td></tr>
-    <tr><td class="z">mart_ingredient_usage_daily</td><td>วันทำการ × วัตถุดิบ</td><td>recipe_usage, modifier_usage, theoretical_usage, expected_on_hand, counted_on_hand, variance_qty, variance_value_thb, waste_pct</td><td>FCT_INVENTORY_MOVEMENT, FCT_INVENTORY_COUNT</td><td>รายการสั่งของ เฝ้าดู variance และ % ของเสีย</td></tr>
-    <tr><td class="z">mart_delivery_sla</td><td>ออร์เดอร์หนึ่งใบ</td><td>ช่องทาง วันทำการ ชั่วโมงที่สั่ง เวลา placed / accepted / prep_complete / pickup / delivered, prep_min, to_pickup_min, lead_time_min</td><td>FCT_ORDER_EVENT แบบ pivot, FCT_ORDER</td><td>เวลาทำอาหารและเวลาส่ง p50 / p90 ตามช่องทางและชั่วโมง</td></tr>
-    <tr><td class="z">mart_customer_rfm</td><td>ลูกค้าหนึ่งคน (ช่องทางของร้าน)</td><td>last_order_date, recency_days, frequency_90d, monetary_90d_thb, คะแนน R / F / M, segment</td><td>FCT_ORDER ที่มี customer_sk</td><td>แบ่งกลุ่มลูกค้าและแคมเปญดึงกลับทาง LINE ระบุชัดว่าเฉพาะช่องทางของร้าน</td></tr>
-    <tr><td class="z">mart_labor_vs_sales</td><td>วันทำการ × ชั่วโมง</td><td>staff_on_shift, labour_hours, ot_hours, labour_cost_thb, ot_cost_thb, net_sales_thb, labour_cost_pct, orders_per_labour_hour</td><td>FCT_SHIFT, FCT_ORDER</td><td>ค่าแรง % สัดส่วน OT ชั่วโมงที่คนไม่พอ</td></tr>
-    <tr><td class="z">mart_promotion_performance</td><td>โปรโมชัน × วันทำการ × SKU</td><td>units_discounted, discount_thb (ร้านจ่าย vs แพลตฟอร์มจ่าย), net_sales_after_discount_thb, margin_after_discount_thb</td><td>FCT_ORDER_LINE_PROMOTION, FCT_ORDER_LINE, BRG_PROMOTION_REWARD</td><td>ค่าส่วนลดต่อ SKU และโปรคุ้มหรือไม่</td></tr>
+    <tr><td class="z">mart_sales_daily<br><span style="font-weight:400;color:var(--ink-2)">data mart Sales</span></td><td>วันทำการ × ช่องทาง × SKU</td><td>units_sold, orders, gross_sales_thb, discount_thb, net_sales_thb และชื่อเมนู หมวด ไซซ์</td><td>FCT_ORDER_LINE, FCT_ORDER, dims; ไม่รวมออร์เดอร์ที่ยกเลิก</td><td>แดชบอร์ดยอดขาย; ข้อมูลฝึกโมเดลพยากรณ์</td></tr>
+    <tr><td class="z">mart_ingredient_usage_daily<br><span style="font-weight:400;color:var(--ink-2)">data mart Inventory</span></td><td>วันทำการ × วัตถุดิบ</td><td>recipe_usage, modifier_usage, theoretical_usage, expected_on_hand, counted_on_hand, variance_qty, variance_value_thb, waste_pct</td><td>FCT_INVENTORY_MOVEMENT, FCT_INVENTORY_COUNT</td><td>รายการสั่งของ เฝ้าดู variance และ % ของเสีย</td></tr>
+    <tr><td class="z">mart_delivery_sla<br><span style="font-weight:400;color:var(--ink-2)">data mart Delivery</span></td><td>ออร์เดอร์หนึ่งใบ</td><td>ช่องทาง วันทำการ ชั่วโมงที่สั่ง เวลา placed / accepted / prep_complete / pickup / delivered, prep_min, to_pickup_min, lead_time_min</td><td>FCT_ORDER_EVENT แบบ pivot, FCT_ORDER</td><td>เวลาทำอาหารและเวลาส่ง p50 / p90 ตามช่องทางและชั่วโมง</td></tr>
+    <tr><td class="z">mart_customer_rfm<br><span style="font-weight:400;color:var(--ink-2)">data mart Customer</span></td><td>ลูกค้าหนึ่งคน (ช่องทางของร้าน)</td><td>last_order_date, recency_days, frequency_90d, monetary_90d_thb, คะแนน R / F / M, segment</td><td>FCT_ORDER ที่ <code>customer_key</code> เป็นลูกค้าจริง (ไม่ใช่แถว 0)</td><td>แบ่งกลุ่มลูกค้าและแคมเปญดึงกลับทาง LINE ระบุชัดว่าเฉพาะช่องทางของร้าน และอัปเดต behavioral dimension <code>DIM_CUSTOMER.rfm_segment</code></td></tr>
+    <tr><td class="z">mart_labor_vs_sales<br><span style="font-weight:400;color:var(--ink-2)">data mart Labour</span></td><td>วันทำการ × ชั่วโมง</td><td>staff_on_shift, labour_hours, ot_hours, labour_cost_thb, ot_cost_thb, net_sales_thb, labour_cost_pct, orders_per_labour_hour</td><td>FCT_SHIFT, FCT_ORDER</td><td>ค่าแรง % สัดส่วน OT ชั่วโมงที่คนไม่พอ</td></tr>
+    <tr><td class="z">mart_promotion_performance<br><span style="font-weight:400;color:var(--ink-2)">data mart Sales</span></td><td>โปรโมชัน × วันทำการ × SKU</td><td>units_discounted, discount_thb (ร้านจ่าย vs แพลตฟอร์มจ่าย), net_sales_after_discount_thb, margin_after_discount_thb</td><td>FCT_ORDER_LINE_PROMOTION, FCT_ORDER_LINE, BRG_PROMOTION_REWARD</td><td>ค่าส่วนลดต่อ SKU และโปรคุ้มหรือไม่</td></tr>
   </tbody>
 </table>
 </div>
 <p>
-  คอลัมน์ของ mart ถูกคำนวณใหม่ทุกคืนจาก <code>dw</code> mart จึงลบแล้วสร้างใหม่ได้เสมอ
+  คอลัมน์ของ aggregate table ถูกคำนวณใหม่ทุกคืนจาก <code>dw</code> จึงลบแล้วสร้างใหม่ได้เสมอ
   อัตราส่วนอย่าง <code>labour_cost_pct</code> และ <code>waste_pct</code> เก็บคู่กับตัวเศษและตัวส่วน เพื่อให้รวมเป็นรายสัปดาห์หรือรายเดือนได้ถูกต้อง
 </p>
 
@@ -627,7 +674,7 @@ GROUP BY channel_code</pre>
   <tbody>
     <tr><td class="t">ทุก 5 นาที</td><td class="z">ingest POS</td><td>คัดลอกออร์เดอร์จาก POS เข้า raw</td></tr>
     <tr><td class="t">03:00</td><td class="z">load dw</td><td>raw → stg → dimension แล้วตามด้วย fact สำหรับ 3 วันทำการล่าสุด ต้องผ่านทุกด่านตรวจ ไม่อย่างนั้นจะไม่เผยแพร่อะไรเลย</td></tr>
-    <tr><td class="t">03:30</td><td class="z">build marts</td><td>สร้าง mart ทั้ง 6 ตัวใหม่จาก dw</td></tr>
+    <tr><td class="t">03:30</td><td class="z">build aggregates</td><td>สร้าง aggregate table ทั้ง 6 ตัวใหม่จาก dw</td></tr>
     <tr><td class="t">06:00</td><td class="z">ingest exports</td><td>ไฟล์ export ของแพลตฟอร์ม (T+1) ยอดนับสต็อก กะงาน และใบสั่งซื้อ เข้า raw แล้วถูกโหลดในรอบ 03:00 ถัดไป</td></tr>
     <tr><td class="t">รายสัปดาห์</td><td class="z">forecast</td><td>อ่าน <code>mart_sales_daily</code> แล้วเขียน <code>fct_forecast</code></td></tr>
   </tbody>
@@ -640,10 +687,10 @@ GROUP BY channel_code</pre>
   <thead><tr><th>ส่วน</th><th>สถานะ</th></tr></thead>
   <tbody>
     <tr><td class="zt">โมเดลเต็ม</td><td>ออกแบบแล้ว: ER diagram ใน README (รูปที่ 2–5) และหน้านี้</td></tr>
-    <tr><td class="zt">pipeline แบบ zone</td><td>มีต้นแบบครบทั้งเส้นใน <code>notebooks/data_flow_demo.ipynb</code> (ออร์เดอร์ และ mart สองตัว)</td></tr>
-    <tr><td class="zt">star การขาย, modifier, สต็อก, event, forecast</td><td>มีต้นแบบใน <code>notebooks/warehouse_design.ipynb</code></td></tr>
+    <tr><td class="zt">pipeline แบบ zone</td><td>มีต้นแบบครบทั้งเส้นใน <code>notebooks/data_flow_demo.ipynb</code> (ออร์เดอร์ และ aggregate table สองตัว)</td></tr>
+    <tr><td class="zt">star การขาย, modifier, สต็อก, event, forecast</td><td>มีต้นแบบใน <code>notebooks/warehouse_design.ipynb</code> พร้อม special-case row, junk dimension และ drill across</td></tr>
     <tr><td class="zt">การชำระเงิน, โปรโมชัน, การสั่งซื้อ, กะงาน</td><td>ออกแบบแล้ว ยังไม่ได้ทำต้นแบบ</td></tr>
-    <tr><td class="zt">Mart</td><td><code>mart_sales_daily</code> และ <code>mart_ingredient_usage_daily</code> มีต้นแบบแล้ว (นับแค่การใช้ตามสูตร) อีก 4 ตัวกำหนดสเปกไว้ข้างบน</td></tr>
+    <tr><td class="zt">Aggregate table</td><td><code>mart_sales_daily</code> และ <code>mart_ingredient_usage_daily</code> มีต้นแบบแล้ว (นับแค่การใช้ตามสูตร) อีก 4 ตัวกำหนดสเปกไว้ข้างบน</td></tr>
   </tbody>
 </table>
 </div>

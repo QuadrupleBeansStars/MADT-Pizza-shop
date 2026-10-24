@@ -1,0 +1,87 @@
+%% Fig. 6 - ER model: payments, order events and basket promotions (star schema)
+%% Grain:
+%%   FCT_ORDER_EVENT      - one row per status transition per order
+%%   FCT_PAYMENT          - one row per tender per order
+%%   FCT_ORDER_PROMOTION  - one row per promotion per order (basket level)
+%% Same conformed dimensions as Fig. 2, shown abridged. order_number is degenerate.
+erDiagram
+  DIM_DATE ||--o{ FCT_ORDER_EVENT : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_EVENT : "sold via"
+  DIM_EVENT_TYPE ||--o{ FCT_ORDER_EVENT : "transition"
+  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
+  DIM_DATE ||--o{ FCT_PAYMENT : "paid on / settled on (roles)"
+  DIM_CHANNEL ||--o{ FCT_PAYMENT : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_PAYMENT : "paid by"
+  DIM_PAYMENT_INFO ||--o{ FCT_PAYMENT : "tender"
+  DIM_DATE ||--o{ FCT_ORDER_PROMOTION : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_PROMOTION : "sold via"
+  DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : "basket-level"
+
+  DIM_DATE {
+    int date_key PK
+    date full_date
+    string month_name
+  }
+  DIM_CHANNEL {
+    int channel_key PK
+    string channel_code
+    string channel_name
+  }
+  DIM_CUSTOMER {
+    int customer_key PK "0 = Not applicable"
+    string membership
+  }
+  DIM_EVENT_TYPE {
+    int event_type_key PK
+    string event_type "placed, accepted, prep_start, prep_complete, courier_pickup, delivered, cancelled"
+    int event_sequence
+    string event_stage "Kitchen or Delivery"
+  }
+  DIM_STAFF {
+    int staff_key PK "0 = Not applicable (platform event)"
+    string staff_name
+    string role_name
+  }
+  DIM_PAYMENT_INFO {
+    int payment_info_key PK "junk dimension"
+    string tender_type "cash, promptpay_qr, card, platform_settled"
+    string settlement_mode "Shop-collected or Platform-settled"
+  }
+  DIM_PROMOTION {
+    int promotion_key PK "0 = No promotion"
+    string promo_code
+    string promo_name
+    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
+    string funded_by "Shop-funded or Platform-funded"
+    string stacking_group "which promos may combine"
+    int priority "resolution order when several qualify"
+    date start_date
+    date end_date
+    string row_type
+  }
+  FCT_ORDER_EVENT {
+    int date_key FK
+    int channel_key FK
+    int event_type_key FK
+    int staff_key FK
+    string order_number "degenerate"
+    timestamp event_ts
+    int duration_from_prev_sec
+  }
+  FCT_PAYMENT {
+    int paid_date_key FK "role of DIM_DATE"
+    int settlement_date_key FK "role of DIM_DATE; 0 until settled"
+    int channel_key FK
+    int customer_key FK
+    int payment_info_key FK
+    string order_number "degenerate"
+    timestamp paid_ts
+    decimal amount_thb
+  }
+  FCT_ORDER_PROMOTION {
+    int date_key FK
+    int channel_key FK
+    int promotion_key FK
+    string order_number "degenerate"
+    decimal discount_amount_thb "basket-level total"
+  }

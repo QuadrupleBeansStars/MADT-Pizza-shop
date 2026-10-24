@@ -279,7 +279,7 @@
 
 <ul>
   <li><strong>Forecast grain is menu item × business day × channel.</strong> This is the load-bearing assumption: it decides that the sales mart is a daily item-level table, not a revenue-only table, and it is what makes ingredient forecasting possible downstream.</li>
-  <li><strong>Business day ≠ calendar day.</strong> The shop trades past midnight, so a business day runs 10:00–02:00 Asia/Bangkok. Every fact carries both <code>order_ts_utc</code> and <code>business_date_sk</code>.</li>
+  <li><strong>Business day ≠ calendar day.</strong> The shop trades past midnight, so a business day runs 10:00–02:00 Asia/Bangkok. Every fact carries both <code>order_ts</code> and the business-day <code>date_key</code>.</li>
   <li><strong>Aggregator orders are anonymous.</strong> Grab, LINE MAN, ShopeeFood and Robinhood do not hand over customer identity. Membership and segmentation are therefore <em>own-channel only</em> — see decision 04.</li>
   <li><strong>Stock is not "order minus 10%".</strong> Consumption is <em>derived</em> from a recipe, then <em>reconciled</em> against physical counts. The 10% is the variance you measure, not a rule you hard-code — see decision 02.</li>
 </ul>
@@ -336,19 +336,20 @@ flowchart LR
     T2["Data quality gates<br/>not-null · uniqueness<br/>referential · row-count drift"]
   end
 
-  subgraph CORE["3 · CORE WAREHOUSE / GOLD"]
+  subgraph CORE["3 · DIMENSIONAL WAREHOUSE / GOLD"]
     direction TB
-    C1["Conformed dimensions<br/>SCD2 where price/role changes"]
-    C2["Fact tables<br/>declared grain, surrogate keys"]
+    C1["Conformed dimensions<br/>SCD2 where price/role changes<br/>special-case rows, no NULL keys"]
+    C2["Fact tables at atomic grain<br/>surrogate _key columns"]
   end
 
-  subgraph MART["4 · MARTS"]
+  subgraph MART["4 · AGGREGATES, BY DATA MART"]
     direction TB
-    M1["mart_sales_daily"]
-    M2["mart_ingredient_usage_daily"]
-    M3["mart_delivery_sla"]
-    M4["mart_customer_rfm"]
-    M5["mart_labor_vs_sales"]
+    M1["Sales: mart_sales_daily"]
+    M6["Sales: mart_promotion_performance"]
+    M2["Inventory: mart_ingredient_usage_daily"]
+    M3["Delivery: mart_delivery_sla"]
+    M4["Customer: mart_customer_rfm"]
+    M5["Labour: mart_labor_vs_sales"]
   end
 
   subgraph OUT["CONSUMERS"]
@@ -375,6 +376,7 @@ flowchart LR
   M3 --> O1
   M4 --> O4
   M5 --> O1
+  M6 --> O1
   O2 -.->|"forecast written back<br/>as fct_forecast"| CORE
 </pre>
   </div>
@@ -388,11 +390,13 @@ flowchart LR
   <tbody>
     <tr><td>1 · Raw</td><td>Nothing is ever lost or edited. Every row keeps <code>source_system</code>, <code>ingest_ts</code>, <code>source_file</code>, raw payload.</td><td>No typing, no dedup, no joins.</td></tr>
     <tr><td>2 · Staging</td><td>One row per real-world event. Types cast, timestamps in Asia/Bangkok, channel and item names conformed, duplicates removed.</td><td>No business aggregation, no KPI logic.</td></tr>
-    <tr><td>3 · Core</td><td>Star schema. Every fact has a declared grain and only surrogate keys. History preserved via SCD2.</td><td>No presentation shaping, no channel-specific hacks.</td></tr>
-    <tr><td>4 · Mart</td><td>One table per question, pre-aggregated, dashboard- and model-ready.</td><td>No re-derivation of business rules — those live in core.</td></tr>
+    <tr><td>3 · Core</td><td>Star schema at atomic grain. Every fact has a declared grain and only surrogate keys; no NULL keys (special-case rows). History preserved via SCD2.</td><td>No presentation shaping, no channel-specific hacks.</td></tr>
+    <tr><td>4 · Aggregates</td><td>One table per question, pre-aggregated, serving one data mart (subject area).</td><td>No re-derivation of business rules — those live in core.</td></tr>
   </tbody>
 </table>
 </div>
+
+<p>Architecturally this is a <strong>Kimball dimensional data warehouse</strong>: one integrated set of stars on conformed dimensions, where a data mart is a subject area within the warehouse. Section 11 lists the dimensional conventions every table follows.</p>
 
 <h2><span class="num">04</span> ER model — sales and orders</h2>
 
@@ -402,7 +406,9 @@ flowchart LR
   <li><code>FCT_ORDER_LINE</code> — one row per menu item per order.</li>
   <li><code>FCT_ORDER_EVENT</code> — one row per status transition per order.</li>
   <li><code>FCT_PAYMENT</code> — one row per tender per order (split payments are normal).</li>
+  <li><code>FCT_ORDER_LINE_MODIFIER</code> — one row per modifier per order line.</li>
 </ul>
+<p>Every fact carries its own keys to date, channel, customer and the rest; facts never point at each other. <code>order_number</code> and <code>line_number</code> are degenerate dimensions, and two facts are compared by drilling across them (section 11). Payments, order events and basket promotions are in figure 6.</p>
 
 <figure class="wide">
   <div class="scroll">
@@ -410,147 +416,216 @@ flowchart LR
 erDiagram
   DIM_DATE ||--o{ FCT_ORDER : "business day"
   DIM_CHANNEL ||--o{ FCT_ORDER : "sold via"
-  DIM_CUSTOMER ||--o{ FCT_ORDER : "placed by (own channels only)"
-  FCT_ORDER ||--|{ FCT_ORDER_LINE : contains
-  FCT_ORDER ||--o{ FCT_ORDER_EVENT : "tracked by"
-  FCT_ORDER ||--|{ FCT_PAYMENT : "settled by"
-  FCT_ORDER ||--o{ FCT_ORDER_PROMOTION : "discounted by (basket-level)"
-  DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : applied
-  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_PROMOTION : "discounted by (SKU-level)"
-  DIM_PROMOTION ||--o{ FCT_ORDER_LINE_PROMOTION : applied
+  DIM_CUSTOMER ||--o{ FCT_ORDER : "placed by"
+  DIM_ORDER_INFO ||--o{ FCT_ORDER : "status"
+  DIM_DATE ||--o{ FCT_ORDER_LINE : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_LINE : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_ORDER_LINE : "placed by"
   DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
+  DIM_ORDER_INFO ||--o{ FCT_ORDER_LINE : "status"
+  DIM_DATE ||--o{ FCT_ORDER_LINE_MODIFIER : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_LINE_MODIFIER : "sold via"
+  DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE_MODIFIER : "on item"
+  DIM_MODIFIER ||--o{ FCT_ORDER_LINE_MODIFIER : "applied as"
   DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
   DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
-  FCT_ORDER_LINE ||--o{ FCT_ORDER_LINE_MODIFIER : "customised by"
-  DIM_MODIFIER ||--o{ FCT_ORDER_LINE_MODIFIER : "applied as"
-  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
 
   DIM_DATE {
-    int date_sk PK
-    date calendar_date
+    int date_key PK "yyyymmdd; 0 = not applicable"
+    date full_date
+    string day_name
     int day_of_week
-    boolean is_weekend
-    boolean is_thai_holiday
+    string weekend_flag "Weekend or Weekday"
+    string holiday_flag "Thai holiday or Not a holiday"
+    int month_number
     string month_name
+    string quarter "hierarchy: day > month > quarter > year"
+    int year
+    string row_type "Day, Not applicable, Unknown"
   }
   DIM_CHANNEL {
-    int channel_sk PK
-    string channel_code UK "QR_DINEIN, GRAB, LINEMAN, SHOPEE, ROBINHOOD, PHONE"
-    string channel_type "dine_in or delivery"
-    boolean is_own_channel
+    int channel_key PK
+    string channel_code UK "QR_DINEIN, PHONE, GRAB, LINEMAN, SHOPEE, ROBINHOOD"
+    string channel_name "QR dine-in, Phone, Grab..."
+    string channel_type "Dine-in or Delivery - hierarchy level"
+    string channel_ownership "Own channel or Aggregator"
     decimal commission_rate_pct
+    string row_type
   }
   DIM_CUSTOMER {
-    int customer_sk PK
+    int customer_key PK "0 = Not applicable (no identified customer)"
     string customer_nk UK "membership or phone hash"
     date first_order_date
     string signup_source
-    boolean is_member
+    string membership "Member or Non-member"
+    string rfm_segment "behavioral dimension, refreshed monthly"
+    date rfm_segment_as_of
+    string row_type "Customer, Not applicable, Unknown"
   }
   DIM_MENU_ITEM {
-    int menu_item_sk PK
+    int menu_item_key PK
     string menu_item_nk "stable business key"
     string item_name
-    string category "pizza, chicken, side, drink"
-    string size_code
+    string category "hierarchy: SKU > item > category"
+    string size_code "M, L"
+    string size_name "Medium, Large"
     decimal base_price_thb
     date valid_from "SCD2"
     date valid_to "SCD2"
-    boolean is_current
+    string current_flag "Current or Expired"
+    string row_type "Menu item, Unknown, Invalid"
   }
   BRG_CHANNEL_MENU_ITEM {
-    int channel_menu_sk PK
-    int channel_sk FK
-    int menu_item_sk FK
+    int channel_key FK
+    int menu_item_key FK
     string platform_item_id "aggregator's own id"
+    string platform_item_name
     decimal channel_price_thb "uplifted platform price"
-    boolean is_listed
+    string listing_status "Listed or Not listed"
   }
-  DIM_PROMOTION {
-    int promotion_sk PK
-    string promo_code
-    string promo_name
-    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
-    string funded_by "shop or platform"
-    string stacking_group "which promos may combine"
-    int priority "resolution order when several qualify"
-    date start_date
-    date end_date
+  DIM_MODIFIER {
+    int modifier_key PK
+    string modifier_nk UK
+    string modifier_name "extra cheese, no chili, thin crust"
+    string modifier_type "add, remove, substitute"
+    string applies_to_category "pizza, chicken, drink"
+    decimal default_price_delta_thb
+    string active_flag "Active or Retired"
+    string row_type
+  }
+  DIM_ORDER_INFO {
+    int order_info_key PK "junk dimension"
+    string order_status "completed, cancelled, refunded"
+    string cancellation_flag "Cancelled or Not cancelled"
   }
   FCT_ORDER {
-    bigint order_sk PK
-    string external_order_id "platform natural key"
-    int channel_sk FK
-    int date_sk FK
-    int customer_sk FK "null for aggregator orders"
+    int date_key FK
+    int channel_key FK
+    int customer_key FK "0 for aggregator and walk-in orders, never NULL"
+    int order_info_key FK
+    string order_number "degenerate: platform order id"
     timestamp order_ts
     decimal gross_amount_thb
     decimal discount_amount_thb
     decimal delivery_fee_thb
     decimal commission_amount_thb
     decimal net_revenue_thb
-    string order_status
-    boolean is_cancelled
   }
   FCT_ORDER_LINE {
-    bigint order_line_sk PK
-    bigint order_sk FK
-    int menu_item_sk FK
+    int date_key FK
+    int channel_key FK
+    int customer_key FK
+    int menu_item_key FK "version valid on the business day"
+    int order_info_key FK
+    string order_number "degenerate"
+    int line_number "degenerate"
     int quantity
     decimal unit_price_thb "price at time of order"
     decimal line_discount_thb
     decimal line_net_thb
   }
-  DIM_MODIFIER {
-    int modifier_sk PK
-    string modifier_nk UK
-    string modifier_name "extra cheese, no chili, thin crust"
-    string modifier_type "add, remove, substitute"
-    string applies_to_category "pizza, chicken, drink"
-    decimal default_price_delta_thb
-    boolean is_active
-  }
   FCT_ORDER_LINE_MODIFIER {
-    bigint order_line_modifier_sk PK
-    bigint order_line_sk FK
-    int modifier_sk FK
+    int date_key FK
+    int channel_key FK
+    int menu_item_key FK
+    int modifier_key FK
+    string order_number "degenerate"
+    int line_number "degenerate"
     int quantity "double extra cheese is qty 2"
     decimal price_delta_thb "snapshot, not joined"
-  }
-  FCT_ORDER_EVENT {
-    bigint order_event_sk PK
-    bigint order_sk FK
-    string event_type "placed, accepted, prep_start, prep_complete, courier_pickup, delivered, cancelled"
-    timestamp event_ts
-    int staff_sk FK
-    int duration_from_prev_sec
-  }
-  FCT_PAYMENT {
-    bigint payment_sk PK
-    bigint order_sk FK
-    string tender_type "cash, promptpay_qr, card, platform_settled"
-    decimal amount_thb
-    timestamp paid_ts
-    date settlement_date "platform payouts lag"
-  }
-  FCT_ORDER_PROMOTION {
-    bigint order_promo_sk PK
-    bigint order_sk FK
-    int promotion_sk FK
-    decimal discount_amount_thb "basket-level total"
-  }
-  FCT_ORDER_LINE_PROMOTION {
-    bigint order_line_promo_sk PK
-    bigint order_line_sk FK "the SKU-level grain"
-    bigint order_sk FK "degenerate, saves a join"
-    int promotion_sk FK
-    decimal discount_amount_thb "allocated to this line"
-    string allocation_method "explicit or pro_rata"
-    boolean is_reward_line "true if this line IS the free item"
   }
 </pre>
   </div>
   <figcaption>Fig. 2 — Sales star. <code>BRG_CHANNEL_MENU_ITEM</code> is what lets a Grab listing and a QR listing of the same pizza roll up to one item.</figcaption>
+</figure>
+
+<figure class="wide">
+  <div class="scroll">
+<pre class="mermaid">
+erDiagram
+  DIM_DATE ||--o{ FCT_ORDER_EVENT : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_EVENT : "sold via"
+  DIM_EVENT_TYPE ||--o{ FCT_ORDER_EVENT : "transition"
+  DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
+  DIM_DATE ||--o{ FCT_PAYMENT : "paid on / settled on (roles)"
+  DIM_CHANNEL ||--o{ FCT_PAYMENT : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_PAYMENT : "paid by"
+  DIM_PAYMENT_INFO ||--o{ FCT_PAYMENT : "tender"
+  DIM_DATE ||--o{ FCT_ORDER_PROMOTION : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_PROMOTION : "sold via"
+  DIM_PROMOTION ||--o{ FCT_ORDER_PROMOTION : "basket-level"
+
+  DIM_DATE {
+    int date_key PK
+    date full_date
+    string month_name
+  }
+  DIM_CHANNEL {
+    int channel_key PK
+    string channel_code
+    string channel_name
+  }
+  DIM_CUSTOMER {
+    int customer_key PK "0 = Not applicable"
+    string membership
+  }
+  DIM_EVENT_TYPE {
+    int event_type_key PK
+    string event_type "placed, accepted, prep_start, prep_complete, courier_pickup, delivered, cancelled"
+    int event_sequence
+    string event_stage "Kitchen or Delivery"
+  }
+  DIM_STAFF {
+    int staff_key PK "0 = Not applicable (platform event)"
+    string staff_name
+    string role_name
+  }
+  DIM_PAYMENT_INFO {
+    int payment_info_key PK "junk dimension"
+    string tender_type "cash, promptpay_qr, card, platform_settled"
+    string settlement_mode "Shop-collected or Platform-settled"
+  }
+  DIM_PROMOTION {
+    int promotion_key PK "0 = No promotion"
+    string promo_code
+    string promo_name
+    string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
+    string funded_by "Shop-funded or Platform-funded"
+    string stacking_group "which promos may combine"
+    int priority "resolution order when several qualify"
+    date start_date
+    date end_date
+    string row_type
+  }
+  FCT_ORDER_EVENT {
+    int date_key FK
+    int channel_key FK
+    int event_type_key FK
+    int staff_key FK
+    string order_number "degenerate"
+    timestamp event_ts
+    int duration_from_prev_sec
+  }
+  FCT_PAYMENT {
+    int paid_date_key FK "role of DIM_DATE"
+    int settlement_date_key FK "role of DIM_DATE; 0 until settled"
+    int channel_key FK
+    int customer_key FK
+    int payment_info_key FK
+    string order_number "degenerate"
+    timestamp paid_ts
+    decimal amount_thb
+  }
+  FCT_ORDER_PROMOTION {
+    int date_key FK
+    int channel_key FK
+    int promotion_key FK
+    string order_number "degenerate"
+    decimal discount_amount_thb "basket-level total"
+  }
+</pre>
+  </div>
+  <figcaption>Fig. 6 — Payments, order events and basket promotions. Same conformed dimensions as figure 2; <code>order_number</code> is the degenerate dimension that lets these facts be drilled across with the order facts.</figcaption>
 </figure>
 
 <h3>Modifiers are rows, not JSON</h3>
@@ -573,7 +648,7 @@ erDiagram
 
 <p>The fix separates the promotion's <strong>definition</strong> (what qualifies, what you get — stored as rows in <code>BRG_PROMOTION_CONDITION</code> and <code>BRG_PROMOTION_REWARD</code>) from its <strong>application</strong> (<code>FCT_ORDER_LINE_PROMOTION</code>, grained at order line × promotion, which is the SKU-level answer).</p>
 
-<p><strong>By SKU:</strong> <code>DIM_MENU_ITEM</code> already carries <code>size_code</code>, so it is at SKU grain — targeting by SKU needs a reference to it, not a new dimension. <strong>By condition:</strong> each condition is a row — a <code>condition_type</code>, an <code>operator</code>, and either a <code>target_sk</code> or a plain <code>value_num</code>. Rows sharing a <code>condition_group</code> are ANDed; separate groups are ORed. A new mechanic becomes rows, never a migration.</p>
+<p><strong>By SKU:</strong> <code>DIM_MENU_ITEM</code> already carries <code>size_code</code>, so it is at SKU grain — targeting by SKU needs a reference to it, not a new dimension. <strong>By condition:</strong> each condition is a row — a <code>condition_type</code>, an <code>operator</code>, and either a <code>target_key</code> or a plain <code>value_num</code>. Rows sharing a <code>condition_group</code> are ANDed; separate groups are ORed. A new mechanic becomes rows, never a migration.</p>
 
 <figure class="wide">
   <div class="scroll">
@@ -585,56 +660,77 @@ erDiagram
   DIM_MENU_ITEM ||--o{ BRG_PROMOTION_CONDITION : "targeted by"
   DIM_MENU_ITEM ||--o{ BRG_PROMOTION_REWARD : "given as"
   DIM_CHANNEL ||--o{ BRG_PROMOTION_CONDITION : "restricted to"
+  DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE_PROMOTION : "SKU discounted"
+  DIM_DATE ||--o{ FCT_ORDER_LINE_PROMOTION : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_LINE_PROMOTION : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_ORDER_LINE_PROMOTION : "placed by"
+  DIM_PROMO_APPLICATION ||--o{ FCT_ORDER_LINE_PROMOTION : "how applied"
 
   DIM_PROMOTION {
-    int promotion_sk PK
+    int promotion_key PK "0 = No promotion"
     string promo_code
     string promo_name
     string promo_mechanic "percent_off, fixed_off, bogo, bundle_price, free_item, free_delivery"
-    string funded_by "shop or platform"
+    string funded_by "Shop-funded or Platform-funded"
     string stacking_group "which promos may combine"
     int priority "resolution order when several qualify"
     date start_date
     date end_date
+    string row_type
   }
   BRG_PROMOTION_CONDITION {
-    int condition_sk PK
-    int promotion_sk FK
+    int promotion_key FK
     string condition_type "sku, category, channel, min_basket_thb, min_qty, day_of_week, time_window, customer_segment"
     string operator "in, not_in, gte, lte, between"
     string target_kind "menu_item, category, channel, none"
-    int target_sk FK "menu_item_sk or channel_sk, null for value tests"
+    int target_key FK "menu_item_key or channel_key; 0 for value tests"
     decimal value_num "500 for min basket, 2 for min qty"
     string value_text "Mon,Tue or 14:00-17:00"
     int condition_group "AND within a group, OR across groups"
   }
   BRG_PROMOTION_REWARD {
-    int reward_sk PK
-    int promotion_sk FK
+    int promotion_key FK
     string reward_type "percent_off, fixed_off, fixed_price, free_item"
     string target_kind "menu_item, category, cheapest_qualifying, whole_basket"
-    int target_sk FK "null when target_kind is not an item"
+    int target_key FK "menu_item_key; 0 when the target is not an item"
     decimal reward_value "20 for 20 percent, 99 for a fixed price"
     int max_qty "cap - at most 2 free pizzas"
     decimal max_discount_thb "cap in baht"
   }
   DIM_MENU_ITEM {
-    int menu_item_sk PK "the SKU - item x size"
+    int menu_item_key PK "the SKU - item x size"
     string item_name
     string category
-    string size_code
+    string size_name
   }
   DIM_CHANNEL {
-    int channel_sk PK
+    int channel_key PK
     string channel_code
+    string channel_name
+  }
+  DIM_DATE {
+    int date_key PK
+    date full_date
+  }
+  DIM_CUSTOMER {
+    int customer_key PK
+    string membership
+  }
+  DIM_PROMO_APPLICATION {
+    int promo_application_key PK "junk dimension"
+    string allocation_method "Explicit or Pro-rata"
+    string reward_line_flag "Reward item or Discounted item"
   }
   FCT_ORDER_LINE_PROMOTION {
-    bigint order_line_promo_sk PK
-    bigint order_line_sk FK
-    int promotion_sk FK
-    decimal discount_amount_thb
-    string allocation_method "explicit or pro_rata"
-    boolean is_reward_line
+    int date_key FK
+    int channel_key FK
+    int customer_key FK
+    int menu_item_key FK "the SKU-level grain"
+    int promotion_key FK
+    int promo_application_key FK
+    string order_number "degenerate"
+    int line_number "degenerate"
+    decimal discount_amount_thb "allocated to this line"
   }
 </pre>
   </div>
@@ -653,99 +749,134 @@ erDiagram
 erDiagram
   DIM_MENU_ITEM ||--|{ BRG_RECIPE : "made from"
   DIM_INGREDIENT ||--o{ BRG_RECIPE : "used in"
-  DIM_INGREDIENT ||--o{ FCT_INVENTORY_MOVEMENT : "moves"
-  DIM_INGREDIENT ||--o{ FCT_INVENTORY_COUNT : "counted"
-  DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
-  DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
-  DIM_SUPPLIER ||--o{ DIM_INGREDIENT : "preferred source"
-  DIM_SUPPLIER ||--o{ BRG_SUPPLIER_DELIVERY_DAY : "delivers on"
   DIM_MODIFIER ||--o{ BRG_MODIFIER_RECIPE : "consumes"
   DIM_INGREDIENT ||--o{ BRG_MODIFIER_RECIPE : "used in"
-  FCT_PURCHASE_ORDER ||--|{ FCT_PURCHASE_ORDER_LINE : contains
-  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "receipt"
-  FCT_INVENTORY_COUNT ||--o{ FCT_INVENTORY_MOVEMENT : "count adjustment"
+  DIM_SUPPLIER ||--o{ BRG_SUPPLIER_DELIVERY_DAY : "delivers on"
+  DIM_INGREDIENT ||--o{ FCT_INVENTORY_MOVEMENT : "moves"
   DIM_DATE ||--o{ FCT_INVENTORY_MOVEMENT : "on day"
+  DIM_MOVEMENT_INFO ||--o{ FCT_INVENTORY_MOVEMENT : "kind"
+  DIM_MENU_ITEM ||--o{ FCT_INVENTORY_MOVEMENT : "used by item"
+  DIM_MODIFIER ||--o{ FCT_INVENTORY_MOVEMENT : "used by modifier"
+  DIM_SUPPLIER ||--o{ FCT_INVENTORY_MOVEMENT : "received from"
+  DIM_INGREDIENT ||--o{ FCT_INVENTORY_COUNT : "counted"
   DIM_DATE ||--o{ FCT_INVENTORY_COUNT : "on day"
+  DIM_STAFF ||--o{ FCT_INVENTORY_COUNT : "counted by"
+  DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
+  DIM_DATE ||--o{ FCT_PURCHASE_ORDER : "ordered on / received on (roles)"
+  DIM_PO_INFO ||--o{ FCT_PURCHASE_ORDER : "status"
+  DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER_LINE : supplies
+  DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
+  DIM_DATE ||--o{ FCT_PURCHASE_ORDER_LINE : "ordered on / received on (roles)"
+  DIM_PO_INFO ||--o{ FCT_PURCHASE_ORDER_LINE : "status"
 
   DIM_INGREDIENT {
-    int ingredient_sk PK
+    int ingredient_key PK
     string ingredient_nk UK
     string ingredient_name "mozzarella, 00 flour, pepperoni"
-    string category "dairy, dry_good, protein, produce, packaging"
+    string category "dairy, dry_good, protein, produce, packaging - hierarchy level"
     string base_uom "gram, ml, piece"
     decimal shelf_life_days
     decimal reorder_point_qty
     decimal safety_stock_qty
-    int default_supplier_sk FK
+    string preferred_supplier_nk "denormalized, not a snowflake"
+    string preferred_supplier_name
+    string row_type
   }
   BRG_RECIPE {
-    int recipe_sk PK
-    int menu_item_sk FK
-    int ingredient_sk FK
+    int menu_item_key FK
+    int ingredient_key FK
     decimal qty_per_unit "in ingredient base_uom"
     decimal yield_loss_pct "trim and prep loss"
     date valid_from "SCD2 - recipes change"
     date valid_to
   }
   DIM_SUPPLIER {
-    int supplier_sk PK
+    int supplier_key PK "0 = Not applicable"
+    string supplier_nk UK
     string supplier_name
     string contact_phone
     int lead_time_days
     int min_order_value_thb
+    string row_type
   }
   BRG_SUPPLIER_DELIVERY_DAY {
-    int supplier_delivery_day_sk PK
-    int supplier_sk FK
+    int supplier_key FK
     int day_of_week "1=Mon .. 7=Sun, one row per day"
+    string day_name
     time order_cutoff_time "order after this and it ships next delivery day"
   }
+  DIM_MODIFIER {
+    int modifier_key PK "0 = Not applicable"
+    string modifier_name
+  }
+  DIM_MENU_ITEM {
+    int menu_item_key PK "0 = Not applicable"
+    string item_name
+  }
+  DIM_STAFF {
+    int staff_key PK
+    string staff_name
+  }
   BRG_MODIFIER_RECIPE {
-    int modifier_recipe_sk PK
-    int modifier_sk FK
-    int ingredient_sk FK
+    int modifier_key FK
+    int ingredient_key FK
     decimal qty_delta_per_unit "signed - extra cheese +40g, no chili -5g"
     date valid_from "SCD2"
     date valid_to
   }
+  DIM_PO_INFO {
+    int po_info_key PK "junk dimension"
+    string po_status "draft, sent, received, cancelled"
+    string receipt_status "Fully received, Short-shipped, Pending"
+  }
+  DIM_MOVEMENT_INFO {
+    int movement_info_key PK "junk dimension"
+    string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
+    string direction "In or Out - CHECK sign of qty_delta"
+    string source_document_type "Order line, Order line modifier, PO line, Stock count, None"
+  }
   FCT_PURCHASE_ORDER {
-    bigint po_sk PK
-    int supplier_sk FK
-    int order_date_sk FK
-    int received_date_sk FK
+    int supplier_key FK
+    int order_date_key FK "role of DIM_DATE"
+    int received_date_key FK "role of DIM_DATE; 0 until received"
+    int po_info_key FK
+    string po_number "degenerate"
     decimal total_cost_thb
-    string po_status
   }
   FCT_PURCHASE_ORDER_LINE {
-    bigint po_line_sk PK
-    bigint po_sk FK
-    int ingredient_sk FK
+    int supplier_key FK
+    int ingredient_key FK
+    int order_date_key FK "role"
+    int received_date_key FK "role"
+    int po_info_key FK
+    string po_number "degenerate"
+    int po_line_number "degenerate"
     decimal qty_ordered
     decimal qty_received
     decimal unit_cost_thb "cost at time of purchase"
   }
   FCT_INVENTORY_MOVEMENT {
-    bigint movement_sk PK
-    int ingredient_sk FK
-    int date_sk FK
+    int ingredient_key FK
+    int date_key FK
+    int movement_info_key FK
+    int menu_item_key FK "theoretical usage; else 0"
+    int modifier_key FK "modifier usage; else 0"
+    int supplier_key FK "receipt; else 0"
+    string source_document_number "degenerate: order, PO or count number; n/a for waste"
+    int source_line_number "degenerate; 0 when none"
     timestamp movement_ts
-    string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
-    decimal qty_delta "signed, base_uom - CHECK sign matches movement_type"
-    bigint order_line_sk FK "set for theoretical_usage, else null"
-    bigint order_line_modifier_sk FK "set for modifier usage, else null"
-    bigint po_line_sk FK "set for receipt, else null"
-    bigint count_sk FK "set for count_adjustment, else null"
+    decimal qty_delta "signed, base_uom"
     decimal unit_cost_thb
   }
   FCT_INVENTORY_COUNT {
-    bigint count_sk PK
-    int ingredient_sk FK
-    int date_sk FK
+    int ingredient_key FK
+    int date_key FK
+    int counted_by_staff_key FK "role of DIM_STAFF"
+    string count_session_id "degenerate"
     decimal qty_counted
     decimal qty_expected "system theoretical on-hand"
     decimal variance_qty "counted minus expected"
     decimal variance_value_thb
-    int counted_by_staff_sk FK
   }
 </pre>
   </div>
@@ -758,15 +889,18 @@ erDiagram
 
 <p><code>BRG_SUPPLIER_DELIVERY_DAY</code> is one row per supplier per weekday, carrying <code>order_cutoff_time</code> — "order by 16:00 or it ships the following delivery day" moves the recommended order date by a full day, and that date is the thing the manager acts on.</p>
 
-<h3>One reference column became four</h3>
+<h3>Where a movement came from: dimension keys plus a typed document reference</h3>
 
-<p><code>FCT_INVENTORY_MOVEMENT.source_ref_sk</code> was a single <code>bigint</code> documented as "order_line_sk or po_line_sk". That is a <strong>polymorphic foreign key</strong>, and it is the most dangerous construct in the model: the database cannot declare a foreign key on it, so integrity is whatever the ETL remembers to do — and because the two key spaces overlap, joining a <code>po_line_sk</code> to <code>FCT_ORDER_LINE</code> does not raise an error, it returns the <strong>wrong rows</strong>, silently.</p>
+<p><code>FCT_INVENTORY_MOVEMENT.source_ref_sk</code> began as a single key meaning "order_line_sk or po_line_sk": a <strong>polymorphic foreign key</strong>, whose overlapping key spaces let a wrong-table join return wrong rows silently. The first fix split it into four nullable foreign keys pointing at other fact tables. That still broke two chapter 5 rules: facts referencing facts, and NULL foreign keys.</p>
 
-<p>It is now four explicit nullable foreign keys — <code>order_line_sk</code>, <code>order_line_modifier_sk</code>, <code>po_line_sk</code>, <code>count_sk</code> — with a CHECK that at most one is set and that it agrees with <code>movement_type</code>. Rows for <code>waste</code>, <code>spoilage</code> and <code>staff_meal</code> legitimately have all four null; those movements have no source document.</p>
+<ul>
+  <li><strong>For analysis, dimension keys.</strong> <code>menu_item_key</code> (theoretical usage), <code>modifier_key</code> (modifier usage) and <code>supplier_key</code> (receipts), each pointing at row 0, <em>Not applicable</em>, when it does not apply. Usage by item, modifier or supplier is an ordinary star query, and no key is NULL.</li>
+  <li><strong>For lineage, a typed degenerate reference.</strong> <code>source_document_number</code> + <code>source_line_number</code> (an order number, a PO number or a count session; <code>n/a</code> for waste), with its type held in <code>DIM_MOVEMENT_INFO.source_document_type</code>. This is the <code>ref_table</code> + <code>ref_id</code> form suggested in the earlier review.</li>
+</ul>
 
 <div class="note">
-  <span class="label">The rejected alternative</span>
-  <p>A <code>ref_table</code> + <code>ref_id</code> pair of strings is more flexible and is the wrong trade here: it permanently gives up database-enforced referential integrity, which is the one thing the split was for. <code>qty_delta</code> stays a single signed <code>decimal</code> for the same reason it always was — stock on hand is <code>SUM(qty_delta)</code>, one expression with no term to forget — and the guard against a receipt booked as an outflow is a CHECK tying sign to <code>movement_type</code>, not a second column.</p>
+  <span class="label">Why this is safe now</span>
+  <p>Chapter 5 is explicit that in an analytic database referential integrity is enforced by the ETL, so the load checks every reference against its source fact; and because no analysis query joins on it, the wrong-table join that made the original key dangerous has nothing to run on. <code>qty_delta</code> stays a single signed <code>decimal</code> — stock on hand is <code>SUM(qty_delta)</code> — and the guard against a receipt booked as an outflow is a CHECK tying the sign to <code>DIM_MOVEMENT_INFO.direction</code>.</p>
 </div>
 
 <h2><span class="num">07</span> ER model — people and shifts</h2>
@@ -778,36 +912,44 @@ erDiagram
 <pre class="mermaid">
 erDiagram
   DIM_STAFF ||--o{ FCT_SHIFT : works
-  DIM_ROLE ||--o{ DIM_STAFF : "holds"
   DIM_DATE ||--o{ FCT_SHIFT : "on day"
+  DIM_SHIFT_INFO ||--o{ FCT_SHIFT : "kind of shift"
   DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
   DIM_STAFF ||--o{ FCT_INVENTORY_COUNT : "counted by"
 
   DIM_STAFF {
-    int staff_sk PK
+    int staff_key PK "0 = Not applicable"
     string staff_nk UK
     string staff_name
-    int role_sk FK
+    string role_name "pizzaiolo, cashier, rider, prep, manager"
+    string role_area "Kitchen, Front of house, Delivery - hierarchy: staff > role > area"
     string employment_type "full_time, part_time, daily"
     decimal hourly_wage_thb
-    boolean is_ot_eligible "salaried managers usually are not"
+    string ot_eligibility "OT eligible or Not OT eligible"
     decimal daily_regular_hours "8 - OT accrues beyond this"
     decimal ot_multiplier "1.5 weekday default"
     decimal holiday_ot_multiplier "3.0 default"
     date hire_date
     date valid_from "SCD2 - wage and role change"
     date valid_to
-    boolean is_current
+    string current_flag "Current or Expired"
+    string row_type
   }
-  DIM_ROLE {
-    int role_sk PK
-    string role_name "pizzaiolo, cashier, rider, prep, manager"
-    boolean is_kitchen
+  DIM_DATE {
+    int date_key PK
+    date full_date
+    string holiday_flag
+  }
+  DIM_SHIFT_INFO {
+    int shift_info_key PK "junk dimension"
+    string shift_type "open, mid, close"
+    string holiday_shift_flag "Holiday shift or Regular day"
+    string ot_approval "OT approved, OT not approved, No OT"
   }
   FCT_SHIFT {
-    bigint shift_sk PK
-    int staff_sk FK
-    int date_sk FK
+    int staff_key FK
+    int date_key FK
+    int shift_info_key FK
     timestamp clock_in_ts
     timestamp clock_out_ts
     decimal hours_worked "regular_hours + ot_hours"
@@ -817,20 +959,15 @@ erDiagram
     decimal regular_cost_thb
     decimal ot_cost_thb "ot_hours x wage x multiplier"
     decimal labour_cost_thb "regular_cost + ot_cost"
-    boolean is_holiday_shift "from DIM_DATE.is_thai_holiday"
-    boolean is_ot_approved "manager sign-off, unapproved OT is a finding"
-    string shift_type "open, mid, close"
   }
   FCT_ORDER_EVENT {
-    bigint order_event_sk PK
-    bigint order_sk FK
-    int staff_sk FK
-    string event_type
+    int staff_key FK
+    int event_type_key FK
+    string order_number
     timestamp event_ts
   }
   FCT_INVENTORY_COUNT {
-    bigint count_sk PK
-    int counted_by_staff_sk FK
+    int counted_by_staff_key FK
     decimal variance_qty
   }
 </pre>
@@ -845,8 +982,9 @@ erDiagram
 <ul>
   <li><strong><code>regular_hours</code> and <code>ot_hours</code> are separate columns.</strong> Labour cost % is meaningless if a 1.5× hour is counted as a 1.0× hour, and "how much OT did we burn last month" comes before any other labour question.</li>
   <li><strong><code>ot_multiplier_applied</code> is snapshotted onto the fact.</strong> Same argument as <code>unit_price_thb</code> on the order line — policy changes must not silently rewrite what last quarter's overtime cost. <code>DIM_STAFF</code> holds the current default; the fact holds what was actually used.</li>
-  <li><strong><code>is_ot_eligible</code> sits on <code>DIM_STAFF</code>.</strong> Salaried managers typically accrue no OT; without the flag their long days inflate the figure and hide the OT that is real.</li>
-  <li><strong><code>is_ot_approved</code> sits on the fact.</strong> Approved and unapproved overtime cost the same money but mean different things — one is a staffing decision, the other is a finding.</li>
+  <li><strong><code>ot_eligibility</code> sits on <code>DIM_STAFF</code>.</strong> Salaried managers typically accrue no OT; without the flag their long days inflate the figure and hide the OT that is real.</li>
+  <li><strong>OT approval sits in the <code>DIM_SHIFT_INFO</code> junk dimension.</strong> Approved and unapproved overtime cost the same money but mean different things — one is a staffing decision, the other is a finding.</li>
+  <li><strong>Role lives on <code>DIM_STAFF</code>, not in its own table.</strong> A role is a natural affinity of the staff member, so it is stored on the same row (no snowflake); SCD2 keeps the history when someone moves from prep to pizzaiolo.</li>
 </ul>
 
 <div class="note">
@@ -859,7 +997,7 @@ erDiagram
 <div class="decisions">
   <div class="decision">
     <h4><span>01</span> Multi-channel order provenance</h4>
-    <p>Every order carries <code>channel_sk</code> plus the platform's own <code>external_order_id</code>. Dedup and idempotent reload both key on <b>(channel_sk, external_order_id)</b>, so re-running yesterday's Grab export cannot double-count revenue. Without this pair, reconciling four platforms against one P&amp;L is guesswork.</p>
+    <p>Every order carries <code>channel_key</code> plus the platform's own <code>order_number</code>. Dedup and idempotent reload both key on <b>(channel_key, order_number)</b>, so re-running yesterday's Grab export cannot double-count revenue. Without this pair, reconciling four platforms against one P&amp;L is guesswork.</p>
   </div>
   <div class="decision">
     <h4><span>02</span> Recipe-driven stock, not a fixed percentage</h4>
@@ -871,7 +1009,7 @@ erDiagram
   </div>
   <div class="decision">
     <h4><span>04</span> Membership only exists on own channels</h4>
-    <p>Aggregators do not release customer identity, so <code>FCT_ORDER.customer_sk</code> is <b>nullable and mostly null</b>. RFM segmentation is scoped to QR and phone orders and the dashboard must label it that way. Drawing a customer FK off every order would make the segmentation story fiction.</p>
+    <p>Aggregators do not release customer identity, so their orders point <code>customer_key</code> at row 0, <b>Not applicable</b>, rather than storing NULL. RFM segmentation is scoped to QR and phone orders and the dashboard must label it that way; inventing a customer for every order would make the segmentation story fiction.</p>
   </div>
   <div class="decision">
     <h4><span>05</span> Delivery timing is an event log, not columns</h4>
@@ -890,21 +1028,31 @@ erDiagram
     <p><code>regular_hours</code> and <code>ot_hours</code> are separate on <code>FCT_SHIFT</code>, and the multiplier used is snapshotted alongside them. A blended labour rate would be simpler and would hide <b>the single most controllable cost line the manager has</b>.</p>
   </div>
   <div class="decision">
-    <h4><span>09</span> No list lives in a scalar, and no key is polymorphic</h4>
+    <h4><span>09</span> No list lives in a scalar, and no foreign key is polymorphic</h4>
     <p>Three fields broke this and all three were fixed: <code>modifiers_json</code>, <code>DIM_SUPPLIER.delivery_days</code>, and <code>FCT_INVENTORY_MOVEMENT.source_ref_sk</code>. The first two are 1NF violations that silently disable a join; the third is worse, because <b>an overloaded key returns wrong rows instead of failing</b>.</p>
+  </div>
+  <div class="decision">
+    <h4><span>10</span> Facts carry their own keys and are compared by drilling across</h4>
+    <p><code>FCT_ORDER_LINE</code> holds <code>date_key</code>, <code>channel_key</code> and <code>customer_key</code> itself instead of reaching them through <code>FCT_ORDER</code>. Joining two facts through a shared parent <b>double-counts the parent's measures</b>; summarizing each fact first and combining on conformed dimensions does not.</p>
+  </div>
+  <div class="decision">
+    <h4><span>11</span> No NULL keys, no snowflakes</h4>
+    <p>Every dimension has Not applicable / Unknown / Invalid rows, so late or bad data is <b>loaded and flagged rather than dropped</b>, and every attribute that describes a staff member, a menu item or an ingredient sits on that one dimension row. Section 11 has the full list of conventions.</p>
   </div>
 </div>
 
-<h2><span class="num">09</span> Marts, dashboard and ML</h2>
+<h2><span class="num">09</span> Data marts, aggregates, dashboard and ML</h2>
+
+<p>Each aggregate table serves one data mart, the subject area it is named after (section 11).</p>
 
 <div class="table-wrap">
 <table>
-  <thead><tr><th>Mart</th><th>Grain</th><th>Built from</th><th>Serves</th></tr></thead>
+  <thead><tr><th>Aggregate table</th><th>Grain</th><th>Built from</th><th>Serves</th></tr></thead>
   <tbody>
     <tr><td>mart_sales_daily</td><td>business date × channel × menu item</td><td>FCT_ORDER + FCT_ORDER_LINE + dims</td><td>Sales dashboard; training set for the demand forecast</td></tr>
     <tr><td>mart_ingredient_usage_daily</td><td>business date × ingredient</td><td>FCT_ORDER_LINE × BRG_RECIPE + FCT_ORDER_LINE_MODIFIER × BRG_MODIFIER_RECIPE, vs FCT_INVENTORY_COUNT</td><td>Waste %, variance alerts, reorder suggestions</td></tr>
     <tr><td>mart_delivery_sla</td><td>order</td><td>FCT_ORDER_EVENT pivoted to durations</td><td>Prep-time and lead-time distributions by channel and hour</td></tr>
-    <tr><td>mart_customer_rfm</td><td>customer (own channels)</td><td>FCT_ORDER where customer_sk not null</td><td>Segmentation, win-back campaigns via LINE</td></tr>
+    <tr><td>mart_customer_rfm</td><td>customer (own channels)</td><td>FCT_ORDER where <code>customer_key</code> is a real customer (not row 0)</td><td>Segmentation, win-back campaigns via LINE; also refreshes the behavioral <code>DIM_CUSTOMER.rfm_segment</code> monthly</td></tr>
     <tr><td>mart_labor_vs_sales</td><td>business date × hour</td><td>FCT_SHIFT + FCT_ORDER</td><td>Labour cost %, OT cost and OT share, understaffed-hour detection</td></tr>
     <tr><td>mart_promotion_performance</td><td>promotion × business date × menu item</td><td>FCT_ORDER_LINE_PROMOTION × BRG_PROMOTION_REWARD</td><td>Discount spend per SKU, incremental units, margin after discount</td></tr>
   </tbody>
@@ -931,22 +1079,420 @@ erDiagram
 <table>
   <thead><tr><th>Risk</th><th>Where it bites</th><th>Rule</th></tr></thead>
   <tbody>
-    <tr><td>Double ingestion</td><td>Aggregator export re-downloaded</td><td>Merge key <code>(channel_sk, external_order_id)</code>; upsert, never append</td></tr>
-    <tr><td>Late-arriving orders</td><td>01:40 order in yesterday's file</td><td>Assign <code>business_date_sk</code> by 10:00–02:00 window, reprocess a 3-day trailing partition</td></tr>
+    <tr><td>Double ingestion</td><td>Aggregator export re-downloaded</td><td>Merge key <code>(channel_key, order_number)</code>; upsert, never append</td></tr>
+    <tr><td>Late-arriving orders</td><td>01:40 order in yesterday's file</td><td>Assign <code>date_key</code> by the 10:00–02:00 window, reprocess a 3-day trailing partition</td></tr>
     <tr><td>Schema drift</td><td>Platform renames a CSV column</td><td>Raw layer stores payload as-is; staging fails loudly on unmapped columns rather than silently nulling</td></tr>
-    <tr><td>Unmapped menu item</td><td>New platform-only bundle</td><td><code>BRG_CHANNEL_MENU_ITEM</code> miss routes to a quarantine table + alert; revenue is never dropped</td></tr>
-    <tr><td>Cancelled / refunded orders</td><td>Inflated sales and phantom stock usage</td><td><code>is_cancelled</code> excluded from usage derivation; kept in the fact for cancel-rate analysis</td></tr>
+    <tr><td>Unmapped menu item</td><td>New platform-only bundle</td><td><code>BRG_CHANNEL_MENU_ITEM</code> miss loads the line against <code>menu_item_key</code> 1 (Unknown) + alert; re-pointed once mapped, so revenue is never dropped or understated</td></tr>
+    <tr><td>Cancelled / refunded orders</td><td>Inflated sales and phantom stock usage</td><td>Orders whose <code>DIM_ORDER_INFO.cancellation_flag</code> is "Cancelled" are excluded from usage derivation; kept in the fact for cancel-rate analysis</td></tr>
     <tr><td>Recipe changed mid-period</td><td>Variance suddenly explodes</td><td><code>BRG_RECIPE</code> is SCD2; usage joins on the recipe valid at order time</td></tr>
     <tr><td>Modifier with no recipe</td><td>Extra cheese vanishes into unexplained variance</td><td>Alert on any <code>DIM_MODIFIER</code> of type add/substitute with no <code>BRG_MODIFIER_RECIPE</code> row</td></tr>
-    <tr><td>Movement pointing at two sources</td><td>Wrong-table join returns plausible wrong rows</td><td>CHECK at most one of the four source FKs is non-null, and that it matches <code>movement_type</code></td></tr>
+    <tr><td>Movement with a broken lineage</td><td>Usage that cannot be traced to an order, PO or count</td><td>ETL checks every <code>source_document_number</code> against the fact named by <code>source_document_type</code>, and that the sign of <code>qty_delta</code> matches <code>direction</code></td></tr>
+    <tr><td>NULL or missing dimension key</td><td>Facts silently drop out of joins</td><td>No fact column may be NULL; use row 0 (Not applicable), 1 (Unknown) or 2 (Invalid)</td></tr>
     <tr><td>Supplier with no delivery day</td><td>Reorder date cannot be computed, PO never suggested</td><td>Reject a <code>DIM_SUPPLIER</code> with zero <code>BRG_SUPPLIER_DELIVERY_DAY</code> rows</td></tr>
     <tr><td>Discount allocated but not reconciled</td><td>Item margin quietly invented</td><td>Assert line-level discount sums to order-level per order; fail the batch, do not warn</td></tr>
     <tr><td>Promo with no qualifying condition</td><td>Discount applies to everything</td><td>Reject a <code>DIM_PROMOTION</code> with zero condition rows unless the mechanic is <code>free_delivery</code></td></tr>
     <tr><td>Overtime split across two shifts</td><td>Daily threshold missed, OT under-reported</td><td>Compute the regular/OT split at staff × business_date, then allocate to shifts</td></tr>
-    <tr><td>OT booked for an ineligible role</td><td>Labour cost inflated by salaried managers</td><td>Reject <code>ot_hours &gt; 0</code> where <code>is_ot_eligible</code> is false</td></tr>
+    <tr><td>OT booked for an ineligible role</td><td>Labour cost inflated by salaried managers</td><td>Reject <code>ot_hours &gt; 0</code> where <code>ot_eligibility</code> is "Not OT eligible"</td></tr>
   </tbody>
 </table>
 </div>
+
+<h2><span class="num">11</span> Dimensional design conventions (MADT8102 chapter 5)</h2>
+
+<p>Every table in sections 4–7 follows the conventions below. They are the terms and rules from
+<em>Star schema, conformance, hierarchies, and snowflakes</em>, applied to this shop.</p>
+
+<h3>Architecture</h3>
+<p>This is a <strong>Kimball dimensional data warehouse</strong> (bus architecture), not an Inmon Corporate
+Information Factory and not stand-alone data marts. All data is organized dimensionally, at the
+lowest level of detail we receive; the stars may be queried directly by analysts and the forecast
+model; and a <strong>data mart is a subject area within the warehouse</strong>, not a separate database:</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Data mart (subject area)</th>
+<th>Stars</th>
+<th>Aggregate tables (section 9)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sales</td>
+<td><code>FCT_ORDER</code>, <code>FCT_ORDER_LINE</code>, <code>FCT_ORDER_LINE_MODIFIER</code>, <code>FCT_PAYMENT</code>, <code>FCT_ORDER_PROMOTION</code>, <code>FCT_ORDER_LINE_PROMOTION</code></td>
+<td><code>mart_sales_daily</code>, <code>mart_promotion_performance</code></td>
+</tr>
+<tr>
+<td>Delivery</td>
+<td><code>FCT_ORDER_EVENT</code></td>
+<td><code>mart_delivery_sla</code></td>
+</tr>
+<tr>
+<td>Customer</td>
+<td><code>FCT_ORDER</code> (own channels) + the behavioral <code>rfm_segment</code> on <code>DIM_CUSTOMER</code></td>
+<td><code>mart_customer_rfm</code></td>
+</tr>
+<tr>
+<td>Inventory and purchasing</td>
+<td><code>FCT_INVENTORY_MOVEMENT</code>, <code>FCT_INVENTORY_COUNT</code>, <code>FCT_PURCHASE_ORDER(_LINE)</code></td>
+<td><code>mart_ingredient_usage_daily</code></td>
+</tr>
+<tr>
+<td>Labour</td>
+<td><code>FCT_SHIFT</code></td>
+<td><code>mart_labor_vs_sales</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The <code>mart_*</code> tables are <strong>aggregate tables</strong> that serve a data mart; they are named after it, but
+the data mart itself is the set of stars.</p>
+
+<h3>Keys</h3>
+<ul>
+<li><strong>Surrogate keys end in <code>_key</code></strong> (<code>menu_item_key</code>, <code>date_key</code>): integers with no meaning,
+  assigned by the ETL. <strong>Natural keys end in <code>_nk</code>.</strong> Because dimensions do not depend on the
+  natural key, they keep history the POS overwrites (SCD2 on <code>DIM_MENU_ITEM</code>, <code>BRG_RECIPE</code>,
+  <code>DIM_STAFF</code>).</li>
+<li><strong>Facts hold only surrogate keys and degenerate dimensions.</strong> Every fact carries a key to <em>each</em>
+  dimension it is analysed by, directly. No fact points at another fact.</li>
+<li><strong>No NULL foreign keys.</strong> Every dimension has <strong>special-case rows</strong>:</li>
+</ul>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th><code>row_type</code></th>
+<th>Used when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Not applicable</td>
+<td>The relationship does not exist: an aggregator order has no customer, a waste movement has no supplier, a payment is not yet settled</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Unknown</td>
+<td>The fact arrived before its dimensional context (late-arriving data), e.g. a new Grab item not yet in <code>BRG_CHANNEL_MENU_ITEM</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Invalid</td>
+<td>The source supplied a code that cannot be valid</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Facts are loaded against Unknown or Invalid instead of being held back, so sales are never
+  understated; an alert fires and the row is re-pointed once the dimension catches up.</p>
+
+<h3>Dimensions</h3>
+<ul>
+<li><strong>Flags hold readable values</strong>, not booleans: <code>weekend_flag</code> = "Weekend" / "Weekday",
+  <code>channel_ownership</code> = "Own channel" / "Aggregator", <code>membership</code> = "Member" / "Non-member",
+  <code>ot_eligibility</code> = "OT eligible" / "Not OT eligible", <code>current_flag</code> = "Current" / "Expired".</li>
+<li><strong>Codes travel with descriptions</strong>: <code>channel_code</code> + <code>channel_name</code>, <code>size_code</code> + <code>size_name</code>.</li>
+<li><strong>Attribute hierarchies</strong> for drilling:</li>
+<li><code>DIM_DATE</code>: day → month → quarter → year</li>
+<li><code>DIM_MENU_ITEM</code>: SKU → item → category</li>
+<li><code>DIM_CHANNEL</code>: channel → channel type (Dine-in / Delivery)</li>
+<li><code>DIM_INGREDIENT</code>: ingredient → category</li>
+<li><code>DIM_STAFF</code>: staff → role → role area (Kitchen / Front of house / Delivery)</li>
+<li><strong>No snowflakes.</strong> Related attributes are stored together and kept redundant. <code>DIM_ROLE</code> was
+  folded into <code>DIM_STAFF</code> (SCD2 keeps the role history), and the preferred supplier is stored on
+  <code>DIM_INGREDIENT</code> by name and natural key rather than as a key to <code>DIM_SUPPLIER</code>. Referential
+  integrity is enforced by the ETL.</li>
+<li><strong>Behavioral dimension.</strong> <code>DIM_CUSTOMER.rfm_segment</code> is computed from past orders and refreshed
+  monthly, so any fact can be grouped by segment without a complex query.</li>
+<li><strong>Junk dimensions</strong> hold the low-cardinality codes and flags that would otherwise sit on facts:
+  <code>DIM_ORDER_INFO</code> (status, cancellation), <code>DIM_PAYMENT_INFO</code> (tender, settlement mode),
+  <code>DIM_PROMO_APPLICATION</code> (allocation method, reward line), <code>DIM_MOVEMENT_INFO</code> (movement type,
+  direction, source document type), <code>DIM_PO_INFO</code> (PO and receipt status), <code>DIM_SHIFT_INFO</code>
+  (shift type, holiday shift, OT approval).</li>
+<li><strong>Degenerate dimensions</strong> are kept only for transaction identifiers: <code>order_number</code>,
+  <code>line_number</code>, <code>po_number</code>, <code>po_line_number</code>, <code>count_session_id</code>, <code>source_document_number</code>.</li>
+<li><strong>Dimension roles.</strong> One <code>DIM_DATE</code>, used in several roles through aliases: <code>paid_date_key</code> and
+  <code>settlement_date_key</code> on <code>FCT_PAYMENT</code>, <code>order_date_key</code> and <code>received_date_key</code> on purchase
+  orders. <code>DIM_STAFF</code> plays <code>counted_by_staff_key</code> on <code>FCT_INVENTORY_COUNT</code>.</li>
+</ul>
+
+<h3>Facts</h3>
+<ul>
+<li><strong>Grain is declared for every fact table</strong> (sections 4–7), and facts with different timing or
+  different grain live in different fact tables: orders, lines, modifiers, payments, events and
+  promotions are separate processes.</li>
+<li><strong>Nonadditive measures</strong> (prices, rates, percentages) are stored alongside, or broken down into,
+  additive parts.</li>
+<li><strong>Comparing two fact tables is done by drilling across</strong>: summarize each fact at the common
+  conformed dimensions (or by <code>order_number</code>), then combine. Facts are never joined to each other
+  directly, because a join through a common parent double-counts — Grab's Friday commission reads
+  403.5 instead of 257.1 in the prototype (<code>notebooks/warehouse_design.ipynb</code>).</li>
+</ul>
+
+<h3>Conformance matrix</h3>
+<p>Which dimensions, and which hierarchy levels, each fact table conforms on. Levels to the right of
+a dimension's first column are its rollups.</p>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Fact table</th>
+<th>day</th>
+<th>month</th>
+<th>quarter</th>
+<th>channel</th>
+<th>channel type</th>
+<th>customer</th>
+<th>SKU</th>
+<th>category</th>
+<th>modifier</th>
+<th>promotion</th>
+<th>ingredient</th>
+<th>ingr. category</th>
+<th>supplier</th>
+<th>staff</th>
+<th>role</th>
+<th>order_number</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FCT_ORDER</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>FCT_ORDER_LINE</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>FCT_ORDER_LINE_MODIFIER</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>FCT_PAYMENT</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>FCT_ORDER_PROMOTION</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>FCT_ORDER_LINE_PROMOTION</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>FCT_ORDER_EVENT</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>FCT_PURCHASE_ORDER(_LINE)</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>FCT_INVENTORY_MOVEMENT</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>FCT_INVENTORY_COUNT</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr>
+<td><code>FCT_SHIFT</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr>
+<td><code>fct_forecast</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Date is conformed by every fact table, which is what lets sales, stock, purchasing and labour be
+compared by drilling across. Menu item links sales to stock (through <code>BRG_RECIPE</code>); staff links
+delivery, counting and labour.</p>
 
 <footer>Pizza shop data platform · ER model + pipeline · assumption: forecast grain = item × day × channel</footer>
 

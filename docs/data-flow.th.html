@@ -197,7 +197,7 @@
     <tr><td class="z">Lambda</td><td>Batch layer บวก speed layer สำหรับข้อมูลสด</td><td>เกินความจำเป็น ไม่มีผู้ใช้ที่ต้องการข้อมูลสด และทุกกฎต้องเขียนสองรอบ (สไลด์เองก็เตือนไว้)</td></tr>
     <tr><td class="z">Kappa</td><td>มีแต่ speed layer ทุกอย่างเป็น stream</td><td>ผิดรูป แหล่งข้อมูล 4 ใน 5 มาเป็นไฟล์รายวัน ไม่ใช่ stream</td></tr>
     <tr><td class="z">Data-pond</td><td>บ่อ raw, analog, application, textual, archival</td><td>ออกแบบมาสำหรับข้อมูล IoT ผสมข้อความ เราไม่มีทั้งสองอย่าง</td></tr>
-    <tr><td class="z"><strong>Zone-based</strong></td><td>Landing → Raw → Trusted → Refined บวก Sandbox</td><td><strong>เลือกอันนี้</strong> โซนตรงกับชั้น raw / staging / core / mart ใน ER model ของเราพอดี ทุกกฎเขียนครั้งเดียว</td></tr>
+    <tr><td class="z"><strong>Zone-based</strong></td><td>Landing → Raw → Trusted → Refined บวก Sandbox</td><td><strong>เลือกอันนี้</strong> โซนตรงกับชั้น raw / staging / core / aggregate ใน ER model ของเราพอดี ทุกกฎเขียนครั้งเดียว</td></tr>
     <tr><td class="z">Multi-zone functional</td><td>โซน raw, process, access, govern</td><td>ญาติใกล้ชิด เพิ่มโซน govern ที่ร้านเจ้าของคนเดียวกับนักวิเคราะห์คนเดียวยังไม่ต้องใช้</td></tr>
     <tr><td class="z">Functional</td><td>ชั้น ingestion, storage, transformation, interaction</td><td>อธิบายสิ่งเดียวกันแต่แบ่งตามชั้นแทนโซน ใช้ได้ แต่โซนชี้ใน storage ได้ง่ายกว่า</td></tr>
     <tr><td class="z">Lakehouse</td><td>Storage แบบ lake แต่มีตารางแบบ warehouse (Parquet, Delta)</td><td>ไม่ใช่คู่แข่ง แต่เป็นวิธี <em>ลงมือทำ</em> โซนเหล่านั้น Raw เป็น Parquet, Trusted กับ Refined เป็นตาราง</td></tr>
@@ -209,7 +209,7 @@
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1240 600" role="img"
-       aria-label="แหล่งข้อมูล 5 แหล่งส่งเข้า landing zone ชั่วคราว ข้อมูลถูกคัดลอกเข้า raw zone ถาวร แปลงทุกคืนเป็น star schema ใน trusted zone รวมยอดเป็น mart ใน refined zone และถูกอ่านโดยผู้ใช้ 4 กลุ่ม sandbox อ่านจาก trusted และ refined เพื่อทดลอง">
+       aria-label="แหล่งข้อมูล 5 แหล่งส่งเข้า landing zone ชั่วคราว ข้อมูลถูกคัดลอกเข้า raw zone ถาวร แปลงทุกคืนเป็น star schema ใน trusted zone รวมยอดเป็น aggregate table ใน refined zone และถูกอ่านโดยผู้ใช้ 4 กลุ่ม sandbox อ่านจาก trusted และ refined เพื่อทดลอง">
     <defs>
       <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -422,7 +422,7 @@
     <tr><td class="z">Landing</td><td>ดึงจาก API และไฟล์ CSV ตามที่ได้รับ</td><td>ไม่มี แค่เช็กว่ามาถึง</td><td>JSON / CSV ต้นฉบับ โฟลเดอร์ต่อแหล่งต่อวัน</td><td>7 วัน</td></tr>
     <tr><td class="z">Raw</td><td>สำเนาของทุกไฟล์ที่ landing</td><td>ติดป้ายแหล่ง เวลานำเข้า ชื่อไฟล์</td><td>Parquet แบ่งพาร์ติชันตามแหล่งและวัน</td><td>ตลอดไป</td></tr>
     <tr><td class="z">Trusted</td><td>พาร์ติชัน raw ของวันทำการนั้น</td><td>parse, cast, ตัดซ้ำด้วย natural key, ปรับชื่อให้ตรงกัน, เกตคุณภาพ, โหลดเข้า star schema</td><td>ตาราง warehouse เป็น fact และ dim แบบ SCD2</td><td>ตลอดไป</td></tr>
-    <tr><td class="z">Refined</td><td>fact และ dim จาก trusted</td><td>รวมยอดเป็น วันทำการ × เมนู × ช่องทาง</td><td>ตาราง mart ใน warehouse</td><td>ตลอดไป</td></tr>
+    <tr><td class="z">Refined</td><td>fact และ dim จาก trusted</td><td>รวมยอดเป็น วันทำการ × เมนู × ช่องทาง</td><td>aggregate table (<code>mart_*</code>) หนึ่งตัวต่อหนึ่งคำถามของ data mart</td><td>ตลอดไป</td></tr>
     <tr><td class="z">Sandbox</td><td>สำเนาจาก trusted และ refined</td><td>ทดลอง, SQL เฉพาะกิจ</td><td>ตามที่นักวิเคราะห์ต้องการ</td><td>30 วัน</td></tr>
   </tbody>
 </table>

@@ -2,101 +2,137 @@
 %% Theoretical usage = FCT_ORDER_LINE x BRG_RECIPE
 %%                   + FCT_ORDER_LINE_MODIFIER x BRG_MODIFIER_RECIPE
 %% Actual on-hand    = FCT_INVENTORY_COUNT
-%% Variance          = theoretical - actual  <-- the waste/shrinkage KPI
+%% Movements carry dimension keys for analysis (0 = Not applicable) and a typed
+%% source document reference for lineage. Referential integrity is enforced by the ETL.
 erDiagram
   DIM_MENU_ITEM ||--|{ BRG_RECIPE : "made from"
   DIM_INGREDIENT ||--o{ BRG_RECIPE : "used in"
-  DIM_INGREDIENT ||--o{ FCT_INVENTORY_MOVEMENT : "moves"
-  DIM_INGREDIENT ||--o{ FCT_INVENTORY_COUNT : "counted"
-  DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
-  DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
-  DIM_SUPPLIER ||--o{ DIM_INGREDIENT : "preferred source"
-  DIM_SUPPLIER ||--o{ BRG_SUPPLIER_DELIVERY_DAY : "delivers on"
   DIM_MODIFIER ||--o{ BRG_MODIFIER_RECIPE : "consumes"
   DIM_INGREDIENT ||--o{ BRG_MODIFIER_RECIPE : "used in"
-  FCT_PURCHASE_ORDER ||--|{ FCT_PURCHASE_ORDER_LINE : contains
-  FCT_PURCHASE_ORDER_LINE ||--o{ FCT_INVENTORY_MOVEMENT : "receipt"
-  FCT_INVENTORY_COUNT ||--o{ FCT_INVENTORY_MOVEMENT : "count adjustment"
+  DIM_SUPPLIER ||--o{ BRG_SUPPLIER_DELIVERY_DAY : "delivers on"
+  DIM_INGREDIENT ||--o{ FCT_INVENTORY_MOVEMENT : "moves"
   DIM_DATE ||--o{ FCT_INVENTORY_MOVEMENT : "on day"
+  DIM_MOVEMENT_INFO ||--o{ FCT_INVENTORY_MOVEMENT : "kind"
+  DIM_MENU_ITEM ||--o{ FCT_INVENTORY_MOVEMENT : "used by item"
+  DIM_MODIFIER ||--o{ FCT_INVENTORY_MOVEMENT : "used by modifier"
+  DIM_SUPPLIER ||--o{ FCT_INVENTORY_MOVEMENT : "received from"
+  DIM_INGREDIENT ||--o{ FCT_INVENTORY_COUNT : "counted"
   DIM_DATE ||--o{ FCT_INVENTORY_COUNT : "on day"
+  DIM_STAFF ||--o{ FCT_INVENTORY_COUNT : "counted by"
+  DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER : supplies
+  DIM_DATE ||--o{ FCT_PURCHASE_ORDER : "ordered on / received on (roles)"
+  DIM_PO_INFO ||--o{ FCT_PURCHASE_ORDER : "status"
+  DIM_SUPPLIER ||--o{ FCT_PURCHASE_ORDER_LINE : supplies
+  DIM_INGREDIENT ||--o{ FCT_PURCHASE_ORDER_LINE : "purchased"
+  DIM_DATE ||--o{ FCT_PURCHASE_ORDER_LINE : "ordered on / received on (roles)"
+  DIM_PO_INFO ||--o{ FCT_PURCHASE_ORDER_LINE : "status"
 
   DIM_INGREDIENT {
-    int ingredient_sk PK
+    int ingredient_key PK
     string ingredient_nk UK
     string ingredient_name "mozzarella, 00 flour, pepperoni"
-    string category "dairy, dry_good, protein, produce, packaging"
+    string category "dairy, dry_good, protein, produce, packaging - hierarchy level"
     string base_uom "gram, ml, piece"
     decimal shelf_life_days
     decimal reorder_point_qty
     decimal safety_stock_qty
-    int default_supplier_sk FK
+    string preferred_supplier_nk "denormalized, not a snowflake"
+    string preferred_supplier_name
+    string row_type
   }
   BRG_RECIPE {
-    int recipe_sk PK
-    int menu_item_sk FK
-    int ingredient_sk FK
+    int menu_item_key FK
+    int ingredient_key FK
     decimal qty_per_unit "in ingredient base_uom"
     decimal yield_loss_pct "trim and prep loss"
     date valid_from "SCD2 - recipes change"
     date valid_to
   }
   DIM_SUPPLIER {
-    int supplier_sk PK
+    int supplier_key PK "0 = Not applicable"
+    string supplier_nk UK
     string supplier_name
     string contact_phone
     int lead_time_days
     int min_order_value_thb
+    string row_type
   }
   BRG_SUPPLIER_DELIVERY_DAY {
-    int supplier_delivery_day_sk PK
-    int supplier_sk FK
+    int supplier_key FK
     int day_of_week "1=Mon .. 7=Sun, one row per day"
+    string day_name
     time order_cutoff_time "order after this and it ships next delivery day"
   }
+  DIM_MODIFIER {
+    int modifier_key PK "0 = Not applicable"
+    string modifier_name
+  }
+  DIM_MENU_ITEM {
+    int menu_item_key PK "0 = Not applicable"
+    string item_name
+  }
+  DIM_STAFF {
+    int staff_key PK
+    string staff_name
+  }
   BRG_MODIFIER_RECIPE {
-    int modifier_recipe_sk PK
-    int modifier_sk FK
-    int ingredient_sk FK
+    int modifier_key FK
+    int ingredient_key FK
     decimal qty_delta_per_unit "signed - extra cheese +40g, no chili -5g"
     date valid_from "SCD2"
     date valid_to
   }
+  DIM_PO_INFO {
+    int po_info_key PK "junk dimension"
+    string po_status "draft, sent, received, cancelled"
+    string receipt_status "Fully received, Short-shipped, Pending"
+  }
+  DIM_MOVEMENT_INFO {
+    int movement_info_key PK "junk dimension"
+    string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
+    string direction "In or Out - CHECK sign of qty_delta"
+    string source_document_type "Order line, Order line modifier, PO line, Stock count, None"
+  }
   FCT_PURCHASE_ORDER {
-    bigint po_sk PK
-    int supplier_sk FK
-    int order_date_sk FK
-    int received_date_sk FK
+    int supplier_key FK
+    int order_date_key FK "role of DIM_DATE"
+    int received_date_key FK "role of DIM_DATE; 0 until received"
+    int po_info_key FK
+    string po_number "degenerate"
     decimal total_cost_thb
-    string po_status
   }
   FCT_PURCHASE_ORDER_LINE {
-    bigint po_line_sk PK
-    bigint po_sk FK
-    int ingredient_sk FK
+    int supplier_key FK
+    int ingredient_key FK
+    int order_date_key FK "role"
+    int received_date_key FK "role"
+    int po_info_key FK
+    string po_number "degenerate"
+    int po_line_number "degenerate"
     decimal qty_ordered
     decimal qty_received
     decimal unit_cost_thb "cost at time of purchase"
   }
   FCT_INVENTORY_MOVEMENT {
-    bigint movement_sk PK
-    int ingredient_sk FK
-    int date_sk FK
+    int ingredient_key FK
+    int date_key FK
+    int movement_info_key FK
+    int menu_item_key FK "theoretical usage; else 0"
+    int modifier_key FK "modifier usage; else 0"
+    int supplier_key FK "receipt; else 0"
+    string source_document_number "degenerate: order, PO or count number; n/a for waste"
+    int source_line_number "degenerate; 0 when none"
     timestamp movement_ts
-    string movement_type "receipt, theoretical_usage, waste, spoilage, count_adjustment, staff_meal"
-    decimal qty_delta "signed, base_uom - CHECK sign matches movement_type"
-    bigint order_line_sk FK "set for theoretical_usage, else null"
-    bigint order_line_modifier_sk FK "set for modifier usage, else null"
-    bigint po_line_sk FK "set for receipt, else null"
-    bigint count_sk FK "set for count_adjustment, else null"
+    decimal qty_delta "signed, base_uom"
     decimal unit_cost_thb
   }
   FCT_INVENTORY_COUNT {
-    bigint count_sk PK
-    int ingredient_sk FK
-    int date_sk FK
+    int ingredient_key FK
+    int date_key FK
+    int counted_by_staff_key FK "role of DIM_STAFF"
+    string count_session_id "degenerate"
     decimal qty_counted
     decimal qty_expected "system theoretical on-hand"
     decimal variance_qty "counted minus expected"
     decimal variance_value_thb
-    int counted_by_staff_sk FK
   }

@@ -129,24 +129,26 @@
   <p class="eyebrow">MADT8102 · Pizza shop · Warehouse specification</p>
   <h1>The warehouse: what the team builds and how it gets used</h1>
   <p class="standfirst">
-    The warehouse for this project, from staged source data to the marts the owner, the reorder list and the
-    forecast model read. It covers every dimension, fact table and mart, the conventions every table follows,
-    and how a nightly load runs.
+    The warehouse for this project, from staged source data to the aggregate tables the owner, the reorder list
+    and the forecast model read. It covers every dimension, fact table and data mart, the dimensional conventions
+    every table follows (MADT8102 chapter 5), and how a nightly load runs.
   </p>
   <div class="meta-strip">
-    <span>Layers <b>stg → dw → mart</b></span>
-    <span>Model <b>Star · 10 dims · 13 facts</b></span>
-    <span>Marts <b>6</b></span>
-    <span>Refresh <b>Nightly 03:00 core · 03:30 marts</b></span>
+    <span>Architecture <b>Kimball dimensional DW</b></span>
+    <span>Model <b>Star · 16 dims · 13 facts</b></span>
+    <span>Data marts <b>5 · aggregates 6</b></span>
+    <span>Refresh <b>Nightly 03:00 core · 03:30 aggregates</b></span>
   </div>
   <p class="lang">ฉบับภาษาไทย: <a href="warehouse-design.th.html">warehouse-design.th.html</a></p>
 </header>
 
 <h2>1 · What it is and why the project needs it</h2>
 <p>
-  The warehouse is the Trusted and Refined zones of our data lake (<a href="data-flow.html">data-flow.html</a>):
-  one star schema of conformed dimensions and fact tables, plus one mart per business question. It is the only
-  place business rules live. Dashboards, the reorder list and the forecast model read from it and never from a source system.
+  The warehouse is the Trusted and Refined zones of our data lake (<a href="data-flow.html">data-flow.html</a>).
+  Of the three architectures in chapter 5 it is a <strong>Kimball dimensional data warehouse</strong>: one integrated set
+  of star schemas on conformed dimensions, at the lowest grain we receive, which analysts may query directly. A
+  <strong>data mart is a subject area inside it</strong> (Sales, Delivery, Customer, Inventory and purchasing, Labour),
+  each served by aggregate tables. It is the only place business rules live. Dashboards, the reorder list and the forecast model read from it and never from a source system.
 </p>
 <p>The reason is easiest to see with one question: <em>what was net revenue by channel on Friday?</em></p>
 <div class="two">
@@ -161,9 +163,9 @@
     <pre>SELECT channel_code,
        SUM(net_revenue_thb)
 FROM dw.fct_order
-JOIN dw.dim_channel USING (channel_sk)
-JOIN dw.dim_date USING (date_sk)
-WHERE calendar_date = '2026-09-04'
+JOIN dw.dim_channel USING (channel_key)
+JOIN dw.dim_date USING (date_key)
+WHERE full_date = '2026-09-04'
 GROUP BY channel_code</pre>
   </div>
 </div>
@@ -179,32 +181,39 @@ GROUP BY channel_code</pre>
   <tbody>
     <tr><td class="z">raw</td><td>Every source record as it arrived, plus <code>source_system</code>, <code>ingest_ts</code>, <code>source_file</code>. Never edited.</td><td>On ingest</td><td>The pipeline only</td></tr>
     <tr><td class="z">stg</td><td>One common shape per entity (order header, order line, line modifier, movement, shift…), typed, in Bangkok time, deduplicated.</td><td>03:00</td><td>The pipeline only</td></tr>
-    <tr><td class="z">dw</td><td>The star schema: 10 dimensions, 6 bridges, 13 fact tables. Surrogate keys, SCD2 history.</td><td>03:00</td><td>Analysts, the forecast model, mart builds</td></tr>
-    <tr><td class="z">mart</td><td>Six pre-aggregated tables, one per question, at the grain the consumer needs.</td><td>03:30</td><td>Dashboard, reorder list, campaigns</td></tr>
+    <tr><td class="z">dw</td><td>The star schemas: 16 dimensions (9 conformed, 7 junk or small), 6 bridges, 13 fact tables. <code>_key</code> surrogate keys, SCD2 history, special-case rows instead of NULL keys.</td><td>03:00</td><td>Analysts, the forecast model, mart builds</td></tr>
+    <tr><td class="z">agg</td><td>Six aggregate tables (<code>mart_*</code>), one per question, each serving one data mart, at the grain the consumer needs.</td><td>03:30</td><td>Dashboard, reorder list, campaigns</td></tr>
   </tbody>
 </table>
 </div>
 <div class="callout">
   <b>Access rule</b><br>
-  Dashboards and tools read <code>mart</code> only. Analysts may query <code>dw</code> for new questions. Nothing outside the
-  pipeline reads <code>raw</code> or <code>stg</code>. When a new question gets asked every week, it becomes a mart.
+  Dashboards and tools read the aggregate tables. Analysts may query the <code>dw</code> stars directly, which the Kimball
+  architecture explicitly allows. Nothing outside the pipeline reads <code>raw</code> or <code>stg</code>. When a new question
+  gets asked every week, it becomes an aggregate table.
 </div>
 
 <h2>3 · Dimensions</h2>
+<p>
+  Every dimension has a <code>_key</code> surrogate key, a <code>_nk</code> natural key, flags stored as readable values
+  ("Weekend" / "Weekday", not true / false), codes stored with their descriptions, and three <strong>special-case rows</strong>:
+  <strong>0 = Not applicable</strong>, <strong>1 = Unknown</strong>, <strong>2 = Invalid</strong>. A fact never holds a NULL key.
+</p>
 <div class="table-scroll">
 <table>
-  <thead><tr><th>Dimension</th><th>Describes</th><th>History</th><th>Notes</th></tr></thead>
+  <thead><tr><th>Dimension</th><th>Describes</th><th>History</th><th>Hierarchy and notes</th></tr></thead>
   <tbody>
-    <tr><td class="z">DIM_DATE</td><td>The business day</td><td>Static</td><td>10:00–02:00; carries weekend and Thai holiday flags. Also used as order date and received date on POs.</td></tr>
-    <tr><td class="z">DIM_CHANNEL</td><td>QR, phone, Grab, LINE MAN, ShopeeFood, Robinhood</td><td>Type 1</td><td>Own vs aggregator, commission rate</td></tr>
-    <tr><td class="z">DIM_CUSTOMER</td><td>Members on own channels</td><td>Type 1</td><td>Aggregator orders have no customer, by design</td></tr>
-    <tr><td class="z">DIM_MENU_ITEM</td><td>One SKU (item × size)</td><td><strong>SCD2</strong></td><td>Price and recipe changes add rows</td></tr>
+    <tr><td class="z">DIM_DATE</td><td>The business day</td><td>Static</td><td>day › month › quarter › year. Weekend and Thai holiday flags. Plays two roles on payments and on POs.</td></tr>
+    <tr><td class="z">DIM_CHANNEL</td><td>QR, phone, Grab, LINE MAN, ShopeeFood, Robinhood</td><td>Type 1</td><td>channel › channel type (Dine-in / Delivery). Ownership, commission rate</td></tr>
+    <tr><td class="z">DIM_CUSTOMER</td><td>Members on own channels</td><td>Type 1</td><td>Row 0 for orders with no identified customer. <code>rfm_segment</code> is a behavioral dimension, refreshed monthly</td></tr>
+    <tr><td class="z">DIM_MENU_ITEM</td><td>One SKU (item × size)</td><td><strong>SCD2</strong></td><td>SKU › item › category. Price and recipe changes add rows</td></tr>
     <tr><td class="z">DIM_MODIFIER</td><td>Extra cheese, no chili, thin crust…</td><td>Type 1</td><td>add / remove / substitute</td></tr>
-    <tr><td class="z">DIM_PROMOTION</td><td>One promotion</td><td>Type 1</td><td>Conditions and rewards live in bridges</td></tr>
-    <tr><td class="z">DIM_INGREDIENT</td><td>Mozzarella, flour, pepperoni…</td><td>Type 1</td><td>Base unit, reorder point, safety stock</td></tr>
+    <tr><td class="z">DIM_PROMOTION</td><td>One promotion</td><td>Type 1</td><td>Row 0 = no promotion. Conditions and rewards live in bridges</td></tr>
+    <tr><td class="z">DIM_INGREDIENT</td><td>Mozzarella, flour, pepperoni…</td><td>Type 1</td><td>ingredient › category. Preferred supplier stored by name, not as a snowflake</td></tr>
     <tr><td class="z">DIM_SUPPLIER</td><td>One supplier</td><td>Type 1</td><td>Lead time, minimum order</td></tr>
-    <tr><td class="z">DIM_STAFF</td><td>One staff member</td><td><strong>SCD2</strong></td><td>Wage, role and OT eligibility change over time</td></tr>
-    <tr><td class="z">DIM_ROLE</td><td>Pizzaiolo, cashier, rider…</td><td>Type 1</td><td>The one deliberate snowflake (off <code>DIM_STAFF</code>)</td></tr>
+    <tr><td class="z">DIM_STAFF</td><td>One staff member</td><td><strong>SCD2</strong></td><td>staff › role › role area. Role folded in (no snowflake); wage, role and OT eligibility change over time</td></tr>
+    <tr><td class="z">Junk dimensions</td><td>Low-cardinality codes and flags</td><td>Static</td><td><code>DIM_ORDER_INFO</code>, <code>DIM_PAYMENT_INFO</code>, <code>DIM_PROMO_APPLICATION</code>, <code>DIM_MOVEMENT_INFO</code>, <code>DIM_PO_INFO</code>, <code>DIM_SHIFT_INFO</code></td></tr>
+    <tr><td class="z">DIM_EVENT_TYPE</td><td>Order status transitions</td><td>Static</td><td>Sequence and stage (Kitchen / Delivery)</td></tr>
   </tbody>
 </table>
 </div>
@@ -215,171 +224,193 @@ GROUP BY channel_code</pre>
   <code>BRG_SUPPLIER_DELIVERY_DAY</code> (one row per supplier per weekday).
 </p>
 
-<h3>Bus matrix: which processes share which dimensions</h3>
+<h3>Conformance matrix: which facts conform on which dimension levels</h3>
 <div class="wide table-scroll">
 <table class="matrix">
-  <thead><tr><th>Business process → fact tables</th><th>Date</th><th>Channel</th><th>Customer</th><th>Menu item</th><th>Modifier</th><th>Promotion</th><th>Ingredient</th><th>Supplier</th><th>Staff</th></tr></thead>
+  <thead><tr><th>Fact table</th><th>day</th><th>month</th><th>quarter</th><th>channel</th><th>type</th><th>customer</th><th>SKU</th><th>category</th><th>modifier</th><th>promotion</th><th>ingredient</th><th>ingr. cat.</th><th>supplier</th><th>staff</th><th>role</th><th>order_number</th></tr></thead>
   <tbody>
-    <tr><td>Sell an order · <code>FCT_ORDER</code>, <code>FCT_ORDER_LINE</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td></tr>
-    <tr><td>Customise a line · <code>FCT_ORDER_LINE_MODIFIER</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td></tr>
-    <tr><td>Take payment · <code>FCT_PAYMENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-    <tr><td>Discount · <code>FCT_ORDER(_LINE)_PROMOTION</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td></td><td></td><td></td></tr>
-    <tr><td>Fulfil / deliver · <code>FCT_ORDER_EVENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
-    <tr><td>Buy stock · <code>FCT_PURCHASE_ORDER(_LINE)</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
-    <tr><td>Move stock · <code>FCT_INVENTORY_MOVEMENT</code></td><td class="y">✓</td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
-    <tr><td>Count stock · <code>FCT_INVENTORY_COUNT</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td></td><td class="y">✓</td></tr>
-    <tr><td>Work a shift · <code>FCT_SHIFT</code></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
-    <tr class="total"><td>Processes sharing the dimension</td><td>9</td><td>5</td><td>5</td><td>4</td><td>2</td><td>1</td><td>3</td><td>2</td><td>3</td></tr>
+    <tr><td><code>FCT_ORDER</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_LINE</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_LINE_MODIFIER</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_PAYMENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_PROMOTION</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_LINE_PROMOTION</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_ORDER_EVENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td></tr>
+    <tr><td><code>FCT_PURCHASE_ORDER(_LINE)</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td></tr>
+    <tr><td><code>FCT_INVENTORY_MOVEMENT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td></tr>
+    <tr><td><code>FCT_INVENTORY_COUNT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
+    <tr><td><code>FCT_SHIFT</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="y">✓</td><td class="y">✓</td><td></td></tr>
+    <tr><td><code>fct_forecast</code></td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td></td><td class="y">✓</td><td class="y">✓</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="total"><td>Fact tables conforming</td><td>12</td><td>12</td><td>12</td><td>8</td><td>8</td><td>4</td><td>5</td><td>5</td><td>2</td><td>2</td><td>3</td><td>3</td><td>2</td><td>3</td><td>3</td><td>7</td></tr>
   </tbody>
 </table>
 </div>
 <p>
-  Every dimension is built once and shared. That is what lets sales line up with stock (through menu item and recipe)
-  and with labour (through date), so the reorder loop and labour-vs-sales are joins rather than projects.
+  Every dimension is built once and shared, at every level of its hierarchy. That is what lets sales be compared with
+  stock (through menu item and recipe) and with labour (through date) by drilling across, so the reorder loop and
+  labour-vs-sales are routine queries rather than projects. Without it, the warehouse becomes islands of information.
 </p>
 
 <h2 class="wide">4 · The sales star</h2>
 <figure class="wide">
   <div class="diagram-scroll">
-  <svg viewBox="0 0 1180 540" role="img"
-       aria-label="FCT_ORDER sits between DIM_DATE, DIM_CHANNEL and DIM_CUSTOMER. FCT_ORDER_LINE points to FCT_ORDER and to DIM_MENU_ITEM. FCT_ORDER_LINE_MODIFIER hangs off the order line and points to DIM_MODIFIER. Each fact lists its keys, degenerate keys and measures.">
+  <svg viewBox="0 0 1180 560" role="img"
+       aria-label="FCT_ORDER on the left and FCT_ORDER_LINE on the right both point directly at the shared dimensions in the middle: DIM_DATE, DIM_CHANNEL, DIM_CUSTOMER and the DIM_ORDER_INFO junk dimension. FCT_ORDER_LINE also points at DIM_MENU_ITEM. FCT_ORDER_LINE_MODIFIER points at DIM_MENU_ITEM and DIM_MODIFIER. No fact points at another fact.">
     <defs>
       <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
       </marker>
     </defs>
 
-    <!-- boxes: dimensions -->
     <g fill="var(--surface)" stroke="currentColor" stroke-width="1.2">
-      <rect x="20"  y="40"  width="210" height="110" rx="3"/>
-      <rect x="20"  y="200" width="210" height="110" rx="3"/>
-      <rect x="20"  y="360" width="210" height="96"  rx="3"/>
-      <rect x="960" y="40"  width="200" height="150" rx="3"/>
-      <rect x="960" y="420" width="200" height="90"  rx="3"/>
+      <rect x="350" y="20"  width="232" height="104" rx="3"/>
+      <rect x="350" y="140" width="232" height="104" rx="3"/>
+      <rect x="350" y="260" width="232" height="104" rx="3"/>
+      <rect x="350" y="380" width="232" height="80"  rx="3"/>
+      <rect x="960" y="20"  width="200" height="172" rx="3"/>
+      <rect x="960" y="420" width="200" height="96"  rx="3"/>
     </g>
-    <!-- boxes: facts -->
     <g fill="var(--surface)" stroke="var(--ember)" stroke-width="2">
-      <rect x="300" y="130" width="250" height="250" rx="3"/>
-      <rect x="640" y="130" width="250" height="250" rx="3"/>
-      <rect x="640" y="420" width="250" height="90"  rx="3"/>
+      <rect x="20"  y="110" width="260" height="232" rx="3"/>
+      <rect x="650" y="110" width="260" height="252" rx="3"/>
+      <rect x="650" y="420" width="260" height="124" rx="3"/>
     </g>
 
-    <!-- titles -->
     <g font-size="12" font-weight="600" letter-spacing="1" fill="currentColor">
-      <text x="30"  y="62">DIM_DATE</text>
-      <text x="30"  y="222">DIM_CHANNEL</text>
-      <text x="30"  y="382">DIM_CUSTOMER</text>
-      <text x="970" y="62">DIM_MENU_ITEM</text>
+      <text x="360" y="42">DIM_DATE</text>
+      <text x="360" y="162">DIM_CHANNEL</text>
+      <text x="360" y="282">DIM_CUSTOMER</text>
+      <text x="360" y="402">DIM_ORDER_INFO (junk)</text>
+      <text x="970" y="42">DIM_MENU_ITEM</text>
       <text x="970" y="442">DIM_MODIFIER</text>
     </g>
     <g font-size="12" font-weight="600" letter-spacing="1" fill="var(--ember)">
-      <text x="310" y="152">FCT_ORDER</text>
-      <text x="650" y="152">FCT_ORDER_LINE</text>
-      <text x="650" y="442">FCT_ORDER_LINE_MODIFIER</text>
+      <text x="30"  y="132">FCT_ORDER</text>
+      <text x="660" y="132">FCT_ORDER_LINE</text>
+      <text x="660" y="442">FCT_ORDER_LINE_MODIFIER</text>
     </g>
     <g font-size="10" fill="var(--ink-2)">
-      <text x="310" y="168">grain: one row per order</text>
-      <text x="650" y="168">grain: one menu item on one order</text>
-      <text x="650" y="458">grain: one modifier on one order line</text>
+      <text x="30"  y="148">grain: one row per order</text>
+      <text x="660" y="148">grain: one menu item on one order</text>
+      <text x="660" y="458">grain: one modifier on one order line</text>
     </g>
     <g stroke="var(--rule)" stroke-width="1">
-      <line x1="30"  y1="70"  x2="220"  y2="70"/>
-      <line x1="30"  y1="230" x2="220"  y2="230"/>
-      <line x1="30"  y1="390" x2="220"  y2="390"/>
-      <line x1="970" y1="70"  x2="1150" y2="70"/>
+      <line x1="360" y1="50"  x2="572"  y2="50"/>
+      <line x1="360" y1="170" x2="572"  y2="170"/>
+      <line x1="360" y1="290" x2="572"  y2="290"/>
+      <line x1="360" y1="410" x2="572"  y2="410"/>
+      <line x1="970" y1="50"  x2="1150" y2="50"/>
       <line x1="970" y1="450" x2="1150" y2="450"/>
-      <line x1="310" y1="176" x2="540"  y2="176"/>
-      <line x1="650" y1="176" x2="880"  y2="176"/>
-      <line x1="650" y1="466" x2="880"  y2="466"/>
+      <line x1="30"  y1="156" x2="270"  y2="156"/>
+      <line x1="660" y1="156" x2="900"  y2="156"/>
+      <line x1="660" y1="466" x2="900"  y2="466"/>
     </g>
 
     <!-- dimension bodies -->
     <g font-size="10.5" fill="currentColor">
-      <text x="30" y="90">date_sk PK = business day</text>
-      <text x="30" y="106">calendar_date</text>
-      <text x="30" y="122">day_of_week · is_weekend</text>
-      <text x="30" y="138">is_thai_holiday</text>
+      <text x="360" y="70">date_key PK = business day</text>
+      <text x="360" y="86">full_date · weekend_flag</text>
+      <text x="360" y="102">holiday_flag</text>
+      <text x="360" y="118" fill="var(--ember)">day › month › quarter › year</text>
 
-      <text x="30" y="250">channel_sk PK</text>
-      <text x="30" y="266">channel_code</text>
-      <text x="30" y="282">is_own_channel</text>
-      <text x="30" y="298">commission_rate_pct</text>
+      <text x="360" y="190">channel_key PK</text>
+      <text x="360" y="206">channel_code · channel_name</text>
+      <text x="360" y="222">channel_ownership</text>
+      <text x="360" y="238" fill="var(--ember)">channel › channel_type</text>
 
-      <text x="30" y="410">customer_sk PK</text>
-      <text x="30" y="426">customer_nk</text>
-      <text x="30" y="442">is_member</text>
+      <text x="360" y="310">customer_key PK</text>
+      <text x="360" y="326">customer_nk · membership</text>
+      <text x="360" y="342">rfm_segment (behavioral)</text>
+      <text x="360" y="358" fill="var(--ember)">row 0 = no identified customer</text>
 
-      <text x="970" y="90">menu_item_sk PK</text>
-      <text x="970" y="106">menu_item_nk</text>
-      <text x="970" y="122">item_name · category · size</text>
-      <text x="970" y="138">base_price_thb</text>
-      <text x="970" y="160" fill="var(--ember)">valid_from · valid_to</text>
-      <text x="970" y="176" fill="var(--ember)">SCD2: PEP-L has 2 rows</text>
+      <text x="360" y="430">order_info_key PK</text>
+      <text x="360" y="446">order_status · cancellation_flag</text>
 
-      <text x="970" y="470">modifier_sk PK</text>
+      <text x="970" y="70">menu_item_key PK</text>
+      <text x="970" y="86">menu_item_nk</text>
+      <text x="970" y="102">item_name · size_name</text>
+      <text x="970" y="118">base_price_thb</text>
+      <text x="970" y="134" fill="var(--ember)">SKU › item › category</text>
+      <text x="970" y="156" fill="var(--ember)">valid_from · valid_to</text>
+      <text x="970" y="172" fill="var(--ember)">SCD2: PEP-L = rows 102, 106</text>
+
+      <text x="970" y="470">modifier_key PK</text>
       <text x="970" y="486">modifier_name</text>
       <text x="970" y="502">modifier_type</text>
     </g>
 
     <!-- fact bodies: keys in ink, degenerate in grey, measures in basil -->
     <g font-size="10.5" fill="currentColor">
-      <text x="310" y="196">order_sk PK</text>
-      <text x="310" y="228">date_sk FK</text>
-      <text x="310" y="244">channel_sk FK</text>
-      <text x="310" y="260">customer_sk FK (null: Grab)</text>
+      <text x="30" y="176">date_key FK</text>
+      <text x="30" y="192">channel_key FK</text>
+      <text x="30" y="208">customer_key FK (0, never NULL)</text>
+      <text x="30" y="224">order_info_key FK</text>
 
-      <text x="650" y="196">order_line_sk PK</text>
-      <text x="650" y="212">order_sk FK</text>
-      <text x="650" y="228">menu_item_sk FK (as-of)</text>
+      <text x="660" y="176">date_key FK</text>
+      <text x="660" y="192">channel_key FK</text>
+      <text x="660" y="208">customer_key FK</text>
+      <text x="660" y="224">menu_item_key FK (as-of)</text>
+      <text x="660" y="240">order_info_key FK</text>
 
-      <text x="650" y="486">order_line_sk FK · modifier_sk FK</text>
+      <text x="660" y="484">date_key · channel_key FK</text>
+      <text x="660" y="500">menu_item_key · modifier_key FK</text>
     </g>
     <g font-size="10.5" fill="var(--ink-2)">
-      <text x="310" y="212">external_order_id (degenerate)</text>
-      <text x="650" y="244">line_no (degenerate)</text>
+      <text x="30"  y="240">order_number (degenerate)</text>
+      <text x="660" y="256">order_number · line_number</text>
+      <text x="660" y="516">order_number · line_number</text>
     </g>
     <g font-size="10.5" fill="var(--basil)">
-      <text x="310" y="290">gross_amount_thb</text>
-      <text x="310" y="306">discount_amount_thb</text>
-      <text x="310" y="322">delivery_fee_thb</text>
-      <text x="310" y="338">commission_amount_thb</text>
-      <text x="310" y="354">net_revenue_thb</text>
+      <text x="30" y="262">gross_amount_thb</text>
+      <text x="30" y="278">discount_amount_thb</text>
+      <text x="30" y="294">delivery_fee_thb</text>
+      <text x="30" y="310">commission_amount_thb</text>
+      <text x="30" y="326">net_revenue_thb</text>
 
-      <text x="650" y="290">quantity</text>
-      <text x="650" y="306">unit_price_thb (snapshot)</text>
-      <text x="650" y="322">line_discount_thb</text>
-      <text x="650" y="338">line_net_thb</text>
+      <text x="660" y="280">quantity</text>
+      <text x="660" y="296">unit_price_thb (snapshot)</text>
+      <text x="660" y="312">line_discount_thb</text>
+      <text x="660" y="328">line_net_thb</text>
 
-      <text x="650" y="502">quantity · price_delta_thb (snapshot)</text>
+      <text x="660" y="532">quantity · price_delta_thb (snapshot)</text>
     </g>
 
     <!-- FK arrows, fact -> dimension -->
     <g stroke="currentColor" stroke-width="1.2" fill="none" marker-end="url(#arr)">
-      <path d="M300 224 C 265 224, 265 95, 232 95"/>
-      <path d="M300 240 C 265 240, 265 255, 232 255"/>
-      <path d="M300 256 C 265 256, 265 408, 232 408"/>
-      <path d="M640 208 C 600 208, 590 192, 552 192"/>
-      <path d="M890 224 C 925 224, 925 115, 958 115"/>
-      <line x1="765" y1="380" x2="765" y2="418"/>
-      <line x1="890" y1="482" x2="958" y2="482"/>
+      <path d="M280 172 C 315 172, 315 72, 348 72"/>
+      <path d="M280 188 C 315 188, 315 192, 348 192"/>
+      <path d="M280 204 C 315 204, 315 312, 348 312"/>
+      <path d="M280 220 C 315 220, 315 420, 348 420"/>
+      <path d="M650 172 C 615 172, 615 72, 584 72"/>
+      <path d="M650 188 C 615 188, 615 192, 584 192"/>
+      <path d="M650 204 C 615 204, 615 312, 584 312"/>
+      <path d="M650 236 C 615 236, 615 420, 584 420"/>
+      <path d="M910 220 C 935 220, 935 105, 958 105"/>
+      <path d="M910 496 C 940 496, 1060 300, 1060 194"/>
+      <line x1="910" y1="476" x2="958" y2="476"/>
     </g>
 
     <!-- legend -->
     <g font-size="10">
-      <rect x="300" y="420" width="14" height="10" fill="var(--surface)" stroke="var(--ember)" stroke-width="2"/>
-      <text x="322" y="429" fill="currentColor">fact: an event. Narrow, long, append-only</text>
-      <rect x="300" y="440" width="14" height="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
-      <text x="322" y="449" fill="currentColor">dimension: context. Wide, short</text>
-      <text x="300" y="474" fill="currentColor">key / FK</text>
-      <text x="360" y="474" fill="var(--ink-2)">degenerate</text>
-      <text x="440" y="474" fill="var(--basil)">measure</text>
+      <rect x="20" y="380" width="14" height="10" fill="var(--surface)" stroke="var(--ember)" stroke-width="2"/>
+      <text x="42" y="389" fill="currentColor">fact: an event. Deep, append-only</text>
+      <rect x="20" y="400" width="14" height="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+      <text x="42" y="409" fill="currentColor">dimension: context. Wide</text>
+      <text x="20" y="432" fill="currentColor">key / FK</text>
+      <text x="80" y="432" fill="var(--ink-2)">degenerate</text>
+      <text x="160" y="432" fill="var(--basil)">measure</text>
+      <text x="240" y="432" fill="var(--ember)">hierarchy</text>
+      <text x="20" y="456" fill="currentColor">every dimension: 0 Not applicable</text>
+      <text x="20" y="472" fill="currentColor">1 Unknown · 2 Invalid</text>
+      <text x="20" y="496" fill="currentColor">facts never point at facts:</text>
+      <text x="20" y="512" fill="currentColor">compare them by drilling across</text>
     </g>
   </svg>
   </div>
   <figcaption>
-    The sales part of the README's figure 2, simplified. Order-level money lives on FCT_ORDER and line-level money on
-    FCT_ORDER_LINE. They are separate tables because they have different grains. Modifiers are rows in their own
-    fact, not a JSON column.
+    The sales part of the README's figure 2, simplified. Both facts point straight at the shared, conformed dimensions;
+    order-level money stays on FCT_ORDER and line-level money on FCT_ORDER_LINE, and the two are compared by drilling across
+    on order_number or a conformed dimension. The modifier fact also carries date and channel keys (arrows omitted).
   </figcaption>
 </figure>
 
@@ -392,12 +423,12 @@ GROUP BY channel_code</pre>
     <tr><td class="z">FCT_ORDER_LINE</td><td>transaction</td><td>one SKU on one order</td><td>quantity, line_net; unit_price (snapshot)</td><td>POS, aggregator exports</td><td>Forecast grain is item × day × channel</td></tr>
     <tr><td class="z">FCT_ORDER_LINE_MODIFIER</td><td>transaction</td><td>one modifier on one order line</td><td>quantity; price_delta (snapshot)</td><td>POS</td><td>Modifiers consume stock; a text column could not be counted</td></tr>
     <tr><td class="z">FCT_PAYMENT</td><td>transaction</td><td>one tender on one order</td><td>amount; settlement date</td><td>POS, platform payouts</td><td>Split tenders; platform money settles days later</td></tr>
-    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>one status change of one order</td><td>event_ts, duration from previous</td><td>POS kitchen status, aggregator timestamps</td><td>Any duration is two rows apart; new milestones need no new column</td></tr>
-    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>one promotion on one order</td><td>discount</td><td>POS, aggregator exports</td><td>Basket discount as reported; reconciles with the line table</td></tr>
+    <tr><td class="z">FCT_ORDER_EVENT</td><td>transaction (log)</td><td>one status change of one order</td><td>event_ts, duration from previous</td><td>POS kitchen status, aggregator timestamps</td><td>Any duration is two rows apart; a new milestone is a new <code>DIM_EVENT_TYPE</code> row</td></tr>
+    <tr><td class="z">FCT_ORDER_PROMOTION</td><td>transaction</td><td>one promotion on one order</td><td>discount</td><td>POS, aggregator exports</td><td>Basket discount as reported; reconciles with the line table by drilling across</td></tr>
     <tr><td class="z">FCT_ORDER_LINE_PROMOTION</td><td>transaction</td><td>one promotion on one order line</td><td>discount (allocated)</td><td>Derived in stg</td><td>Discount per SKU, so item margin is real</td></tr>
-    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>one PO to one supplier</td><td>total cost</td><td>Purchasing sheet</td><td>Order date and received date are two roles of DIM_DATE</td></tr>
+    <tr><td class="z">FCT_PURCHASE_ORDER</td><td>transaction</td><td>one PO to one supplier</td><td>total cost</td><td>Purchasing sheet</td><td>Order date and received date are two roles of <code>DIM_DATE</code></td></tr>
     <tr><td class="z">FCT_PURCHASE_ORDER_LINE</td><td>transaction</td><td>one ingredient on one PO</td><td>qty ordered, qty received; unit_cost (snapshot)</td><td>Purchasing sheet</td><td>Cost at time of purchase</td></tr>
-    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>one movement of one ingredient</td><td>qty_delta (signed)</td><td>Derived from sales × recipes; receipts; counts; waste log</td><td>Stock on hand = <code>SUM(qty_delta)</code>; one explicit FK per source document</td></tr>
+    <tr><td class="z">FCT_INVENTORY_MOVEMENT</td><td>transaction</td><td>one movement of one ingredient</td><td>qty_delta (signed)</td><td>Derived from sales × recipes; receipts; counts; waste log</td><td>Stock on hand = <code>SUM(qty_delta)</code>; dimension keys for analysis, a typed degenerate document reference for lineage</td></tr>
     <tr><td class="z">FCT_INVENTORY_COUNT</td><td>periodic snapshot</td><td>one ingredient at one daily close</td><td>counted, expected; variance</td><td>Stock count form</td><td>Physical truth; variance is the waste KPI</td></tr>
     <tr><td class="z">FCT_SHIFT</td><td>transaction</td><td>one shift by one staff member</td><td>regular hours, OT hours, costs; OT multiplier (snapshot)</td><td>Timeclock</td><td>OT costs more and is the most controllable labour line</td></tr>
     <tr><td class="z">fct_forecast</td><td>periodic snapshot</td><td>SKU × day × channel × forecast run</td><td>forecast_units (not additive across runs)</td><td>Forecast model, weekly</td><td>Predicted vs actual becomes a table we can track</td></tr>
@@ -406,18 +437,21 @@ GROUP BY channel_code</pre>
 </div>
 
 <h2>6 · Conventions every table follows</h2>
-<p>These are the rules the team applies to every new table. The figures come from the prototype in <code>notebooks/warehouse_design.ipynb</code>, where each rule is broken on purpose to show what it protects.</p>
+<p>These are the chapter 5 rules the team applies to every new table. The figures come from the prototype in <code>notebooks/warehouse_design.ipynb</code>, where each rule is broken on purpose to show what it protects.</p>
 <div class="table-scroll">
 <table>
   <thead><tr><th>Convention</th><th>What it protects (prototype figure)</th></tr></thead>
   <tbody>
-    <tr><td class="z">Grain stated first</td><td>Every table has a one-sentence grain. Order money never sits on line rows: joining and summing would put Grab's Friday commission at 403.5 instead of 257.1.</td></tr>
+    <tr><td class="z">Grain first, drill across</td><td>Every fact has a one-sentence grain, and facts with different grain are different tables. Two facts are compared by drilling across, never joined: joining orders to lines puts Grab's Friday commission at 403.5 instead of 257.1.</td></tr>
+    <tr><td class="z">No NULL keys</td><td>Special-case rows instead. With a NULL <code>customer_key</code>, 2,327 of 3,782 THB of revenue silently drops out of a report by membership; with row 0 it is reported as Not applicable.</td></tr>
+    <tr><td class="z">Late data is loaded</td><td>An unmapped item is loaded against row 1, Unknown, with an alert, and re-pointed later. Holding it back would understate sales.</td></tr>
+    <tr><td class="z">Facts point at dimensions</td><td>Each fact carries a key to every dimension it is analysed by, never a key to another fact. Lineage uses a typed degenerate reference, checked by the ETL.</td></tr>
     <tr><td class="z">Policy is snapshotted</td><td>Price, cost and OT multiplier are copied onto the fact when they happen. Otherwise Saturday's price rise rewrites Friday's Pepperoni L revenue from 1,037 to 1,047.</td></tr>
     <tr><td class="z">Lists become tables</td><td>No list in a column. Modifiers as rows put Friday's mozzarella variance at −20 g; as text it would read −100 g.</td></tr>
-    <tr><td class="z">Store what adds up</td><td>Facts hold additive parts; ratios are computed when queried. Levels like stock counts are never summed over time (16.3 kg "on hand" vs 5.2 kg real).</td></tr>
-    <tr><td class="z">One FK per source</td><td>No shared reference column. A polymorphic key joined a 2 kg cheese delivery to a pizza with no error.</td></tr>
-    <tr><td class="z">Surrogate keys, SCD2</td><td>Facts hold warehouse keys only. Menu items, recipes and staff keep every version; facts join to the version valid on their business day.</td></tr>
-    <tr><td class="z">Business day once</td><td><code>date_sk</code> is assigned at load (10:00–02:00). No query downstream does time arithmetic.</td></tr>
+    <tr><td class="z">Store what adds up</td><td>Nonadditive measures are broken into additive parts. Levels like stock counts are never summed over time (16.3 kg "on hand" vs 5.2 kg real).</td></tr>
+    <tr><td class="z">Junk and degenerate</td><td>Low-cardinality codes and flags go to junk dimensions; only transaction identifiers stay on the fact as degenerate dimensions.</td></tr>
+    <tr><td class="z">No snowflakes</td><td>Related attributes are stored together and kept redundant; integrity is enforced by the ETL. Role sits on <code>DIM_STAFF</code>.</td></tr>
+    <tr><td class="z">Business day once</td><td><code>date_key</code> is assigned at load (10:00–02:00). No query downstream does time arithmetic.</td></tr>
   </tbody>
 </table>
 </div>
@@ -426,7 +460,7 @@ GROUP BY channel_code</pre>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 250" role="img"
-       aria-label="Loading order P-1003 line 1: the staged row's channel code is looked up to channel_sk 1, its 01:20 timestamp minus ten hours gives business date 4 September, the menu item is looked up as-of that date giving key 2 at 329 baht, and a quality gate checks for missing keys before the fact row is inserted.">
+       aria-label="Loading order P-1003 line 1: the staged row's channel code is looked up to channel_key 101, its 01:20 timestamp minus ten hours gives business date 4 September, the walk-in customer becomes row 0, and the menu item is looked up as-of that date giving key 102 at 329 baht; an unmapped key would go to the Unknown row with an alert.">
     <defs>
       <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -441,7 +475,7 @@ GROUP BY channel_code</pre>
     </g>
     <g font-size="11" font-weight="600" letter-spacing="1.5" fill="currentColor">
       <text x="20"  y="62">STAGED ROW</text>
-      <text x="262" y="62">CHANNEL LOOKUP</text>
+      <text x="262" y="62">CHANNEL, CUSTOMER</text>
       <text x="504" y="62">BUSINESS DAY</text>
       <text x="746" y="62">AS-OF MENU LOOKUP</text>
       <text x="988" y="62">GATE → FACT ROW</text>
@@ -462,26 +496,28 @@ GROUP BY channel_code</pre>
       <text x="20" y="190" fill="var(--ink-2)">business keys only</text>
 
       <text x="262" y="92">QR_DINEIN</text>
-      <text x="262" y="108">→ channel_sk 1</text>
+      <text x="262" y="108">→ channel_key 101</text>
+      <text x="262" y="134">no member id</text>
+      <text x="262" y="150">→ customer_key 0</text>
       <text x="262" y="190" fill="var(--ink-2)">plain lookup</text>
 
       <text x="504" y="92">01:20 − 10 h</text>
       <text x="504" y="108">→ Friday 4 Sep</text>
-      <text x="504" y="124">→ date_sk 20260904</text>
+      <text x="504" y="124">→ date_key 20260904</text>
       <text x="504" y="174" fill="var(--ember)">the rule lives here,</text>
       <text x="504" y="190" fill="var(--ember)">once, for everyone</text>
 
       <text x="746" y="92">PEP-L valid on 4 Sep</text>
-      <text x="746" y="108">→ menu_item_sk 2 (329)</text>
-      <text x="746" y="124" fill="var(--ink-2)">not 6 (349, from 5 Sep)</text>
+      <text x="746" y="108">→ menu_item_key 102 (329)</text>
+      <text x="746" y="124" fill="var(--ink-2)">not 106 (349, from 5 Sep)</text>
       <text x="746" y="174" fill="var(--ember)">valid_from ≤ day</text>
       <text x="746" y="190" fill="var(--ember)">&lt; valid_to</text>
 
-      <text x="988" y="92">any key NULL?</text>
-      <text x="988" y="108">→ stop the load</text>
-      <text x="988" y="134">else insert:</text>
-      <text x="988" y="150">order_sk · menu_item_sk 2</text>
-      <text x="988" y="166">qty 1 · unit_price 329</text>
+      <text x="988" y="92">key not found?</text>
+      <text x="988" y="108">→ row 1 Unknown + alert</text>
+      <text x="988" y="134">insert, never NULL:</text>
+      <text x="988" y="150">date · channel · item 102</text>
+      <text x="988" y="166">customer 0 · qty 1 · 329</text>
       <text x="988" y="190" fill="var(--ink-2)">surrogate keys only</text>
     </g>
     <g stroke="currentColor" stroke-width="1.4" fill="none" marker-end="url(#arr2)">
@@ -494,23 +530,30 @@ GROUP BY channel_code</pre>
   </div>
   <figcaption>
     Every fact load makes the same move: swap each business key for a surrogate key, keep the measures. P-1003 was
-    ordered at 01:20 on the 5th, so it belongs to Friday's business day and to Friday's price.
+    ordered at 01:20 on the 5th, so it belongs to Friday's business day and to Friday's price; it has no member id, so
+    its customer key is row 0, Not applicable.
   </figcaption>
 </figure>
-<p><strong>Quality gates that stop the load</strong> (full list in README §10):</p>
+<p><strong>Quality checks on every load</strong> (full list in README §10):</p>
 <ul>
-  <li>A business key with no dimension match (e.g. a new Grab item not in <code>BRG_CHANNEL_MENU_ITEM</code>) goes to quarantine, with an alert. Revenue is never silently dropped.</li>
-  <li>Line-level discounts must sum to the order-level discount for every order.</li>
-  <li>At most one source FK per inventory movement, matching <code>movement_type</code>.</li>
-  <li>Upsert on <code>(channel_sk, external_order_id)</code>, so a re-downloaded export cannot double revenue.</li>
+  <li>No fact column may be NULL. A business key with no dimension match (e.g. a new Grab item not in <code>BRG_CHANNEL_MENU_ITEM</code>) is loaded against row 1, Unknown, with an alert, and re-pointed once mapped. Revenue is never dropped or understated.</li>
+  <li>Line-level discounts must sum to the order-level discount for every order, checked by drilling across on <code>order_number</code>. This one fails the batch.</li>
+  <li>Every inventory movement's source document exists in the fact its type names, and the sign of <code>qty_delta</code> matches its direction.</li>
+  <li>Upsert on <code>(channel_key, order_number)</code>, so a re-downloaded export cannot double revenue.</li>
   <li>The last 3 business days are reprocessed every night to catch late-arriving orders.</li>
 </ul>
 
-<h2 class="wide">8 · Data marts</h2>
+<h2 class="wide">8 · Data marts and their aggregate tables</h2>
+<p>
+  In chapter 5's terms a data mart is a subject area of the warehouse, not a separate database. Ours are
+  <strong>Sales</strong>, <strong>Delivery</strong>, <strong>Customer</strong>, <strong>Inventory and purchasing</strong> and
+  <strong>Labour</strong>. Each is the set of stars for that subject, plus the aggregate tables (<code>mart_*</code>) that
+  serve its consumers.
+</p>
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1180 470" role="img"
-       aria-label="Fact tables on the left feed six marts in the middle, which feed four consumers on the right: the owner dashboard, the demand forecast, LINE campaigns and the reorder suggestion. The forecast writes fct_forecast back into the warehouse.">
+       aria-label="Fact tables on the left feed six aggregate tables in the middle, which feed four consumers on the right: the owner dashboard, the demand forecast, LINE campaigns and the reorder suggestion. The forecast writes fct_forecast back into the warehouse.">
     <defs>
       <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -518,7 +561,7 @@ GROUP BY channel_code</pre>
     </defs>
     <g font-size="11" font-weight="600" letter-spacing="2" fill="var(--ink-2)">
       <text x="20"  y="24">DW · FACT TABLES</text>
-      <text x="430" y="24">MART · NIGHTLY 03:30</text>
+      <text x="430" y="24">AGGREGATES · NIGHTLY 03:30</text>
       <text x="860" y="24">CONSUMERS</text>
     </g>
 
@@ -553,12 +596,12 @@ GROUP BY channel_code</pre>
       <text x="32" y="307">FCT_INVENTORY_MOVEMENT · _COUNT</text>
       <text x="32" y="367">FCT_SHIFT</text>
 
-      <text x="442" y="67">mart_sales_daily</text>
-      <text x="442" y="127">mart_promotion_performance</text>
-      <text x="442" y="187">mart_customer_rfm</text>
-      <text x="442" y="247">mart_delivery_sla</text>
-      <text x="442" y="307">mart_ingredient_usage_daily</text>
-      <text x="442" y="367">mart_labor_vs_sales</text>
+      <text x="442" y="67">Sales · mart_sales_daily</text>
+      <text x="442" y="127">Sales · mart_promotion_perf.</text>
+      <text x="442" y="187">Customer · mart_customer_rfm</text>
+      <text x="442" y="247">Delivery · mart_delivery_sla</text>
+      <text x="442" y="307">Inventory · mart_ingr._usage</text>
+      <text x="442" y="367">Labour · mart_labor_vs_sales</text>
 
       <text x="872" y="64" font-weight="600">Owner dashboard</text>
       <text x="872" y="82" fill="var(--ink-2)" font-size="10">net revenue by channel · today vs forecast</text>
@@ -607,26 +650,26 @@ GROUP BY channel_code</pre>
   </svg>
   </div>
   <figcaption>
-    Each mart is built only from dw, never from raw or stg, and adds no business rules of its own. A mart is shaped
-    for one consumer's question, at the grain that consumer reads.
+    Each aggregate table is built only from the dw stars, never from raw or stg, and adds no business rules of its own.
+    It is shaped for one consumer's question, at the grain that consumer reads, and serves the data mart it is labelled with.
   </figcaption>
 </figure>
 
 <div class="wide table-scroll">
 <table>
-  <thead><tr><th>Mart</th><th>Grain: one row =</th><th>Columns</th><th>Built from</th><th>Used for</th></tr></thead>
+  <thead><tr><th>Aggregate table</th><th>Grain: one row =</th><th>Columns</th><th>Built from</th><th>Used for</th></tr></thead>
   <tbody>
-    <tr><td class="z">mart_sales_daily</td><td>business date × channel × SKU</td><td>units_sold, orders, gross_sales_thb, discount_thb, net_sales_thb, plus item name, category, size</td><td>FCT_ORDER_LINE, FCT_ORDER, dims; cancelled excluded</td><td>Sales dashboard; training data for the forecast</td></tr>
-    <tr><td class="z">mart_ingredient_usage_daily</td><td>business date × ingredient</td><td>recipe_usage, modifier_usage, theoretical_usage, expected_on_hand, counted_on_hand, variance_qty, variance_value_thb, waste_pct</td><td>FCT_INVENTORY_MOVEMENT, FCT_INVENTORY_COUNT</td><td>Reorder suggestion, variance watch, waste %</td></tr>
-    <tr><td class="z">mart_delivery_sla</td><td>one order</td><td>channel, business date, order hour, placed / accepted / prep_complete / pickup / delivered timestamps, prep_min, to_pickup_min, lead_time_min</td><td>FCT_ORDER_EVENT pivoted, FCT_ORDER</td><td>Prep and lead time p50 / p90 by channel and hour</td></tr>
-    <tr><td class="z">mart_customer_rfm</td><td>one customer (own channels)</td><td>last_order_date, recency_days, frequency_90d, monetary_90d_thb, R / F / M scores, segment</td><td>FCT_ORDER where customer_sk is set</td><td>Segmentation and LINE win-back campaigns. Labelled own-channel only</td></tr>
-    <tr><td class="z">mart_labor_vs_sales</td><td>business date × hour</td><td>staff_on_shift, labour_hours, ot_hours, labour_cost_thb, ot_cost_thb, net_sales_thb, labour_cost_pct, orders_per_labour_hour</td><td>FCT_SHIFT, FCT_ORDER</td><td>Labour cost %, OT share, understaffed hours</td></tr>
-    <tr><td class="z">mart_promotion_performance</td><td>promotion × business date × SKU</td><td>units_discounted, discount_thb (shop vs platform funded), net_sales_after_discount_thb, margin_after_discount_thb</td><td>FCT_ORDER_LINE_PROMOTION, FCT_ORDER_LINE, BRG_PROMOTION_REWARD</td><td>Discount spend per SKU, whether a promo pays for itself</td></tr>
+    <tr><td class="z">mart_sales_daily<br><span style="font-weight:400;color:var(--ink-2)">Sales data mart</span></td><td>business date × channel × SKU</td><td>units_sold, orders, gross_sales_thb, discount_thb, net_sales_thb, plus item name, category, size</td><td>FCT_ORDER_LINE, FCT_ORDER, dims; cancelled excluded</td><td>Sales dashboard; training data for the forecast</td></tr>
+    <tr><td class="z">mart_ingredient_usage_daily<br><span style="font-weight:400;color:var(--ink-2)">Inventory data mart</span></td><td>business date × ingredient</td><td>recipe_usage, modifier_usage, theoretical_usage, expected_on_hand, counted_on_hand, variance_qty, variance_value_thb, waste_pct</td><td>FCT_INVENTORY_MOVEMENT, FCT_INVENTORY_COUNT</td><td>Reorder suggestion, variance watch, waste %</td></tr>
+    <tr><td class="z">mart_delivery_sla<br><span style="font-weight:400;color:var(--ink-2)">Delivery data mart</span></td><td>one order</td><td>channel, business date, order hour, placed / accepted / prep_complete / pickup / delivered timestamps, prep_min, to_pickup_min, lead_time_min</td><td>FCT_ORDER_EVENT pivoted, FCT_ORDER</td><td>Prep and lead time p50 / p90 by channel and hour</td></tr>
+    <tr><td class="z">mart_customer_rfm<br><span style="font-weight:400;color:var(--ink-2)">Customer data mart</span></td><td>one customer (own channels)</td><td>last_order_date, recency_days, frequency_90d, monetary_90d_thb, R / F / M scores, segment</td><td>FCT_ORDER where <code>customer_key</code> is a real customer (not row 0)</td><td>Segmentation and LINE win-back campaigns. Labelled own-channel only. Also refreshes the behavioral <code>DIM_CUSTOMER.rfm_segment</code></td></tr>
+    <tr><td class="z">mart_labor_vs_sales<br><span style="font-weight:400;color:var(--ink-2)">Labour data mart</span></td><td>business date × hour</td><td>staff_on_shift, labour_hours, ot_hours, labour_cost_thb, ot_cost_thb, net_sales_thb, labour_cost_pct, orders_per_labour_hour</td><td>FCT_SHIFT, FCT_ORDER</td><td>Labour cost %, OT share, understaffed hours</td></tr>
+    <tr><td class="z">mart_promotion_performance<br><span style="font-weight:400;color:var(--ink-2)">Sales data mart</span></td><td>promotion × business date × SKU</td><td>units_discounted, discount_thb (shop vs platform funded), net_sales_after_discount_thb, margin_after_discount_thb</td><td>FCT_ORDER_LINE_PROMOTION, FCT_ORDER_LINE, BRG_PROMOTION_REWARD</td><td>Discount spend per SKU, whether a promo pays for itself</td></tr>
   </tbody>
 </table>
 </div>
 <p>
-  Mart columns are recalculated each night from <code>dw</code>, so a mart can always be dropped and rebuilt.
+  Aggregate columns are recalculated each night from <code>dw</code>, so an aggregate table can always be dropped and rebuilt.
   Ratios such as <code>labour_cost_pct</code> and <code>waste_pct</code> are stored alongside their numerator and
   denominator, so they can be re-aggregated to week or month correctly.
 </p>
@@ -638,7 +681,7 @@ GROUP BY channel_code</pre>
   <tbody>
     <tr><td class="t">every 5 min</td><td class="z">ingest POS</td><td>POS orders copied into raw</td></tr>
     <tr><td class="t">03:00</td><td class="z">load dw</td><td>raw → stg → dimensions, then facts, for the last 3 business days. Gates must pass or nothing is published</td></tr>
-    <tr><td class="t">03:30</td><td class="z">build marts</td><td>All six marts rebuilt from dw</td></tr>
+    <tr><td class="t">03:30</td><td class="z">build aggregates</td><td>All six aggregate tables rebuilt from dw</td></tr>
     <tr><td class="t">06:00</td><td class="z">ingest exports</td><td>Aggregator exports (T+1), stock counts, shifts, POs into raw; picked up by the next 03:00 load</td></tr>
     <tr><td class="t">weekly</td><td class="z">forecast</td><td>Reads <code>mart_sales_daily</code>, writes <code>fct_forecast</code></td></tr>
   </tbody>
@@ -651,10 +694,10 @@ GROUP BY channel_code</pre>
   <thead><tr><th>Part</th><th>Status</th></tr></thead>
   <tbody>
     <tr><td class="z">Full model</td><td>Designed: README ER diagrams (figures 2–5) and this page</td></tr>
-    <tr><td class="z">Zone pipeline</td><td>Prototyped end to end in <code>notebooks/data_flow_demo.ipynb</code> (orders, two marts)</td></tr>
-    <tr><td class="z">Sales star, modifiers, stock, events, forecast</td><td>Prototyped in <code>notebooks/warehouse_design.ipynb</code></td></tr>
+    <tr><td class="z">Zone pipeline</td><td>Prototyped end to end in <code>notebooks/data_flow_demo.ipynb</code> (orders, two aggregate tables)</td></tr>
+    <tr><td class="z">Sales star, modifiers, stock, events, forecast</td><td>Prototyped in <code>notebooks/warehouse_design.ipynb</code>, with special-case rows, junk dimensions and drill-across</td></tr>
     <tr><td class="z">Payments, promotions, purchasing, shifts</td><td>Designed, not yet prototyped</td></tr>
-    <tr><td class="z">Marts</td><td><code>mart_sales_daily</code> and <code>mart_ingredient_usage_daily</code> prototyped (recipe usage only); the other four specified above</td></tr>
+    <tr><td class="z">Aggregate tables</td><td><code>mart_sales_daily</code> and <code>mart_ingredient_usage_daily</code> prototyped (recipe usage only); the other four specified above</td></tr>
   </tbody>
 </table>
 </div>

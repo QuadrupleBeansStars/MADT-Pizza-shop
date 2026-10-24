@@ -199,7 +199,7 @@
     <tr><td class="z">Lambda</td><td>Batch layer plus a speed layer for live data</td><td>Overkill. No live consumer, and every rule must be coded twice (the slide's own warning).</td></tr>
     <tr><td class="z">Kappa</td><td>Speed layer only, everything is a stream</td><td>Wrong shape. Four of five sources arrive as daily files, not streams.</td></tr>
     <tr><td class="z">Data-pond</td><td>Raw, analog, application, textual, archival ponds</td><td>Built for mixed IoT and text data. We have neither.</td></tr>
-    <tr><td class="z"><strong>Zone-based</strong></td><td>Landing → Raw → Trusted → Refined, plus a Sandbox</td><td><strong>Chosen.</strong> Zones map exactly onto the raw / staging / core / mart layers in our ER model. Each rule written once.</td></tr>
+    <tr><td class="z"><strong>Zone-based</strong></td><td>Landing → Raw → Trusted → Refined, plus a Sandbox</td><td><strong>Chosen.</strong> Zones map exactly onto the raw / staging / core / aggregate layers in our ER model. Each rule written once.</td></tr>
     <tr><td class="z">Multi-zone functional</td><td>Raw, process, access, govern zones</td><td>Close cousin. Adds a govern zone we do not need for one owner and one analyst.</td></tr>
     <tr><td class="z">Functional</td><td>Ingestion, storage, transformation, interaction layers</td><td>Describes the same thing by layer instead of by zone. Fine, but zones are easier to point at in storage.</td></tr>
     <tr><td class="z">Lakehouse</td><td>Lake storage with warehouse-style tables (Parquet, Delta)</td><td>Not a rival; it is how we would <em>implement</em> the zones. Raw as Parquet, Trusted and Refined as tables.</td></tr>
@@ -211,7 +211,7 @@
 <figure class="wide">
   <div class="diagram-scroll">
   <svg viewBox="0 0 1240 600" role="img"
-       aria-label="Five sources feed a transient landing zone; data is copied into a permanent raw zone, transformed nightly into a trusted star schema, aggregated into refined marts, and read by four consumers. A sandbox reads from trusted and refined for experiments.">
+       aria-label="Five sources feed a transient landing zone; data is copied into a permanent raw zone, transformed nightly into a trusted star schema, aggregated into refined aggregate tables, and read by four consumers. A sandbox reads from trusted and refined for experiments.">
     <defs>
       <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -433,7 +433,7 @@
     <tr><td class="z">Landing</td><td>API pulls and CSV drops, as received</td><td>Nothing. Arrival check only.</td><td>Native JSON / CSV, folder per source per day</td><td>7 days</td></tr>
     <tr><td class="z">Raw</td><td>Copy of every landed file</td><td>Tag with source, ingest time, file name</td><td>Parquet, partitioned by source and date</td><td>Forever</td></tr>
     <tr><td class="z">Trusted</td><td>Raw partitions for the business day</td><td>Parse, cast, dedupe on natural key, conform names, quality gates, load star schema</td><td>Warehouse tables, facts and SCD2 dims</td><td>Forever</td></tr>
-    <tr><td class="z">Refined</td><td>Trusted facts and dims</td><td>Aggregate to business day × item × channel</td><td>Warehouse mart tables</td><td>Forever</td></tr>
+    <tr><td class="z">Refined</td><td>Trusted facts and dims</td><td>Aggregate to business day × item × channel</td><td>Aggregate tables (<code>mart_*</code>), one per data mart question</td><td>Forever</td></tr>
     <tr><td class="z">Sandbox</td><td>Copies from Trusted and Refined</td><td>Experiments, ad-hoc SQL</td><td>Whatever the analyst wants</td><td>30 days</td></tr>
   </tbody>
 </table>

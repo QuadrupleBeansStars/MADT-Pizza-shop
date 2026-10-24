@@ -1,38 +1,47 @@
 %% Fig. 4 - ER model: people and shifts (star schema)
 %% FCT_ORDER_EVENT and FCT_INVENTORY_COUNT are shared facts, shown abridged here.
 %% Full definitions live in 02-er-sales-orders.mmd and 03-er-inventory-supply.mmd
+%% Role is folded into DIM_STAFF (no snowflake); SCD2 keeps role history.
 erDiagram
   DIM_STAFF ||--o{ FCT_SHIFT : works
-  DIM_ROLE ||--o{ DIM_STAFF : "holds"
   DIM_DATE ||--o{ FCT_SHIFT : "on day"
+  DIM_SHIFT_INFO ||--o{ FCT_SHIFT : "kind of shift"
   DIM_STAFF ||--o{ FCT_ORDER_EVENT : "performed by"
   DIM_STAFF ||--o{ FCT_INVENTORY_COUNT : "counted by"
 
   DIM_STAFF {
-    int staff_sk PK
+    int staff_key PK "0 = Not applicable"
     string staff_nk UK
     string staff_name
-    int role_sk FK
+    string role_name "pizzaiolo, cashier, rider, prep, manager"
+    string role_area "Kitchen, Front of house, Delivery - hierarchy: staff > role > area"
     string employment_type "full_time, part_time, daily"
     decimal hourly_wage_thb
-    boolean is_ot_eligible "salaried managers usually are not"
+    string ot_eligibility "OT eligible or Not OT eligible"
     decimal daily_regular_hours "8 - OT accrues beyond this"
     decimal ot_multiplier "1.5 weekday default"
     decimal holiday_ot_multiplier "3.0 default"
     date hire_date
     date valid_from "SCD2 - wage and role change"
     date valid_to
-    boolean is_current
+    string current_flag "Current or Expired"
+    string row_type
   }
-  DIM_ROLE {
-    int role_sk PK
-    string role_name "pizzaiolo, cashier, rider, prep, manager"
-    boolean is_kitchen
+  DIM_DATE {
+    int date_key PK
+    date full_date
+    string holiday_flag
+  }
+  DIM_SHIFT_INFO {
+    int shift_info_key PK "junk dimension"
+    string shift_type "open, mid, close"
+    string holiday_shift_flag "Holiday shift or Regular day"
+    string ot_approval "OT approved, OT not approved, No OT"
   }
   FCT_SHIFT {
-    bigint shift_sk PK
-    int staff_sk FK
-    int date_sk FK
+    int staff_key FK
+    int date_key FK
+    int shift_info_key FK
     timestamp clock_in_ts
     timestamp clock_out_ts
     decimal hours_worked "regular_hours + ot_hours"
@@ -42,19 +51,14 @@ erDiagram
     decimal regular_cost_thb
     decimal ot_cost_thb "ot_hours x wage x multiplier"
     decimal labour_cost_thb "regular_cost + ot_cost"
-    boolean is_holiday_shift "from DIM_DATE.is_thai_holiday"
-    boolean is_ot_approved "manager sign-off, unapproved OT is a finding"
-    string shift_type "open, mid, close"
   }
   FCT_ORDER_EVENT {
-    bigint order_event_sk PK
-    bigint order_sk FK
-    int staff_sk FK
-    string event_type
+    int staff_key FK
+    int event_type_key FK
+    string order_number
     timestamp event_ts
   }
   FCT_INVENTORY_COUNT {
-    bigint count_sk PK
-    int counted_by_staff_sk FK
+    int counted_by_staff_key FK
     decimal variance_qty
   }

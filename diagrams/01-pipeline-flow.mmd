@@ -21,19 +21,20 @@ flowchart LR
     T2["Data quality gates<br/>not-null · uniqueness<br/>referential · row-count drift"]
   end
 
-  subgraph CORE["3 · CORE WAREHOUSE / GOLD"]
+  subgraph CORE["3 · DIMENSIONAL WAREHOUSE / GOLD"]
     direction TB
-    C1["Conformed dimensions<br/>SCD2 where price/role changes"]
-    C2["Fact tables<br/>declared grain, surrogate keys"]
+    C1["Conformed dimensions<br/>SCD2 where price/role changes<br/>special-case rows, no NULL keys"]
+    C2["Fact tables at atomic grain<br/>surrogate _key columns"]
   end
 
-  subgraph MART["4 · MARTS"]
+  subgraph MART["4 · AGGREGATES, BY DATA MART"]
     direction TB
-    M1["mart_sales_daily"]
-    M2["mart_ingredient_usage_daily"]
-    M3["mart_delivery_sla"]
-    M4["mart_customer_rfm"]
-    M5["mart_labor_vs_sales"]
+    M1["Sales: mart_sales_daily"]
+    M6["Sales: mart_promotion_performance"]
+    M2["Inventory: mart_ingredient_usage_daily"]
+    M3["Delivery: mart_delivery_sla"]
+    M4["Customer: mart_customer_rfm"]
+    M5["Labour: mart_labor_vs_sales"]
   end
 
   subgraph OUT["CONSUMERS"]
@@ -60,4 +61,5 @@ flowchart LR
   M3 --> O1
   M4 --> O4
   M5 --> O1
+  M6 --> O1
   O2 -.->|"forecast written back<br/>as fct_forecast"| CORE
