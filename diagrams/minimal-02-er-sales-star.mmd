@@ -1,0 +1,101 @@
+%% Minimal version - ER: the sales star at line grain
+%% Order = header, order line = body. The fact is per line: FCT_ORDER_LINE is the one atomic sales fact,
+%% with the header's commission and delivery fee allocated down to its lines (reconciled per order).
+%% The header survives as the degenerate order_number. Options are picked from DIM_MODIFIER_OPTION, never free text.
+%% Every dimension has special-case rows: 0 = Not applicable, 1 = Unknown, 2 = Invalid.
+erDiagram
+  DIM_DATE ||--o{ FCT_ORDER_LINE : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_LINE : "sold via"
+  DIM_CUSTOMER ||--o{ FCT_ORDER_LINE : "placed by"
+  DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE : "item sold"
+  DIM_ORDER_INFO ||--o{ FCT_ORDER_LINE : "order status"
+  DIM_DATE ||--o{ FCT_ORDER_LINE_OPTION : "business day"
+  DIM_CHANNEL ||--o{ FCT_ORDER_LINE_OPTION : "sold via"
+  DIM_MENU_ITEM ||--o{ FCT_ORDER_LINE_OPTION : "on item"
+  DIM_MODIFIER_OPTION ||--o{ FCT_ORDER_LINE_OPTION : "picked"
+  DIM_MENU_ITEM ||--o{ BRG_CHANNEL_MENU_ITEM : "listed as"
+  DIM_CHANNEL ||--o{ BRG_CHANNEL_MENU_ITEM : "lists"
+
+  DIM_DATE {
+    int date_key PK "yyyymmdd business day; 0, 1 special"
+    date full_date
+    string day_name
+    string weekend_flag "Weekend or Weekday"
+    string month_name
+    string quarter "hierarchy: day > month > quarter > year"
+    int year
+    string row_type
+  }
+  DIM_CHANNEL {
+    int channel_key PK
+    string channel_code UK "QR_DINEIN, PHONE, GRAB, LINEMAN, SHOPEE, ROBINHOOD"
+    string channel_name
+    string channel_type "Dine-in or Delivery - hierarchy level"
+    string channel_ownership "Own channel or Aggregator"
+    decimal commission_rate_pct
+    string row_type
+  }
+  DIM_CUSTOMER {
+    int customer_key PK "0 = no identified customer"
+    string customer_nk UK
+    string membership "Member or Non-member"
+    string row_type
+  }
+  DIM_MENU_ITEM {
+    int menu_item_key PK
+    string menu_item_nk
+    string item_name
+    string category "hierarchy: SKU > item > category"
+    string size_name
+    decimal base_price_thb
+    date valid_from "SCD2"
+    date valid_to "SCD2"
+    string row_type
+  }
+  DIM_MODIFIER_OPTION {
+    int option_key PK "2 = Invalid: code not on the pick list"
+    string option_code UK "CHEESE_EXTRA, SPICE_NONE, CRUST_THIN"
+    string option_name "Extra cheese, No chili, Thin crust"
+    string option_group "Cheese, Spice, Crust - hierarchy level"
+    string option_type "add, remove, substitute"
+    decimal list_price_delta_thb
+    string applies_to_category
+    string row_type
+  }
+  DIM_ORDER_INFO {
+    int order_info_key PK "junk dimension"
+    string order_status
+    string cancellation_flag "Cancelled or Not cancelled"
+  }
+  BRG_CHANNEL_MENU_ITEM {
+    int channel_key FK
+    int menu_item_key FK
+    string platform_item_name
+  }
+  FCT_ORDER_LINE {
+    int date_key FK
+    int channel_key FK
+    int customer_key FK "0 when no customer, never NULL"
+    int menu_item_key FK "version valid on the business day"
+    int order_info_key FK
+    string order_number "degenerate: the order header"
+    int line_number "degenerate: the line"
+    int quantity
+    decimal unit_price_thb "snapshot"
+    decimal item_amount_thb "quantity x unit price"
+    decimal option_amount_thb "picked options on this line"
+    decimal line_gross_thb "item + options"
+    decimal allocated_commission_thb "header commission x line share"
+    decimal allocated_delivery_fee_thb "header fee x line share"
+    decimal line_net_revenue_thb "gross - allocated commission"
+  }
+  FCT_ORDER_LINE_OPTION {
+    int date_key FK
+    int channel_key FK
+    int menu_item_key FK
+    int option_key FK
+    string order_number "degenerate"
+    int line_number "degenerate"
+    int quantity
+    decimal price_delta_thb "snapshot of the price charged"
+  }

@@ -1,5 +1,5 @@
-%% Minimal version - pipeline: two sales sources, three facts, three aggregates, one consumer
-%% The star itself is Fig. 2 (02-er-sales-orders.mmd), which holds exactly these three facts.
+%% Minimal version - pipeline: two sales sources, two facts at line grain, three aggregates, one consumer
+%% The star itself is minimal-02-er-sales-star.mmd.
 flowchart LR
   subgraph SRC["SOURCES"]
     direction TB
@@ -14,36 +14,34 @@ flowchart LR
 
   subgraph STG["2 · STAGING"]
     direction TB
-    T1["UTC→Asia/Bangkok · business day<br/>dedupe on natural key<br/>conform channel + item names<br/>split modifier text into rows"]
+    T1["UTC→Asia/Bangkok · business day<br/>dedupe on natural key<br/>conform channel + item names<br/>header + lines + picked options"]
   end
 
   subgraph DW["3 · DIMENSIONAL WAREHOUSE"]
     direction TB
-    D1["6 conformed dimensions + 1 bridge<br/>special-case rows, SCD2 on menu item"]
-    F1["FCT_ORDER<br/>one row per order"]
-    F2["FCT_ORDER_LINE<br/>one row per item per order"]
-    F3["FCT_ORDER_LINE_MODIFIER<br/>one row per modifier per line"]
+    D1["6 conformed dimensions + 1 bridge<br/>incl. the option pick list<br/>special-case rows, SCD2 on menu item"]
+    F2["FCT_ORDER_LINE<br/>one row per item per order<br/>header money allocated to lines"]
+    F3["FCT_ORDER_LINE_OPTION<br/>one row per picked option"]
   end
 
   subgraph AGG["4 · AGGREGATES"]
     direction TB
     A1["mart_channel_daily<br/>date × channel"]
     A2["mart_sales_daily<br/>date × channel × SKU"]
-    A3["mart_modifier_daily<br/>date × channel × modifier"]
+    A3["mart_option_daily<br/>date × channel × option"]
   end
 
   subgraph OUT["CONSUMER"]
     direction TB
-    O1["Owner dashboard<br/>net revenue by channel · commission<br/>top items · add-on rate"]
+    O1["Owner dashboard<br/>net revenue by channel · commission<br/>top items · options picked"]
   end
 
   S1 -->|"5 min micro-batch"| RAW
   S2 -->|"daily T+1"| RAW
   RAW --> T1 --> DW
-  D1 --- F1
   D1 --- F2
   D1 --- F3
-  F1 --> A1
+  F2 --> A1
   F2 --> A2
   F3 --> A3
   A1 --> O1
