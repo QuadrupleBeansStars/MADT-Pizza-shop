@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pizza Shop Presentation Mockup</title>
+<style>
+  :root {
+    --paper: #F4F4EE; --surface: #FCFCF8; --ink: #1B1D19; --ink-2: #5B6057; --rule: #DCDCD1;
+    --ember: #B03A16; --basil: #45674A; --zone: #ECECE3; --warn: #FBE9DF;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --body: "Iowan Old Style", Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font-family: var(--body); }
+  .deck { height: 100vh; display: flex; flex-direction: column; }
+  .slide { display: none; flex: 1; padding: 5vh 6vw 2vh; overflow: auto; }
+  .slide.on { display: flex; flex-direction: column; }
+  .kicker { font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ember); margin: 0 0 1rem; }
+  h1 { font-family: var(--mono); font-size: clamp(2rem, 4.5vw, 3.6rem); line-height: 1.08; margin: 0 0 1.2rem; letter-spacing: -0.02em; }
+  h2 { font-family: var(--mono); font-size: clamp(1.4rem, 2.6vw, 2.2rem); margin: 0 0 1.4rem; }
+  p.lead { font-size: 1.3rem; color: var(--ink-2); max-width: 60ch; margin: 0; }
+  .note { font-family: var(--mono); font-size: 0.75rem; color: var(--ink-2); border-top: 1px dashed var(--rule); padding-top: 0.6rem; margin-top: auto; }
+  .note b { color: var(--ember); }
+
+  /* slide 1 */
+  .intro { display: grid; grid-template-columns: 1.4fr 1fr; gap: 4vw; align-items: center; flex: 1; }
+  .qr { background: var(--surface); border: 2px solid var(--ink); padding: 1.5rem; text-align: center; }
+  .qr svg { width: 100%; max-width: 240px; }
+  .qr p { font-family: var(--mono); font-size: 0.85rem; margin: 0.8rem 0 0; }
+  .live { font-family: var(--mono); font-size: 0.85rem; color: var(--basil); margin-top: 0.6rem; }
+
+  /* cards */
+  .cards { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .card { background: var(--surface); border: 1px solid var(--rule); padding: 1.2rem 1.4rem; }
+  .card h3 { font-family: var(--mono); font-size: 1rem; margin: 0 0 0.5rem; }
+  .card p { margin: 0; color: var(--ink-2); font-size: 1.02rem; line-height: 1.5; }
+  .card .big { font-family: var(--mono); font-size: 2rem; color: var(--ink); display: block; margin-bottom: 0.3rem; }
+  .card.goal { border-top: 4px solid var(--basil); }
+  .card.pain { border-top: 4px solid var(--ember); }
+  .card.fact { border: 2px solid var(--ember); }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--zone); padding: 0.05em 0.3em; }
+
+  /* flow strip */
+  .flow { display: flex; gap: 0.6rem; align-items: stretch; flex-wrap: wrap; }
+  .flow .step { flex: 1; min-width: 150px; background: var(--surface); border: 1px solid var(--rule); padding: 1rem; }
+  .flow .step b { font-family: var(--mono); display: block; margin-bottom: 0.4rem; }
+  .flow .step span { color: var(--ink-2); font-size: 0.95rem; }
+  .flow .arrow { align-self: center; font-family: var(--mono); color: var(--ink-2); }
+
+  .track { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .track span { font-family: var(--mono); font-size: 0.8rem; padding: 0.35rem 0.7rem; border: 1px solid var(--rule); color: var(--ink-2); background: var(--surface); }
+  .track span.done { background: var(--zone); }
+  .track span.now { background: var(--ember); border-color: var(--ember); color: #fff; }
+
+  /* slide 5: the live walkthrough */
+  .stages { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .stages button { font-family: var(--mono); font-size: 0.85rem; padding: 0.55rem 0.9rem; border: 1px solid var(--ink); background: var(--surface); cursor: pointer; }
+  .stages button.done { background: var(--zone); color: var(--ink-2); border-color: var(--rule); }
+  .stages button.now { background: var(--ink); color: var(--paper); }
+  .stage-title { font-family: var(--mono); font-size: 1.1rem; margin: 0 0 0.3rem; }
+  .stage-why { color: var(--ink-2); margin: 0 0 0.8rem; }
+  .stage-body { flex: 1; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule); }
+  th { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+  td.m { font-family: var(--mono); font-size: 0.85rem; }
+  tr.bad td { background: var(--warn); }
+  tr.dup td { text-decoration: line-through; color: var(--ink-2); }
+  .flag { font-family: var(--mono); font-size: 0.72rem; color: var(--ember); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+  .tile { background: var(--surface); border: 1px solid var(--rule); padding: 0.8rem 1rem; }
+  .tile small { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+  .tile div { font-family: var(--mono); font-size: 1.8rem; }
+  .bar { display: grid; grid-template-columns: 140px 1fr 60px; gap: 0.6rem; align-items: center; margin: 0.35rem 0; font-size: 0.95rem; }
+  .bar i { display: block; height: 16px; background: var(--basil); border-radius: 0 4px 4px 0; }
+  .bar i.fc { background: repeating-linear-gradient(45deg, var(--basil) 0 4px, var(--surface) 4px 7px); border: 1px solid var(--basil); }
+  .bar span { font-family: var(--mono); font-size: 0.85rem; }
+
+  /* nav */
+  nav { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 6vw; border-top: 1px solid var(--rule); background: var(--surface); }
+  nav button { font-family: var(--mono); padding: 0.4rem 0.9rem; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; }
+  nav .dots { display: flex; gap: 0.4rem; }
+  nav .dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--rule); cursor: pointer; }
+  nav .dots span.on { background: var(--ember); }
+  nav .count { font-family: var(--mono); font-size: 0.8rem; color: var(--ink-2); margin-left: auto; }
+  @media (max-width: 760px) { .intro { grid-template-columns: 1fr; } .tiles { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- 1 · Introduction -->
+<section class="slide on">
+  <p class="kicker">MADT8102 · Data architecture · Group project</p>
+  <div class="intro">
+    <div>
+      <h1>A data platform for one pizza shop</h1>
+      <p class="lead">How orders from a QR menu, the phone and four delivery apps become one warehouse and one dashboard
+        the owner checks every morning. And you are the customers: scan the code and order a pizza now.</p>
+    </div>
+    <div class="qr">
+      <!-- placeholder QR: replace with the real ordering form's QR -->
+      <svg viewBox="0 0 29 29" shape-rendering="crispEdges" aria-label="Placeholder QR code">
+        <rect width="29" height="29" fill="#fff"/>
+        <g fill="#1B1D19">
+          <rect x="1" y="1" width="7" height="7"/><rect x="2" y="2" width="5" height="5" fill="#fff"/><rect x="3" y="3" width="3" height="3"/>
+          <rect x="21" y="1" width="7" height="7"/><rect x="22" y="2" width="5" height="5" fill="#fff"/><rect x="23" y="3" width="3" height="3"/>
+          <rect x="1" y="21" width="7" height="7"/><rect x="2" y="22" width="5" height="5" fill="#fff"/><rect x="3" y="23" width="3" height="3"/>
+          <rect x="10" y="2" width="2" height="1"/><rect x="13" y="1" width="1" height="3"/><rect x="16" y="3" width="2" height="2"/>
+          <rect x="10" y="6" width="3" height="1"/><rect x="11" y="9" width="2" height="2"/><rect x="15" y="8" width="1" height="4"/>
+          <rect x="18" y="10" width="3" height="1"/><rect x="2" y="11" width="3" height="1"/><rect x="6" y="13" width="2" height="2"/>
+          <rect x="9" y="14" width="4" height="1"/><rect x="14" y="13" width="2" height="3"/><rect x="18" y="14" width="1" height="3"/>
+          <rect x="21" y="12" width="3" height="2"/><rect x="25" y="11" width="2" height="1"/><rect x="24" y="15" width="3" height="1"/>
+          <rect x="10" y="18" width="1" height="3"/><rect x="13" y="19" width="3" height="1"/><rect x="17" y="21" width="2" height="2"/>
+          <rect x="21" y="19" width="2" height="2"/><rect x="24" y="22" width="1" height="3"/><rect x="11" y="24" width="3" height="2"/>
+          <rect x="15" y="25" width="1" height="2"/><rect x="20" y="25" width="3" height="1"/><rect x="26" y="26" width="1" height="1"/>
+        </g>
+      </svg>
+      <p>scan to order · ~30 seconds</p>
+      <p class="live">● <span id="liveCount">0</span> orders received</p>
+    </div>
+  </div>
+  <p class="note"><b>Speaker, ~30 s:</b> who we are, what the shop is, ask the room to scan. Placeholder QR and counter; the real version would point at a Google Form or the QR menu and count live rows.</p>
+</section>
+
+<!-- 2 · The problem -->
+<section class="slide">
+  <p class="kicker">The problem</p>
+  <h2>Lower waste, higher sales</h2>
+  <div class="cards">
+    <div class="card pain"><h3>Six systems, no single answer</h3><p>QR, phone, Grab, LINE MAN, ShopeeFood and Robinhood each keep their own records, names and time zones.</p></div>
+    <div class="card pain"><h3>Commission hides in the gross</h3><p>Delivery apps take up to 30%. "Sales" on the platform screen is not what the shop keeps.</p></div>
+    <div class="card pain"><h3>Waste is a guess</h3><p>Stock is ordered by feel. Extra cheese is used but never counted, so it looks like shrinkage.</p></div>
+  </div>
+  <div class="cards" style="margin-top:1.2rem">
+    <div class="card goal"><span class="big">Higher sales</span><p>Know net revenue by channel, the items that sell, and which add-ons earn.</p></div>
+    <div class="card goal"><span class="big">Lower waste</span><p>Know what was actually used versus counted, then order stock to the forecast.</p></div>
+  </div>
+  <p class="note"><b>Speaker:</b> the two business goals frame every design decision after this.</p>
+</section>
+
+<!-- 3 · What we store -->
+<section class="slide">
+  <p class="kicker">Design · what we store</p>
+  <h2>One sales star, at line grain</h2>
+  <div class="cards">
+    <div class="card fact"><h3>FCT_ORDER_LINE</h3><p>One row per menu item per order. The order is the header, the line is the body; commission and delivery fee are allocated to lines.</p></div>
+    <div class="card fact"><h3>FCT_ORDER_LINE_OPTION</h3><p>One row per option picked from the POS list: extra cheese, no chili, thin crust. No free text.</p></div>
+  </div>
+  <div class="cards" style="margin-top:1.2rem">
+    <div class="card"><h3>Date</h3><p>business day 10:00–02:00</p></div>
+    <div class="card"><h3>Channel</h3><p>own vs aggregator</p></div>
+    <div class="card"><h3>Customer</h3><p>members only, else row 0</p></div>
+    <div class="card"><h3>Menu item</h3><p>SCD2 price history</p></div>
+    <div class="card"><h3>Option</h3><p>the pick list</p></div>
+    <div class="card"><h3>Order info</h3><p>status, cancelled</p></div>
+  </div>
+  <p class="note"><b>Speaker:</b> show the ER diagram here in the real deck (renders/minimal-02-er-sales-star.jpg).</p>
+</section>
+
+<!-- 4.1 · Ingest -->
+<section class="slide">
+  <p class="kicker">How it flows · step 1 of 6</p>
+  <div class="track"><span class="now">1 · Ingest</span><span class="">2 · Raw</span><span class="">3 · Process</span><span class="">4 · Warehouse</span><span class="">5 · Aggregates</span><span class="">6 · Use</span></div>
+  <h2>Collect the orders, as they arrive</h2>
+  <div class="cards"><div class="card"><h3>When</h3><p>POS / QR orders every 5 minutes. Grab, LINE MAN, ShopeeFood, Robinhood exports once a day (T+1).</p></div><div class="card"><h3>How</h3><p>Copy the file or API response as is. No cleaning, no renaming, nothing dropped.</p></div><div class="card"><h3>Tagged with</h3><p><code>source_file</code> and <code>ingest_ts</code>, so every row can be traced back.</p></div></div>
+  <p class="note"><b>Speaker:</b> Ingest is dumb on purpose: if it never transforms, it never breaks a rule.</p>
+</section>
+
+<!-- 4.2 · Raw -->
+<section class="slide">
+  <p class="kicker">How it flows · step 2 of 6</p>
+  <div class="track"><span class="done">1 · Ingest</span><span class="now">2 · Raw</span><span class="">3 · Process</span><span class="">4 · Warehouse</span><span class="">5 · Aggregates</span><span class="">6 · Use</span></div>
+  <h2>Keep the raw copy forever</h2>
+  <div class="cards"><div class="card"><h3>Append only</h3><p>Rows are added, never edited or deleted.</p></div><div class="card"><h3>Why keep it?</h3><p>Fix a rule later, rerun from raw, and get corrected history for free.</p></div><div class="card"><h3>Cost</h3><p>A few MB a day. Cheap insurance.</p></div></div>
+  <p class="note"><b>Speaker:</b> If someone asks "what did Grab actually send us?", the answer is here.</p>
+</section>
+
+<!-- 4.3 · Process -->
+<section class="slide">
+  <p class="kicker">How it flows · step 3 of 6</p>
+  <div class="track"><span class="done">1 · Ingest</span><span class="done">2 · Raw</span><span class="now">3 · Process</span><span class="">4 · Warehouse</span><span class="">5 · Aggregates</span><span class="">6 · Use</span></div>
+  <h2>Clean once a night, 03:00</h2>
+  <div class="cards"><div class="card"><h3>Time</h3><p>UTC and dd/mm text become Bangkok time. Orders after midnight belong to the previous business day (10:00–02:00).</p></div><div class="card"><h3>Duplicates</h3><p>Same order sent twice? Keep one, on the natural key.</p></div><div class="card"><h3>Names</h3><p>"Pepperoni L", "pepperoni (large)", "PEP-L" become one menu code. Options come from the pick list.</p></div></div>
+  <p class="note"><b>Speaker:</b> This is where the messy data gets fixed. Slide 10 shows it on your orders.</p>
+</section>
+
+<!-- 4.4 · Warehouse -->
+<section class="slide">
+  <p class="kicker">How it flows · step 4 of 6</p>
+  <div class="track"><span class="done">1 · Ingest</span><span class="done">2 · Raw</span><span class="done">3 · Process</span><span class="now">4 · Warehouse</span><span class="">5 · Aggregates</span><span class="">6 · Use</span></div>
+  <h2>Load the star</h2>
+  <div class="cards"><div class="card"><h3>2 facts, per line</h3><p><code>FCT_ORDER_LINE</code>: one row per item per order. <code>FCT_ORDER_LINE_OPTION</code>: one row per picked option.</p></div><div class="card"><h3>6 dimensions</h3><p>Date, channel, customer, menu item, option, order info. Shared by both facts.</p></div><div class="card"><h3>Header money</h3><p>Commission and delivery fee split across the lines, checked against the order total.</p></div></div>
+  <p class="note"><b>Speaker:</b> Recap of slide 3; point at the diagram, don't re-explain it.</p>
+</section>
+
+<!-- 4.5 · Aggregates -->
+<section class="slide">
+  <p class="kicker">How it flows · step 5 of 6</p>
+  <div class="track"><span class="done">1 · Ingest</span><span class="done">2 · Raw</span><span class="done">3 · Process</span><span class="done">4 · Warehouse</span><span class="now">5 · Aggregates</span><span class="">6 · Use</span></div>
+  <h2>Pre-sum what the owner looks at, 03:30</h2>
+  <div class="cards"><div class="card"><h3>mart_channel_daily</h3><p>Date × channel: orders, gross, commission, net.</p></div><div class="card"><h3>mart_sales_daily</h3><p>Date × channel × item: units and revenue.</p></div><div class="card"><h3>mart_option_daily</h3><p>Date × channel × option: how often each option is picked.</p></div></div>
+  <p class="note"><b>Speaker:</b> The dashboard never touches the facts directly: fast and consistent.</p>
+</section>
+
+<!-- 4.6 · Use -->
+<section class="slide">
+  <p class="kicker">How it flows · step 6 of 6</p>
+  <div class="track"><span class="done">1 · Ingest</span><span class="done">2 · Raw</span><span class="done">3 · Process</span><span class="done">4 · Warehouse</span><span class="done">5 · Aggregates</span><span class="now">6 · Use</span></div>
+  <h2>Use it: dashboard now, ML next</h2>
+  <div class="cards"><div class="card"><h3>Owner dashboard</h3><p>Net revenue by channel, commission paid, top items, options picked. Ready every morning.</p></div><div class="card"><h3>Demand forecast (planned)</h3><p>Reads mart_sales_daily, predicts tomorrow per item, writes predictions back as a table.</p></div><div class="card"><h3>Lower waste</h3><p>Forecast → prep and reorder list. Score it against what actually sold.</p></div></div>
+  <p class="note"><b>Speaker:</b> Close the loop to slide 2: higher sales, lower waste.</p>
+</section>
+
+<!-- 5 · Your orders, through the pipeline -->
+<section class="slide" id="walk">
+  <p class="kicker">Live demo · your orders</p>
+  <h2>What happened to the pizzas you just ordered</h2>
+  <div class="stages" id="stages"></div>
+  <p class="stage-title" id="stTitle"></p>
+  <p class="stage-why" id="stWhy"></p>
+  <div class="stage-body" id="stBody"></div>
+  <p class="note"><b>Speaker:</b> click through each stage. Sample rows stand in for the class's orders; the real version would read the form's responses.</p>
+</section>
+
+<nav>
+  <button id="prev">← Prev</button>
+  <div class="dots" id="dots"></div>
+  <button id="next">Next →</button>
+  <span class="count" id="count"></span>
+</nav>
+</div>
+
+<script>
+// ---------- slide navigation ----------
+const slides = [...document.querySelectorAll('.slide')];
+const dots = document.getElementById('dots');
+let cur = 0;
+slides.forEach((_, i) => { const d = document.createElement('span'); d.onclick = () => go(i); dots.appendChild(d); });
+function go(i) {
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle('on', k === cur));
+  [...dots.children].forEach((d, k) => d.classList.toggle('on', k === cur));
+  document.getElementById('count').textContent = `${cur + 1} / ${slides.length}`;
+}
+document.getElementById('prev').onclick = () => go(cur - 1);
+document.getElementById('next').onclick = () => go(cur + 1);
+document.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(cur + 1); if (e.key === 'ArrowLeft') go(cur - 1); });
+go(0);
+
+// fake live counter on slide 1
+let live = 0; setInterval(() => { if (live < 23 && Math.random() < 0.5) document.getElementById('liveCount').textContent = ++live; }, 1500);
+
+// ---------- slide 5: sample "classmate" orders, deliberately messy ----------
+const raw = [
+  { src: 'QR form',  id: 'Q-17', time: '2026-11-20 13:05',     item: 'pepperoni L',          qty: '1',   opts: 'extra cheese' },
+  { src: 'QR form',  id: 'Q-17', time: '2026-11-20 13:05',     item: 'pepperoni L',          qty: '1',   opts: 'extra cheese' },
+  { src: 'Grab',     id: 'GF-9', time: '2026-11-20T06:07:00Z', item: 'Pepperoni Pizza (L)',  qty: '2',   opts: '' },
+  { src: 'QR form',  id: 'Q-18', time: '2026-11-20 13:08',     item: 'Hawaiian large',       qty: 'two', opts: 'no chili, extra cheese' },
+  { src: 'LINE MAN', id: 'LM-3', time: '20/11/2026 13:10',     item: 'Hawaiian Pizza Large', qty: '1',   opts: '' },
+  { src: 'QR form',  id: 'Q-19', time: '2026-11-20 13:12',     item: 'garlic bred',          qty: '1',   opts: '' },
+  { src: 'QR form',  id: 'Q-20', time: '2026-11-21 01:15',     item: 'PEP-L',                qty: '1',   opts: 'thin crust' },
+];
+const sku = { 'pepperoni l': 'PEP-L', 'pepperoni pizza (l)': 'PEP-L', 'pep-l': 'PEP-L', 'hawaiian large': 'HAW-L', 'hawaiian pizza large': 'HAW-L', 'garlic bred': 'GARLIC' };
+const price = { 'PEP-L': 329, 'HAW-L': 319, 'GARLIC': 89 };
+const name = { 'PEP-L': 'Pepperoni L', 'HAW-L': 'Hawaiian L', 'GARLIC': 'Garlic Bread' };
+const optMap = { 'extra cheese': 'CHEESE_EXTRA', 'no chili': 'SPICE_NONE', 'thin crust': 'CRUST_THIN' };
+
+function toBkk(t) {
+  if (t.endsWith('Z')) { const d = new Date(t); d.setHours(d.getUTCHours() + 7); return `${t.slice(0,10)} ${String((new Date(t).getUTCHours()+7)%24).padStart(2,'0')}:${t.slice(14,16)}`; }
+  if (t.includes('/')) { const [d, m, rest] = t.split('/'); const [y, hm] = rest.split(' '); return `${y}-${m}-${d} ${hm}`; }
+  return t;
+}
+function bizDay(t) { const [d, hm] = t.split(' '); const h = +hm.slice(0, 2); if (h >= 10) return d; const x = new Date(d); x.setDate(x.getDate() - 1); return x.toISOString().slice(0, 10); }
+const table = (cols, rows, cls = () => '') => `<table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${
+  rows.map(r => `<tr class="${cls(r)}">${r.cells.map((v, i) => `<td class="${i < 2 ? 'm' : ''}">${v}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+
+// stage results, computed from the raw rows
+const seen = new Set();
+const staged = raw.map(r => {
+  const key = r.src + r.id + r.item;
+  const dup = seen.has(key); seen.add(key);
+  const s = sku[r.item.toLowerCase()];
+  const q = { two: 2 }[r.qty] ?? +r.qty;
+  const t = toBkk(r.time);
+  return { ...r, dup, sku: s, q, t, day: bizDay(t), opts: r.opts ? r.opts.split(',').map(o => o.trim()) : [] };
+});
+const clean = staged.filter(r => !r.dup);
+const channelKey = { 'QR form': 101, 'Grab': 103, 'LINE MAN': 104 };
+const facts = clean.map((r, i) => ({ ...r, line: 1, gross: price[r.sku] * r.q + (r.opts.includes('extra cheese') ? 40 : 0), comm: r.src === 'QR form' ? 0 : Math.round(price[r.sku] * r.q * 0.3 * 100) / 100 }));
+const byItem = {}; facts.forEach(f => { byItem[f.sku] = (byItem[f.sku] || 0) + f.q; });
+const net = facts.reduce((a, f) => a + f.gross - f.comm, 0);
+
+const stages = [
+  { b: 'Raw input', t: 'What you typed, exactly as it arrived', w: 'Three sources, three time formats, four spellings of one pizza, a duplicate submit, and "two" in a number field.',
+    r: () => table(['source', 'order', 'time', 'item', 'qty', 'options'], raw.map(r => ({ cells: [r.src, r.id, r.time, r.item, r.qty, r.opts || '—'] }))) },
+  { b: '1 · Ingest', t: 'Ingest: land it, tag it, never change it', w: 'Every row gets where it came from and when we got it. Nothing is fixed yet, so we can always replay.',
+    r: () => table(['source', 'order', 'ingest_ts', 'source_file', 'raw payload'], raw.map((r, i) => ({ cells: [r.src, r.id, '03:00', r.src === 'QR form' ? 'form_2026-11-20.csv' : r.src.toLowerCase().replace(' ', '') + '_export.json', `${r.item} · ${r.qty} · ${r.time}`] }))) },
+  { b: '2 · Process', t: 'Process: one time zone, one name, no duplicates', w: 'UTC and day-first dates become Bangkok time; the 01:15 order belongs to the previous business day; names map to one SKU; "two" becomes 2; the double submit is dropped.',
+    r: () => table(['source', 'order', 'Bangkok time', 'business day', 'item → SKU', 'qty', 'options → codes', ''], staged.map(r => ({ dup: r.dup, cells: [r.src, r.id, r.t, r.day, `${r.item} → <b>${r.sku}</b>`, r.q, r.opts.map(o => optMap[o]).join(', ') || '—', r.dup ? '<span class="flag">duplicate, dropped</span>' : (r.qty === 'two' ? '<span class="flag">qty fixed</span>' : '')] })), r => r.dup ? 'dup' : '') },
+  { b: '3 · Warehouse', t: 'Warehouse: one row per pizza line, surrogate keys', w: 'FCT_ORDER_LINE. Grab and LINE MAN commission is allocated to the line; walk-in customers point at row 0, never NULL.',
+    r: () => table(['order', 'line', 'date_key', 'channel_key', 'customer_key', 'menu_item', 'qty', 'gross', 'commission', 'net'], facts.map(f => ({ cells: [f.id, f.line, f.day.replaceAll('-', ''), channelKey[f.src], 0, f.sku, f.q, f.gross.toFixed(2), f.comm.toFixed(2), (f.gross - f.comm).toFixed(2)] }))) },
+  { b: '4 · Aggregate', t: 'Aggregate: answer one question per table', w: 'mart_sales_daily: units by item for the business day. Built only from the warehouse, rebuilt nightly.',
+    r: () => table(['business day', 'item', 'units', 'net THB'], Object.entries(byItem).map(([k, u]) => ({ cells: ['2026-11-20', name[k], u, facts.filter(f => f.sku === k).reduce((a, f) => a + f.gross - f.comm, 0).toFixed(2)] }))) },
+  { b: '5 · Dashboard + ML', t: 'Use: the owner dashboard, and a forecast', w: 'Tiles read the aggregates. The hatched bars are an illustrative forecast for tomorrow, the input to the reorder list.',
+    r: () => {
+      const max = Math.max(...Object.values(byItem), 3);
+      const fc = { 'PEP-L': 4, 'HAW-L': 3, 'GARLIC': 1 };
+      return `<div class="tiles">
+        <div class="tile"><small>Net revenue</small><div>${net.toFixed(0)} THB</div></div>
+        <div class="tile"><small>Orders</small><div>${new Set(facts.map(f => f.id)).size}</div></div>
+        <div class="tile"><small>Extra cheese</small><div>${facts.filter(f => f.opts.includes('extra cheese')).length} pizzas</div></div></div>
+        ${Object.entries(byItem).map(([k, u]) => `
+          <div class="bar"><span>${name[k]}</span><i style="width:${u / max * 100}%"></i><span>${u} sold</span></div>
+          <div class="bar"><span></span><i class="fc" style="width:${fc[k] / max * 100}%"></i><span>${fc[k]} fcst</span></div>`).join('')}`;
+    } },
+];
+const stEl = document.getElementById('stages');
+let step = 0;
+stages.forEach((s, i) => { const b = document.createElement('button'); b.textContent = s.b; b.onclick = () => show(i); stEl.appendChild(b); });
+function show(i) {
+  step = i;
+  [...stEl.children].forEach((b, k) => { b.className = k < i ? 'done' : (k === i ? 'now' : ''); });
+  document.getElementById('stTitle').textContent = stages[i].t;
+  document.getElementById('stWhy').textContent = stages[i].w;
+  document.getElementById('stBody').innerHTML = stages[i].r();
+}
+show(0);
+
+// ?slide=5&step=3 jumps straight there (handy for rehearsing)
+const qp = new URLSearchParams(location.search);
+if (qp.get('slide')) go(+qp.get('slide') - 1);
+if (qp.get('step')) show(Math.min(stages.length - 1, +qp.get('step')));
+</script>
+</body>
+</html>
