@@ -545,6 +545,15 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .chk b{display:block;font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ember);margin-bottom:3px}
 
 /* ---------- wrap-up scene (pizza theme) ---------- */
+#s22 .rail14{position:absolute;left:356px;top:92px;width:622px;display:flex;gap:14px;justify-content:center}
+#s22 .rod{position:absolute;left:-14px;right:-14px;top:6px;height:9px;border-radius:5px;background:linear-gradient(#e3e9ec,#8f989e);box-shadow:0 3px 0 rgba(0,0,0,.35)}
+#s22 .slipw{filter:drop-shadow(3px 5px 0 rgba(0,0,0,.4));transform:rotate(var(--r));transform-origin:50% 0;margin-top:10px}
+#s22 .slip{position:relative;width:198px;padding:20px 14px 24px;background:#fffdf5;color:#1b1d19;clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),87.5% 100%,75% calc(100% - 9px),62.5% 100%,50% calc(100% - 9px),37.5% 100%,25% calc(100% - 9px),12.5% 100%,0 calc(100% - 9px))}
+#s22 .slip .pin{position:absolute;left:50%;top:5px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#b03a16;box-shadow:inset -2px -2px 0 #0003}
+#s22 .slip small{display:block;font:700 11px var(--mono);letter-spacing:.18em;color:#8a8a80}
+#s22 .slip b{display:block;font:400 26px var(--head);margin:2px 0 4px}
+#s22 .slip span{display:block;font:600 14px/1.3 var(--body);color:#55584f}
+#s22 .slip em{display:block;margin-top:8px;font:700 13px var(--mono);font-style:normal;color:#1f6b2a}
 #s22 .rc{position:absolute;left:370px;top:92px;width:540px;background:#fffdf5;color:#1b1d19;border:2px solid #1b1d19;border-radius:4px;padding:18px 26px 16px;box-shadow:6px 6px 0 rgba(0,0,0,.45);transform:rotate(-.8deg);font:700 15px/1.35 var(--mono)}
 #s22 .rc h3{font:400 26px var(--head);text-align:center;margin:0}
 #s22 .rc .sm{text-align:center;font:700 12px var(--mono);letter-spacing:.16em;color:#8a8a80;margin:2px 0 8px}
@@ -772,12 +781,10 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 
   <section class="scene" id="s22" data-env="store" data-label="Wrap up">
     <div class="plaque fade1"><div class="k">Wrap up</div><h2>The shop is built</h2></div>
-    <div class="rc fade2">
-      <h3>MADT Pizza</h3><div class="sm">ORDER SUMMARY</div><hr>
-      <div class="it"><b>1×</b><div>The line<span>Messy tickets in, one clean answer out.</span></div><i>✓</i></div>
-      <div class="it"><b>1×</b><div>CI/CD<span>Checks every change. Ships at night. One-line undo.</span></div><i>✓</i></div>
-      <div class="it"><b>1×</b><div>MLOps<span>A forecast we trust. Looks 3 to 4 days ahead.</span></div><i>✓</i></div>
-      <hr><div class="tot"><span>TOTAL</span><span>one clean answer</span></div>
+    <div class="rail14 fade2"><div class="rod"></div>
+      <div class="slipw" style="--r:-2deg"><div class="slip"><i class="pin"></i><small>TICKET 1</small><b>The line</b><span>Messy tickets in, one clean answer out.</span><em>✓ ready</em></div></div>
+      <div class="slipw" style="--r:1.5deg"><div class="slip"><i class="pin"></i><small>TICKET 2</small><b>CI/CD</b><span>Checks every change. Ships at night. One-line undo.</span><em>✓ ready</em></div></div>
+      <div class="slipw" style="--r:-1deg"><div class="slip"><i class="pin"></i><small>TICKET 3</small><b>MLOps</b><span>A forecast we trust. Looks 3 to 4 days ahead.</span><em>✓ ready</em></div></div>
     </div>
     <div class="up"><small>ORDER UP</small><b>Now, your orders →</b></div>
     <div class="bub l fade3" style="left:44px;top:172px">Orders come in messy. The line cleans them.</div>
@@ -1036,10 +1043,24 @@ function staff(o){
   arm='<path d="M17 -98L29 -78L25 -88" '+stk(C,9)+'/><circle cx="25" cy="-86" r="5" fill="'+sk+'"/>';
   prop='<rect x="24" y="-112" width="24" height="32" rx="2.5" fill="#c98d58" stroke="#8a6230"/><rect x="27" y="-107" width="18" height="24" fill="#fff"/><rect x="31" y="-115" width="10" height="6" rx="2" fill="#555"/><path d="M30 -100H42M30 -94H42M30 -88H38" '+stk('#9aa0a8',1.6)+'/>';
  }else{
-  arm='<path d="M17 -98L30 -80L'+(o.prop==='phone'?'34 -100':'28 -86')+'" '+stk(C,9)+'/><circle cx="'+(o.prop==='phone'?34:28)+'" cy="'+(o.prop==='phone'?-102:-84)+'" r="5" fill="'+sk+'"/>';
-  if(o.prop==='phone')prop='<rect x="31" y="-118" width="9" height="16" rx="2" fill="#222"/><rect x="32.5" y="-116" width="6" height="11" fill="#8fd3ff"/>';
-  if(o.prop==='box')prop='<rect x="14" y="-98" width="42" height="9" rx="1.5" fill="#cf9f62" stroke="#8a6230" stroke-width="1.5"/><ellipse cx="35" cy="-102" rx="17" ry="4.5" fill="#d9a441"/><ellipse cx="35" cy="-103" rx="14" ry="3.4" fill="#f6d27a"/><circle cx="30" cy="-103" r="2" fill="#c0392b"/><circle cx="40" cy="-103" r="2" fill="#c0392b"/>';
-  top='<path d="M-20 -129A20 20 0 0 1 20 -129Q10 -147 0 -143Q-10 -147 -20 -129Z" fill="'+(o.hair||'#2a1a12')+'"/>';
+  const Q=o.prop,hair=o.hair||'#2a1a12',HS=o.hairStyle||'short';
+  const ARM={phone:['30 -80L34 -100',34,-102],coffee:['30 -80L32 -92',32,-94],wave:['34 -120L38 -142',38,-144],balloon:['30 -82L32 -102',32,-104]}[Q]||['30 -80L28 -86',28,-84];
+  arm='<path d="M17 -98L'+ARM[0]+'" '+stk(C,9)+'/><circle cx="'+ARM[1]+'" cy="'+ARM[2]+'" r="5" fill="'+sk+'"/>';
+  if(o.dress)g+='<path d="M-17 -68L17 -68L26 -26L-26 -26Z" fill="'+C+'" stroke="#0003"/><path d="M-17 -68H17" '+stk('#fff8',3)+'/>';
+  if(o.shorts)g+='<rect x="-12" y="-34" width="10.5" height="26" fill="'+sk+'"/><rect x="1.5" y="-34" width="10.5" height="26" fill="'+sk+'"/>';
+  if(Q==='phone')prop='<rect x="31" y="-118" width="9" height="16" rx="2" fill="#222"/><rect x="32.5" y="-116" width="6" height="11" fill="#8fd3ff"/>';
+  if(Q==='coffee')prop='<rect x="26" y="-108" width="11" height="14" rx="2" fill="#fff" stroke="#8a6230"/><rect x="25" y="-111" width="13" height="4" rx="2" fill="#6a4424"/>';
+  if(Q==='balloon')prop='<path d="M32 -106L28 -180" '+stk('#999',1.4)+'/><ellipse cx="28" cy="-194" rx="16" ry="19" fill="#d94f2b" stroke="#0003"/><path d="M26 -176L28 -172L30 -176Z" fill="#d94f2b"/>';
+  if(Q==='bag')prop='<path d="M28 -84L22 -72" '+stk('#8a6230',2.4)+'/><rect x="14" y="-74" width="22" height="24" rx="3" fill="#e8d9a8" stroke="#8a6230" stroke-width="1.5"/><path d="M19 -62H31" '+stk('#b03a16',2.4)+'/>';
+  if(Q==='box')prop='<rect x="14" y="-98" width="42" height="9" rx="1.5" fill="#cf9f62" stroke="#8a6230" stroke-width="1.5"/><ellipse cx="35" cy="-102" rx="17" ry="4.5" fill="#d9a441"/><ellipse cx="35" cy="-103" rx="14" ry="3.4" fill="#f6d27a"/><circle cx="30" cy="-103" r="2" fill="#c0392b"/><circle cx="40" cy="-103" r="2" fill="#c0392b"/>';
+  const cap='<path d="M-20 -129A20 20 0 0 1 20 -129Q10 -147 0 -143Q-10 -147 -20 -129Z" fill="'+hair+'"/>';
+  top={short:cap,
+   long:cap+'<path d="M-21 -128Q-28 -96 -13 -84L-5 -92Q-10 -108 -9 -122Z" fill="'+hair+'"/><path d="M21 -128Q28 -96 13 -84L5 -92Q10 -108 9 -122Z" fill="'+hair+'"/>',
+   bun:cap+'<circle cx="0" cy="-152" r="8" fill="'+hair+'"/>',
+   cap:'<path d="M-20 -131A20 20 0 0 1 20 -131L20 -127H-20Z" fill="'+(o.capColor||'#b03a16')+'"/><rect x="10" y="-136" width="22" height="5" rx="2.4" fill="'+(o.capColor||'#b03a16')+'"/>',
+   curly:[-3,-2,-1,0,1,2,3].map(k=>'<circle cx="'+(k*6.4)+'" cy="'+(-145+Math.abs(k)*3.4)+'" r="7.5" fill="'+hair+'"/>').join(''),
+   bald:'<circle cx="-20" cy="-128" r="3.4" fill="'+sk+'"/><circle cx="20" cy="-128" r="3.4" fill="'+sk+'"/>'}[HS];
+  if(o.glasses)top+='<circle cx="-7" cy="-130" r="5.6" '+stk('#222',1.8)+'/><circle cx="7" cy="-130" r="5.6" '+stk('#222',1.8)+'/><path d="M-1.4 -130H1.4" '+stk('#222',1.8)+'/>';
  }
  const head='<rect x="-4" y="-108" width="8" height="9" width="8" height="9" fill="'+sk+'"/><circle cx="0" cy="-128" r="20" fill="'+sk+'"/>'+
   '<circle cx="-7" cy="-130" r="2.4" fill="#222"/><circle cx="7" cy="-130" r="2.4" fill="#222"/><path d="M-6 -121Q0 -115 6 -121" '+stk('#5a3a2a',2)+'/>'+
@@ -1080,8 +1101,14 @@ function buildStore(){
  const tg=(x,t)=>'<g transform="translate('+x+',520)"><rect x="-48" y="-13" width="96" height="26" rx="4" fill="#f4f4ee" stroke="#1c1c1c" stroke-width="2"/><text y="5" text-anchor="middle" font-family="Courier New,monospace" font-weight="700" font-size="14" letter-spacing="1.5" fill="#b03a16">'+t+'</text></g>';
  g+=tg(250,'CASHIER')+tg(1085,'SERVER');
  // customers in front of the counter
- const G=[{x:360,coat:'#e0533a',prop:'phone',skin:'#f1c9a0',hair:'#1b1d19'},{x:500,coat:'#3b82c4',skin:'#e3b184',hair:'#2a1a12'},{x:640,coat:'#f2c14e',skin:'#f1c9a0',hair:'#3a2418'},{x:800,coat:'#c7589a',skin:'#e8bb92',hair:'#222'},{x:930,coat:'#6aa56d',prop:'box',skin:'#e3b184',hair:'#111'}];
- G.forEach((q,i)=>{g+=staff({role:'guest',x:q.x,y:628,s:1.2,uid:'g'+i,tag:false,coat:q.coat,pants:i%2?'#33384a':'#2d3550',prop:q.prop,skin:q.skin,hair:q.hair,ph:i*.5})});
+ const SK=['#f1c9a0','#c98f64','#8a5a3a','#e8bb92','#f6d5b8','#a8703f'];
+ const G=[{x:330,coat:'#e0533a',dress:1,pants:SK[0],skin:SK[0],hair:'#1b1d19',hairStyle:'bun',prop:'phone',s:1.15},
+  {x:455,coat:'#3b82c4',shorts:1,pants:'#33384a',skin:SK[2],hair:'#222',hairStyle:'cap',capColor:'#b03a16',prop:'coffee',s:1.2},
+  {x:568,coat:'#f2c14e',pants:'#4a3a5a',skin:SK[3],hair:'#2a1a12',hairStyle:'short',prop:'balloon',s:.8},
+  {x:692,coat:'#2d3550',pants:'#33384a',skin:SK[1],hairStyle:'bald',glasses:1,prop:'bag',s:1.32},
+  {x:830,coat:'#c7589a',pants:'#2d3550',skin:SK[4],hair:'#2a1a12',hairStyle:'long',prop:'wave',s:1.18},
+  {x:968,coat:'#6aa56d',pants:'#2d3550',skin:SK[5],hair:'#111',hairStyle:'curly',prop:'box',s:1.22}];
+ G.forEach((q,i)=>{g+=staff(Object.assign({role:'guest',y:628,uid:'g'+i,tag:false,ph:i*.5},q))});
  $('#storeSvg').innerHTML=g;
 }
 function buildStreet(){
@@ -1252,7 +1279,8 @@ function buildStar(){
 
 /* ================= scene state ================= */
 const scenes=$$('.scene'),envs=$$('.env');
-const STEPS=scenes.map(()=>0);STEPS[3]=3;STEPS[12]=5;
+const IDX=id=>scenes.findIndex(x=>x.id===id),I11=IDX('s11'),I12=IDX('s12'),I13=IDX('s13');   // look scenes up by id, so adding slides never breaks them
+const STEPS=scenes.map(()=>0);STEPS[3]=3;STEPS[I12]=5;
 const LABELS=scenes.map(s=>s.dataset.label);
 const NOTES_TXT=[
  'Welcome. Ask the room to scan the QR now and order anything. Tell them: messy is good, we need messy data. Keep the counter visible.',
@@ -1271,7 +1299,7 @@ const NOTES_TXT=[
 let cur=0,step=0,envTimer=null;
 function sceneHint(i,s){
  if(i===3)return ['→ spot the names','→ spot the times','→ spot the notes','→ next'][s];
- if(i===12)return ['→ Ingest','→ Raw','→ Process','→ Warehouse','→ Mart','→ Dashboard'][s];
+ if(i===I12)return ['→ Ingest','→ Raw','→ Process','→ Warehouse','→ Mart','→ Dashboard'][s];
  if(i===0)return '→ start';return '';
 }
 const LAYERS={dough:1,sauce:3,cheese:5,top:7,bake:8,slice:9};
@@ -1313,14 +1341,14 @@ let liveTimer=null;
 function enter(i){
  if(i===0){startLive()}
  if(i===3){$('#rail3').innerHTML=railHTML(P.tix,true)}
- if(i===11){const live=SRC.live,tot=P.tix.length;$('#rail11').innerHTML=railHTML(P.tix,false);
+ if(i===I11){const live=SRC.live,tot=P.tix.length;$('#rail11').innerHTML=railHTML(P.tix,false);
   $('#cnt11').innerHTML='<span><b>'+tot+'</b> tickets</span><span><b>'+P.stats.dupes+'</b> sent twice</span><span>from <b>'+new Set(P.tix.map(t=>t.src)).size+'</b> places</span>';
-  setTimeout(()=>{if(cur===11)scenes[11].classList.add('marked')},1600)}
- if(i===13){buildDash()}
+  setTimeout(()=>{if(cur===I11)scenes[I11].classList.add('marked')},1600)}
+ if(i===I13){buildDash()}
 }
 function stepTo(i,s){
  if(i===3){const e=scenes[3].classList;e.toggle('show-name',s>=1);e.toggle('show-time',s>=2);e.toggle('show-note',s>=3)}
- if(i===12)renderRun(s);
+ if(i===I12)renderRun(s);
 }
 function startLive(){
  clearInterval(liveTimer);const el=$('#liveCount');const target=SRC.live||NMOCK;let n=SRC.live?target:0;el.textContent=n;
