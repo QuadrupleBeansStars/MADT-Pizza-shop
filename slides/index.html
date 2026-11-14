@@ -540,6 +540,22 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .chk{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .chk div{background:#faf8f3;border:2px solid #e4dfd2;border-radius:10px;padding:10px 14px;font:700 15px/1.3 var(--body)}
 .chk b{display:block;font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ember);margin-bottom:3px}
+
+/* ---------- wrap-up scene (pizza theme) ---------- */
+#s22 .rc{position:absolute;left:340px;top:176px;width:600px;background:#fffdf5;color:#1b1d19;border:2px solid #1b1d19;border-radius:4px;padding:18px 26px 16px;box-shadow:6px 6px 0 rgba(0,0,0,.45);transform:rotate(-.8deg);font:700 15px/1.35 var(--mono)}
+#s22 .rc h3{font:400 26px var(--head);text-align:center;margin:0}
+#s22 .rc .sm{text-align:center;font:700 12px var(--mono);letter-spacing:.16em;color:#8a8a80;margin:2px 0 8px}
+#s22 .rc hr{border:0;border-top:2px dashed #b9b29c;margin:8px 0}
+#s22 .rc .it{display:grid;grid-template-columns:34px 1fr 28px;gap:0 8px;align-items:start;margin:6px 0}
+#s22 .rc .it b{font:700 16px var(--mono)}
+#s22 .rc .it span{display:block;font:600 14px/1.35 var(--body);color:#55584f}
+#s22 .rc .it i{font-style:normal;color:#1f6b2a;font-weight:800;font-size:18px}
+#s22 .rc .tot{display:flex;justify-content:space-between;font:700 18px var(--mono)}
+#s22 .up{position:absolute;left:430px;top:560px;width:420px;background:var(--cheese);color:var(--ink);border:2px solid #1b1d19;border-radius:4px;padding:10px 18px;box-shadow:4px 4px 0 rgba(0,0,0,.45);transform:rotate(1deg);text-align:center;animation:rise .6s 3.6s both}
+#s22 .up small{display:block;font:700 12px var(--mono);letter-spacing:.2em;color:#7a3b13}
+#s22 .up b{font:400 26px var(--head)}
+#s22 .who{position:absolute;top:250px;width:250px}
+#s22 .who .say{background:#fff8e1;color:#1b1d19}
 </style>
 </head>
 <body>
@@ -746,6 +762,20 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
         <div class="c s2"><h4>Order too much</h4><p>Throw away food. Costs about <b>30%</b> of the price.</p><h4 style="margin-top:8px">Order too little</h4><p>Lose the sale. Costs about <b>70%</b>.</p></div>
         <div class="c s2"><h4>So we order extra</h4><p>We cover 70% of past cycles. Hawaiian L: forecast 89, <b>order 130</b>.</p><p style="color:#6a6a60;font-size:14px">Error per day 0.30. Per cycle 0.16.</p></div></div>
     </div><div class="who fade4" data-role="chef" data-say="I order Monday and Thursday. Look 4 days ahead."></div></div><div class="rl fade5"><b>RULE</b> Forecast to the end of the cycle. Order extra where running out costs more than waste.</div>
+  </section>
+
+  <section class="scene" id="s22" data-env="pass" data-label="Wrap up">
+    <div class="plaque fade1"><div class="k">Wrap up</div><h2>The shop is built</h2></div>
+    <div class="rc fade2">
+      <h3>MADT Pizza</h3><div class="sm">ORDER SUMMARY</div><hr>
+      <div class="it"><b>1×</b><div>The line<span>Ingest, Raw, Process, Warehouse, Mart, Dashboard. Messy tickets in, one clean answer out.</span></div><i>✓</i></div>
+      <div class="it"><b>1×</b><div>CI/CD<span>A robot checks every change. We ship at night and go back in one line.</span></div><i>✓</i></div>
+      <div class="it"><b>1×</b><div>MLOps<span>A forecast we can trust. It looks 3 to 4 days ahead, for the days we order.</span></div><i>✓</i></div>
+      <hr><div class="tot"><span>TOTAL</span><span>one clean answer</span></div>
+    </div>
+    <div class="up"><small>ORDER UP</small><b>Now, your orders →</b></div>
+    <div class="who fade3" style="left:36px" data-role="cashier" data-say="Orders come in messy. The line cleans them."></div>
+    <div class="who fade4" style="right:36px" data-role="server" data-say="Now let's cook with your orders."></div>
   </section>
 
   <section class="scene" id="s11" data-env="rail" data-label="Your orders">
