@@ -243,7 +243,8 @@ mark{background:linear-gradient(transparent 12%,var(--mk) 12% 92%,transparent 92
 .st-body.wide{max-width:1168px}
 .st-body .card{min-height:200px}
 #s8 .st-body .card{min-height:0}
-table.rt.fx{table-layout:fixed}
+table.rt.fx{table-layout:fixed;font-size:11.5px}
+table.rt.fx td{padding:1.5px 6px;line-height:1.2}
 .art{position:absolute;right:70px;top:84px;width:300px;height:210px}
 .art.big2{right:70px;top:130px;width:430px;height:430px}
 .a-slip{position:absolute;left:0;width:60px;height:46px;background:#fff;border:1px solid #888;box-shadow:0 2px 4px rgba(0,0,0,.35);animation:into 3s var(--d) infinite}
@@ -283,7 +284,8 @@ table.rt.fx{table-layout:fixed}
 #s12 .counters b{color:var(--cheese);font-size:16px}
 table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .rt th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);border-bottom:2px solid var(--ink);padding:2px 7px}
-.rt td{padding:2.5px 7px;border-bottom:1px solid #0001;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:330px}
+.rt td{padding:2.5px 7px;border-bottom:1px solid #0001;white-space:normal;overflow-wrap:anywhere;max-width:330px;line-height:1.25}
+.rt td:first-child,.rt td.nw{white-space:nowrap}
 .rt.t1{font-size:11.5px}
 .rt.t1 td{max-width:215px;padding:2.5px 5px}
 .rt.t1 th{padding:2px 5px}
@@ -1074,7 +1076,7 @@ function staff(o){
   '<clipPath id="'+id+'"><circle cx="0" cy="-128" r="20"/></clipPath>'+(HEADS[R]?'<image href="'+HEADS[R]+'" x="-20" y="-148" width="40" height="40" preserveAspectRatio="xMidYMid slice" clip-path="url(#'+id+')" onerror="this.style.display=\'none\'"/>':'');
  const label=R.toUpperCase(),w=Math.max(62,label.length*10+22),tx=o.tagx||0,ty=o.tagy==null?24:o.tagy,fs=o.tagfs||13;
  const tag='<g transform="translate('+tx+','+ty+')"><rect x="'+(-w/2)+'" y="-12" width="'+w+'" height="24" rx="4" fill="#f4f4ee" stroke="#1c1c1c" stroke-width="2"/><text y="5" text-anchor="middle" font-family="Courier New,monospace" font-weight="700" font-size="'+fs+'" letter-spacing="1.5" fill="#b03a16">'+label+'</text></g>';
- return '<g transform="translate('+o.x+','+o.y+')"><g class="idle" style="animation-delay:-'+(o.ph||0)+'s"><g transform="scale('+(o.s||1)+')">'+g+arm+head+top+prop+'</g></g>'+(o.tag===false?'':tag)+'</g>';
+ return '<g transform="translate('+o.x+','+o.y+')"><g class="idle" style="animation-delay:-'+(o.ph||0)+'s"><g transform="scale('+(o.s||1)+')">'+g+arm+head+top+prop+'</g></g>'+''+'</g>';
 }
 function crewSVG(){
  return ['chef','cashier','server','manager'].map((r,i)=>'<g class="crew" style="--cd:'+(2.4+i*.35).toFixed(2)+'s">'+staff({role:r,x:400+i*160,y:616,s:1.25,uid:'e',ph:i*.4,tagy:34,tagfs:14})+'</g>').join('');
@@ -1106,7 +1108,7 @@ function buildStore(){
  g+=pz(418,426,34)+pz(908,428,32)+'<g transform="translate(838,426)"><rect x="-34" y="-8" width="68" height="10" fill="#cf9f62" stroke="#8a6230"/><rect x="-30" y="-18" width="60" height="10" fill="#d9ad72" stroke="#8a6230"/></g>'+pz(1010,426,34);
  // role tags on the counter front
  const tg=(x,t)=>'<g transform="translate('+x+',520)"><rect x="-48" y="-13" width="96" height="26" rx="4" fill="#f4f4ee" stroke="#1c1c1c" stroke-width="2"/><text y="5" text-anchor="middle" font-family="Courier New,monospace" font-weight="700" font-size="14" letter-spacing="1.5" fill="#b03a16">'+t+'</text></g>';
- g+=tg(250,'CASHIER')+tg(1085,'SERVER');
+ 
  // customers in front of the counter
  const SK=['#f1c9a0','#c98f64','#8a5a3a','#e8bb92','#f6d5b8','#a8703f'];
  const G=[{x:330,coat:'#e0533a',dress:1,pants:SK[0],skin:SK[0],hair:'#1b1d19',hairStyle:'bun',prop:'phone',s:1.15},
@@ -1379,11 +1381,11 @@ function renderRun(s){
   h+='</table>';
   c=s===0?chip('Tickets',P.tix.length)+chip('Places',new Set(P.tix.map(t=>t.src)).size)+chip('Look','messy'):s===1?chip('Rows in',P.tix.length)+chip('Tagged',P.tix.length):chip('Stored',P.tix.length)+chip('Changed',0)+chip('Deleted',0);
  }else if(s===3){
-  h='<h4>Cleaned · red is what was wrong, green is the fix</h4><table class="rt fx"><tr><th style="width:125px">order</th><th style="width:100px">channel</th><th style="width:330px">time (Bangkok)</th><th style="width:310px">items</th><th>option</th></tr>';
+  h='<h4>Cleaned · red is what was wrong, green is the fix</h4><table class="rt fx"><tr><th style="width:140px">order</th><th style="width:95px">channel</th><th style="width:335px">time (Bangkok)</th><th style="width:350px">items</th><th>option</th></tr>';
   P.rows.slice(0,14).forEach((r,k)=>{
    const items=r.lines.map(l=>'<span class="old">'+esc(l.rawName)+'</span><span class="new">'+l.code+'</span> x'+l.qty).join(' + ');
    const optc=r.opt?(r.opt==='INVALID'?'<span class="old">'+esc(r.optRaw)+'</span><span class="new" style="color:#a00">Invalid (2)</span>':'<span class="old">'+esc(r.optRaw)+'</span><span class="new">'+r.opt+'</span>'):'—';
-   h+='<tr style="--d:'+k+'" class="'+(r.dup?'dup':'')+(r.opt==='INVALID'&&!r.dup?' bad':'')+'"><td>'+esc(r.id)+(r.dup?' · twin, removed':'')+'</td><td>'+CH[r.src].name+'</td><td><span class="old">'+esc(r.t.time)+'</span><span class="new">'+r.bizDate+' '+r.tBkk+'</span></td><td>'+items+'</td><td class="opt">'+optc+'</td></tr>'});
+   h+='<tr style="--d:'+k+'" class="'+(r.dup?'dup':'')+(r.opt==='INVALID'&&!r.dup?' bad':'')+'"><td>'+esc(r.id)+(r.dup?' · twin':'')+'</td><td>'+CH[r.src].name+'</td><td><span class="old">'+esc(r.t.time)+'</span><span class="new">'+r.bizDate+' '+r.tBkk+'</span></td><td>'+items+'</td><td class="opt">'+optc+'</td></tr>'});
   h+='</table>';
   c=chip('Twins removed',st.dupes)+chip('Names fixed',st.nameFix)+chip('Times fixed',P.tix.length)+chip('Invalid options',st.invalid)+chip('Clean orders',st.orders);
  }else if(s===4){
