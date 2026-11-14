@@ -284,6 +284,9 @@ table.rt.fx{table-layout:fixed}
 table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .rt th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);border-bottom:2px solid var(--ink);padding:2px 7px}
 .rt td{padding:2.5px 7px;border-bottom:1px solid #0001;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:330px}
+.rt.t1{font-size:11.5px}
+.rt.t1 td{max-width:215px;padding:2.5px 5px}
+.rt.t1 th{padding:2px 5px}
 .rt tr{animation:rowin .45s both;animation-delay:calc(var(--d)*.05s)}
 @keyframes rowin{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:none}}
 .rt .old{text-decoration:line-through;color:#a33;margin-right:6px;opacity:.7}
@@ -460,8 +463,11 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .plain code{font:700 15px var(--mono);background:#f1ede0;padding:1px 6px;border-radius:4px}
 .plain .c{background:#faf8f3;border:2px solid #e4dfd2;border-radius:10px;padding:14px 18px}
 .plain .ar{display:flex;align-items:center;justify-content:center;font:700 24px var(--mono);color:var(--ember)}
-.trk{position:absolute;right:56px;top:100px;display:flex;gap:8px}
-.trk span{font:700 13px var(--mono);padding:5px 12px;border-radius:16px;border:2px solid #dcd8cc;color:#9a9a8f}
+.trk{position:absolute;right:56px;top:100px;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.trk .m,.trk .sb{display:flex;gap:6px}
+.trk .sb{padding:5px 8px;border:2px dashed #e0b9a6;border-radius:20px;background:#fff6ef}
+.trk .sb span{border-radius:8px;border-width:2px}
+.trk span{font:700 12px var(--mono);padding:5px 10px;border-radius:16px;border:2px solid #dcd8cc;color:#9a9a8f}
 .trk span.done{border-color:#bfd9bf;color:#6a8a6a}
 .trk span.on{background:var(--ember);color:#fff;border-color:var(--ember)}
 .cols{display:grid;grid-template-columns:1fr 30px 1.4fr 30px 1fr;margin-top:24px}
@@ -506,6 +512,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 
 /* ---------- CI/CD + MLOps slides (plain) ---------- */
 .body2{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:26px;margin-top:14px}
+.body2.solo{grid-template-columns:minmax(0,1fr)}
 .plain .lc{display:flex;flex-direction:column;gap:12px;min-width:0}
 .who{display:flex;flex-direction:column;justify-content:flex-end;gap:6px;height:420px}
 .who .say{background:#fff8e1;border:2px solid #1b1d19;border-radius:14px;padding:10px 14px;font:700 16px/1.3 var(--body);box-shadow:3px 3px 0 #e4dfd2;position:relative}
@@ -545,14 +552,14 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .chk b{display:block;font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ember);margin-bottom:3px}
 
 /* ---------- wrap-up scene (pizza theme) ---------- */
-#s22 .rail14{position:absolute;left:356px;top:92px;width:622px;display:flex;gap:14px;justify-content:center}
+#s22 .rail14{position:absolute;left:350px;top:96px;width:580px;display:flex;gap:14px;justify-content:center}
 #s22 .rod{position:absolute;left:-14px;right:-14px;top:6px;height:9px;border-radius:5px;background:linear-gradient(#e3e9ec,#8f989e);box-shadow:0 3px 0 rgba(0,0,0,.35)}
 #s22 .slipw{filter:drop-shadow(3px 5px 0 rgba(0,0,0,.4));transform:rotate(var(--r));transform-origin:50% 0;margin-top:10px}
-#s22 .slip{position:relative;width:198px;padding:20px 14px 24px;background:#fffdf5;color:#1b1d19;clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),87.5% 100%,75% calc(100% - 9px),62.5% 100%,50% calc(100% - 9px),37.5% 100%,25% calc(100% - 9px),12.5% 100%,0 calc(100% - 9px))}
+#s22 .slip{position:relative;width:180px;padding:18px 12px 20px;background:#fffdf5;color:#1b1d19;clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),87.5% 100%,75% calc(100% - 9px),62.5% 100%,50% calc(100% - 9px),37.5% 100%,25% calc(100% - 9px),12.5% 100%,0 calc(100% - 9px))}
 #s22 .slip .pin{position:absolute;left:50%;top:5px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:#b03a16;box-shadow:inset -2px -2px 0 #0003}
 #s22 .slip small{display:block;font:700 11px var(--mono);letter-spacing:.18em;color:#8a8a80}
-#s22 .slip b{display:block;font:400 26px var(--head);margin:2px 0 4px}
-#s22 .slip span{display:block;font:600 14px/1.3 var(--body);color:#55584f}
+#s22 .slip b{display:block;font:400 24px var(--head);margin:1px 0 2px}
+#s22 .slip span{display:block;font:600 13px/1.25 var(--body);color:#55584f}
 #s22 .slip em{display:block;margin-top:8px;font:700 13px var(--mono);font-style:normal;color:#1f6b2a}
 #s22 .rc{position:absolute;left:370px;top:92px;width:540px;background:#fffdf5;color:#1b1d19;border:2px solid #1b1d19;border-radius:4px;padding:18px 26px 16px;box-shadow:6px 6px 0 rgba(0,0,0,.45);transform:rotate(-.8deg);font:700 15px/1.35 var(--mono)}
 #s22 .rc h3{font:400 26px var(--head);text-align:center;margin:0}
@@ -563,7 +570,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 #s22 .rc .it span{display:block;font:600 14px/1.35 var(--body);color:#55584f}
 #s22 .rc .it i{font-style:normal;color:#1f6b2a;font-weight:800;font-size:18px}
 #s22 .rc .tot{display:flex;justify-content:space-between;font:700 18px var(--mono)}
-#s22 .up{position:absolute;left:480px;top:370px;width:320px;background:var(--cheese);color:var(--ink);border:2px solid #1b1d19;border-radius:4px;padding:10px 18px;box-shadow:4px 4px 0 rgba(0,0,0,.45);transform:rotate(1deg);text-align:center;animation:rise .6s 3.6s both}
+#s22 .up{position:absolute;left:470px;top:238px;width:340px;background:var(--cheese);color:var(--ink);border:2px solid #1b1d19;border-radius:4px;padding:10px 18px;box-shadow:4px 4px 0 rgba(0,0,0,.45);transform:rotate(1deg);text-align:center;animation:rise .6s 3.6s both}
 #s22 .up small{display:block;font:700 12px var(--mono);letter-spacing:.2em;color:#7a3b13}
 #s22 .up b{font:400 26px var(--head)}
 #s22 .bub{position:absolute;width:250px;background:#fff8e1;color:#1b1d19;border:2px solid #1b1d19;border-radius:14px;padding:10px 14px;font:700 16px/1.3 var(--body);box-shadow:3px 3px 0 rgba(0,0,0,.4)}
@@ -655,7 +662,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   </section>
 
   <section class="scene plain" id="s5" data-env="plain" data-label="Ingest">
-    <div class="trk"><span class="on">Ingest</span><span class="">Raw</span><span class="">Process</span><span class="">Warehouse</span><span class="">Mart</span></div><div class="ph fade1"><div class="k">Step 1 of 5 · Ingest</div><h1>Collect the data</h1><p class="sub">Collect data from every source as it arrives. Do not fix anything yet.</p></div><div class="cols fade2"><div class="c"><h4>Comes in</h4><p>POS and QR orders, every 5 minutes.</p><p>Delivery app exports, once a day.</p></div><div class="ar">→</div><div class="c"><h4>What we do</h4><ul><li>Copy it over as it is</li><li>Write down where it came from</li><li>Write down when it arrived</li></ul></div><div class="ar">→</div><div class="c"><h4>Goes out</h4><p>The same rows, plus two new columns: <code>source_file</code> and <code>ingest_ts</code>.</p></div></div>
+    <div class="trk"><div class="m"><span class="on">Ingest</span><span class="">Raw</span><span class="">Process</span><span class="">CI/CD</span><span class="">Warehouse</span><span class="">Mart</span><span class="">MLOps</span></div></div><div class="ph fade1"><div class="k">Step 1 of 5 · Ingest</div><h1>Collect the data</h1><p class="sub">Collect data from every source as it arrives. Do not fix anything yet.</p></div><div class="cols fade2"><div class="c"><h4>Comes in</h4><p>POS and QR orders, every 5 minutes.</p><p>Delivery app exports, once a day.</p></div><div class="ar">→</div><div class="c"><h4>What we do</h4><ul><li>Copy it over as it is</li><li>Write down where it came from</li><li>Write down when it arrived</li></ul></div><div class="ar">→</div><div class="c"><h4>Goes out</h4><p>The same rows, plus two new columns: <code>source_file</code> and <code>ingest_ts</code>.</p></div></div>
     <div class="ex fade3"><div class="exl">Example</div>
       <table class="tb"><tr><th>order</th><th>time</th><th>item</th><th>total</th><th class="nw">source_file</th><th class="nw">ingest_ts</th></tr>
       <tr><td>QR-1041</td><td>2026-11-11T05:03:09Z</td><td>margarita (large) x1</td><td>369</td><td class="nw">qr_orders.csv</td><td class="nw">11-11 05:05</td></tr>
@@ -665,7 +672,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   </section>
 
   <section class="scene plain" id="s6" data-env="plain" data-label="Raw">
-    <div class="trk"><span class="done">Ingest</span><span class="on">Raw</span><span class="">Process</span><span class="">Warehouse</span><span class="">Mart</span></div><div class="ph fade1"><div class="k">Step 2 of 5 · Raw</div><h1>Store the raw data</h1><p class="sub">Store every row exactly as it arrived, mess and all.</p></div><div class="cols fade2"><div class="c"><h4>Comes in</h4><p>Rows from Ingest, with their source and time.</p></div><div class="ar">→</div><div class="c"><h4>What we do</h4><ul><li>Add rows. Never edit.</li><li>Never delete</li><li>Keep it for good. Storage is cheap.</li></ul></div><div class="ar">→</div><div class="c"><h4>Goes out</h4><p>Raw data we can always re-process.</p></div></div>
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="on">Raw</span><span class="">Process</span><span class="">CI/CD</span><span class="">Warehouse</span><span class="">Mart</span><span class="">MLOps</span></div></div><div class="ph fade1"><div class="k">Step 2 of 5 · Raw</div><h1>Store the raw data</h1><p class="sub">Store every row exactly as it arrived, mess and all.</p></div><div class="cols fade2"><div class="c"><h4>Comes in</h4><p>Rows from Ingest, with their source and time.</p></div><div class="ar">→</div><div class="c"><h4>What we do</h4><ul><li>Add rows. Never edit.</li><li>Never delete</li><li>Keep it for good. Storage is cheap.</li></ul></div><div class="ar">→</div><div class="c"><h4>Goes out</h4><p>Raw data we can always re-process.</p></div></div>
     <div class="ex fade3"><div class="exl">Example</div>
       <table class="tb"><tr><th>#</th><th>raw row</th><th>what happened</th></tr>
       <tr><td>1</td><td>LM-311 · 2026-11-11T12:09:24+07:00 · HAW-L x1</td><td>arrived</td></tr>
@@ -676,7 +683,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   </section>
 
   <section class="scene plain" id="s7" data-env="plain" data-label="Process">
-    <div class="trk"><span class="done">Ingest</span><span class="done">Raw</span><span class="on">Process</span><span class="">Warehouse</span><span class="">Mart</span></div><div class="ph fade1"><div class="k">Step 3 of 5 · Process</div><h1>Clean the data</h1><p class="sub">Clean the data once, in one place, so everything after it can trust it.</p></div><div class="cols fade2"><div class="c"><h4>Comes in</h4><p>Messy rows from the raw layer.</p></div><div class="ar">→</div><div class="c"><h4>What we do</h4><ul><li><b>Time:</b> any style to Bangkok time</li><li><b>Day:</b> the shop day is 10:00 to 02:00</li><li><b>Twins:</b> same order twice, keep one</li><li><b>Names:</b> many names, one item</li><li><b>Options:</b> only from the pick list</li></ul></div><div class="ar">→</div><div class="c"><h4>Goes out</h4><p>One clean row per real order.</p><p>Odd notes go to an "Invalid" row, so we can see them.</p></div></div>
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="done">Raw</span><span class="on">Process</span><span class="">CI/CD</span><span class="">Warehouse</span><span class="">Mart</span><span class="">MLOps</span></div></div><div class="ph fade1"><div class="k">Step 3 of 5 · Process</div><h1>Clean the data</h1><p class="sub">Clean the data once, in one place, so everything after it can trust it.</p></div><div class="cols fade2"><div class="c"><h4>Comes in</h4><p>Messy rows from the raw layer.</p></div><div class="ar">→</div><div class="c"><h4>What we do</h4><ul><li><b>Time:</b> any style to Bangkok time</li><li><b>Day:</b> the shop day is 10:00 to 02:00</li><li><b>Twins:</b> same order twice, keep one</li><li><b>Names:</b> many names, one item</li><li><b>Options:</b> only from the pick list</li></ul></div><div class="ar">→</div><div class="c"><h4>Goes out</h4><p>One clean row per real order.</p><p>Odd notes go to an "Invalid" row, so we can see them.</p></div></div>
     <div class="ex fade3"><div class="exl">Example</div>
       <table class="tb"><tr><th></th><th>before</th><th></th><th>after</th></tr>
       <tr><td>Time</td><td>Nov 11, 12:06 PM</td><td>→</td><td>2026-11-11 12:06 (Bangkok)</td></tr>
@@ -687,7 +694,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   </section>
 
   <section class="scene plain" id="s16" data-env="plain" data-label="CI/CD">
-    <div class="trk"><span class="on">Check and ship</span><span class="">When it breaks</span></div><div class="ph fade1"><div class="k">CI/CD · 1 of 2</div><h1>Check it, then ship it</h1><p class="sub">A robot checks every change. A release is easy to undo.</p></div><div class="body2"><div class="lc">
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="on">CI/CD</span><span class="">Warehouse</span><span class="">Mart</span><span class="">MLOps</span></div><div class="sb"><span class="on">Check and ship</span><span class="">When it breaks</span></div></div><div class="ph fade1"><div class="k">CI/CD · 1 of 2</div><h1>Check it, then ship it</h1><p class="sub">A robot checks every change. A release is easy to undo.</p></div><div class="body2 solo"><div class="lc">
       <div class="flow2 fade2">
         <div class="nd"><b>Change</b><i>someone edits</i><p>Opens a pull request</p></div><div class="ar">→</div>
         <div class="nd"><b>Robot</b><i>CI</i><p>21 checks, about 3 minutes</p></div><div class="ar">→</div>
@@ -698,11 +705,11 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
         <div class="c s2"><h4>CI · every change</h4><p>Does the code still do the right thing?</p><p><span class="note">an order at 00:40 counts for yesterday</span></p></div>
         <div class="c s2"><h4>CD · when and how often</h4><p><b>02:30 to 05:30</b>, Monday to Wednesday nights.</p><p><b>1 to 2 releases</b> a week. Quiet nights only.</p></div></div>
       <div class="c s2 fade3" style="background:#fdeee8;border-color:#e8b9a8"><h4>Something wrong?</h4><p>Point CURRENT back at v0.2.0. One line. Anyone on call can do it.</p></div>
-    </div><div class="who fade4" data-role="cashier" data-say="Red means nothing ships. Fix it first."></div></div><div class="rl fade5"><b>RULE</b> Check every change. Keep the old version, so going back is easy.</div>
+    </div></div><div class="rl fade5"><b>RULE</b> Check every change. Keep the old version, so going back is easy.</div>
   </section>
 
   <section class="scene plain" id="s18" data-env="plain" data-label="When it breaks">
-    <div class="trk"><span class="done">Check and ship</span><span class="on">When it breaks</span></div><div class="ph fade1"><div class="k">CI/CD · 2 of 2</div><h1>When the night goes wrong</h1><p class="sub">Retry what can fix itself. Tell a person only when a retry cannot help.</p></div><div class="body2"><div class="lc">
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="on">CI/CD</span><span class="">Warehouse</span><span class="">Mart</span><span class="">MLOps</span></div><div class="sb"><span class="done">Check and ship</span><span class="on">When it breaks</span></div></div><div class="ph fade1"><div class="k">CI/CD · 2 of 2</div><h1>When the night goes wrong</h1><p class="sub">Retry what can fix itself. Tell a person only when a retry cannot help.</p></div><div class="body2 solo"><div class="lc">
       <div class="chips2 fade2"><span><b>06:30</b> first run</span><span><b>07:15</b> retry</span><span><b>07:45</b> last try, then page</span><span><b>08:00</b> owner needs data</span><span><b>10:00</b> doors open</span></div>
       <table class="tb t fade3"><tr><th>What went wrong</th><th>Retry?</th><th>Who is told</th></tr>
         <tr><td><b>A file is late</b><br>Grab has not sent it</td><td class="yes">Yes, twice</td><td>Nobody if it works. A page at 07:45 if not</td></tr>
@@ -710,11 +717,11 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
         <tr><td><b>Our own bug</b><br>last release is broken</td><td class="no">No</td><td>Page now, then go back a version</td></tr>
         <tr><td><b>Numbers look odd</b><br>40% below last week</td><td>Not needed</td><td>A chat message. No page</td></tr></table>
       <div class="c s2 fade3"><h4>Meanwhile, in the kitchen</h4><p>Yesterday's dashboard stays up, marked "as of Tuesday". After 08:00: prep from last week's same day.</p></div>
-    </div><div class="who fade4" data-role="chef" data-say="If the data is late, I prep from last week's sheet."></div></div><div class="rl fade5"><b>RULE</b> A retry fixes a late file. It cannot fix a wrong item name. Do not wait on that.</div>
+    </div></div><div class="rl fade5"><b>RULE</b> A retry fixes a late file. It cannot fix a wrong item name. Do not wait on that.</div>
   </section>
 
   <section class="scene plain" id="s8" data-env="plain" data-label="Warehouse">
-    <div class="trk"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="on">Warehouse</span><span class="">Mart</span></div><div class="ph fade1"><div class="k">Step 4 of 5 · Warehouse</div><h1>Model the data</h1><p class="sub">Arrange the clean rows into one tidy shape: a star.</p></div>
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="done">CI/CD</span><span class="on">Warehouse</span><span class="">Mart</span><span class="">MLOps</span></div></div><div class="ph fade1"><div class="k">Step 4 of 5 · Warehouse</div><h1>Model the data</h1><p class="sub">Arrange the clean rows into one tidy shape: a star.</p></div>
     <div class="split fade2">
       <div class="lft">
         <div class="c"><h4>Comes in</h4><p>Clean orders from Process.</p></div>
@@ -735,7 +742,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   </section>
 
   <section class="scene plain" id="s9" data-env="plain" data-label="Mart">
-    <div class="trk"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="done">Warehouse</span><span class="on">Mart</span></div><div class="ph fade1"><div class="k">Step 5 of 5 · Mart</div><h1>Serve the data</h1><p class="sub">Cut the warehouse into small tables, one for each question the owner asks.</p></div>
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="done">CI/CD</span><span class="done">Warehouse</span><span class="on">Mart</span><span class="">MLOps</span></div></div><div class="ph fade1"><div class="k">Step 5 of 5 · Mart</div><h1>Serve the data</h1><p class="sub">Cut the warehouse into small tables, one for each question the owner asks.</p></div>
     <div class="three fade2">
       <div class="c"><h4>mart_channel_daily</h4><p class="q">Which channel earns most, after commission?</p>
         <table class="tb s"><tr><th>channel</th><th>sales</th><th>fee</th><th>net</th></tr><tr><td>Line Man</td><td>359</td><td>107.7</td><td>251.3</td></tr><tr><td>Grab</td><td>468</td><td>140.4</td><td>327.6</td></tr><tr><td>QR</td><td>369</td><td>0</td><td>369</td></tr></table></div>
@@ -749,7 +756,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   </section>
 
   <section class="scene plain" id="s19" data-env="plain" data-label="The loop">
-    <div class="trk"><span class="on">The loop</span><span class="">Order cycle</span></div><div class="ph fade1"><div class="k">MLOps · 1 of 2</div><h1>MLOps: a forecast we can trust</h1><p class="sub">Treat the model like code: test it, release it, and watch it.</p></div><div class="body2"><div class="lc">
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="done">CI/CD</span><span class="done">Warehouse</span><span class="done">Mart</span><span class="on">MLOps</span></div><div class="sb"><span class="on">The loop</span><span class="">Order cycle</span></div></div><div class="ph fade1"><div class="k">MLOps · 1 of 2</div><h1>MLOps: a forecast we can trust</h1><p class="sub">Treat the model like code: test it, release it, and watch it.</p></div><div class="body2"><div class="lc">
       <div class="flow2 fade2">
         <div class="nd"><b>Baseline</b><i>the rival</i><p>Same weekday, last week</p></div><div class="ar">→</div>
         <div class="nd"><b>Train</b><i>try a few</i><p>Write every run down</p></div><div class="ar">→</div>
@@ -767,7 +774,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   </section>
 
   <section class="scene plain" id="s20" data-env="plain" data-label="Order cycle">
-    <div class="trk"><span class="done">The loop</span><span class="on">Order cycle</span></div><div class="ph fade1"><div class="k">MLOps · 2 of 2</div><h1>How far ahead? How much extra?</h1><p class="sub">We do not order every day, so the forecast must reach the end of each order cycle.</p></div><div class="body2"><div class="lc">
+    <div class="trk"><div class="m"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="done">CI/CD</span><span class="done">Warehouse</span><span class="done">Mart</span><span class="on">MLOps</span></div><div class="sb"><span class="done">The loop</span><span class="on">Order cycle</span></div></div><div class="ph fade1"><div class="k">MLOps · 2 of 2</div><h1>How far ahead? How much extra?</h1><p class="sub">We do not order every day, so the forecast must reach the end of each order cycle.</p></div><div class="body2"><div class="lc">
       <table class="tb t fade2"><tr><th>Stock</th><th>Order on</th><th>Lasts until</th><th>Look ahead</th></tr>
         <tr><td>Dough, cheese, toppings</td><td>Monday</td><td>Thursday</td><td><b>3 days</b></td></tr>
         <tr><td>Dough, cheese, toppings</td><td>Thursday</td><td>Monday</td><td><b>4 days</b></td></tr>
@@ -782,9 +789,9 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   <section class="scene" id="s22" data-env="store" data-label="Wrap up">
     <div class="plaque fade1"><div class="k">Wrap up</div><h2>The shop is built</h2></div>
     <div class="rail14 fade2"><div class="rod"></div>
-      <div class="slipw" style="--r:-2deg"><div class="slip"><i class="pin"></i><small>TICKET 1</small><b>The line</b><span>Messy tickets in, one clean answer out.</span><em>✓ ready</em></div></div>
-      <div class="slipw" style="--r:1.5deg"><div class="slip"><i class="pin"></i><small>TICKET 2</small><b>CI/CD</b><span>Checks every change. Ships at night. One-line undo.</span><em>✓ ready</em></div></div>
-      <div class="slipw" style="--r:-1deg"><div class="slip"><i class="pin"></i><small>TICKET 3</small><b>MLOps</b><span>A forecast we trust. Looks 3 to 4 days ahead.</span><em>✓ ready</em></div></div>
+      <div class="slipw" style="--r:-2deg"><div class="slip"><i class="pin"></i><small>TICKET 1 ✓</small><b>The line</b><span>Messy in, clean out</span></div></div>
+      <div class="slipw" style="--r:1.5deg"><div class="slip"><i class="pin"></i><small>TICKET 2 ✓</small><b>CI/CD</b><span>Checked, shipped, undoable</span></div></div>
+      <div class="slipw" style="--r:-1deg"><div class="slip"><i class="pin"></i><small>TICKET 3 ✓</small><b>MLOps</b><span>A forecast we trust</span></div></div>
     </div>
     <div class="up"><small>ORDER UP</small><b>Now, your orders →</b></div>
     <div class="bub l fade3" style="left:44px;top:172px">Orders come in messy. The line cleans them.</div>
@@ -1365,7 +1372,7 @@ function renderRun(s){
  renderStrip(s);const T=['Your tickets, as they are','Step 1 · Ingest','Step 2 · Raw','Step 3 · Process','Step 4 · Warehouse','Step 5 · Mart'];
  $('#runTitle').textContent=T[s];const st=P.stats,pn=$('#runPanel');let h='',c='';
  if(s<=2){
-  const cls=s===2?'rt locked':'rt';
+  const cls=s===2?'rt locked t1':s===1?'rt t1':'rt';
   h='<h4>'+(s===0?'What arrived · as is':s===1?'Same rows, plus where and when':'Kept as it arrived · nothing changed')+'</h4><table class="'+cls+'"><tr>'+(s===2?'<th></th>':'')+'<th>id</th><th>time (as text)</th><th>items (as text)</th><th>note</th><th>total</th>'+(s>=1?'<th>source_file</th><th>ingest_ts</th>':'')+'</tr>';
   P.tix.slice(0,13).forEach((t,k)=>{h+='<tr style="--d:'+k+'">'+(s===2?'<td>🔒</td>':'')+'<td>'+esc(t.id)+'</td><td>'+esc(t.time)+'</td><td>'+esc(t.lines.map(l=>l.alias+' x'+l.qty).join(' + '))+'</td><td>'+esc(t.note)+'</td><td>'+esc(totCell(t))+'</td>'+(s>=1?'<td class="nw">'+esc(srcFile(t))+'</td><td class="nw">11:'+pad(20+k)+':0'+(k%10)+'</td>':'')+'</tr>'});
   if(P.tix.length>13)h+='<tr><td colspan="8">… and '+(P.tix.length-13)+' more</td></tr>';
