@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -185,7 +186,11 @@ def new_lake(root: Path) -> Path:
 # 4. THE PIPELINE:  landing -> raw -> trusted -> refined
 # =====================================================================================
 class QualityError(Exception):
-    """A quality gate failed. The job stops and nothing is published."""
+    """A quality gate failed. The job stops and nothing is published. Retrying would give the same answer."""
+
+
+class LateFileError(Exception):
+    """A source has not delivered its file yet. This one often fixes itself, so it is worth a retry."""
 
 
 def land(lake: Path, src_dir: Path, day: date) -> None:
@@ -339,10 +344,67 @@ def build_marts(lake: Path) -> pd.DataFrame:
 def run_nightly(lake: Path, src_dir: Path, day: date) -> dict:
     """The nightly job for one business day. Land, ingest, process, build marts."""
     land(lake, src_dir, day)
+    missing = check_sources_landed(lake, day)
+    if missing:                                    # without this, a late Grab file silently gives a LOW sales number
+        raise LateFileError(f"{day}: no file yet from {', '.join(missing)}")
     ingest_raw(lake, day + timedelta(days=1))
     stats = process_day(lake, day)
     build_marts(lake)
     return stats
+
+
+def check_sources_landed(lake: Path, day: date) -> list:
+    """Freshness check: which of the three sources has no file for this business day yet?"""
+    arrival = (day + timedelta(days=1)).isoformat()
+    return [s for s in ("pos", "grab", "lineman") if not list((lake / "landing" / s / arrival).glob("*.json"))]
+
+
+# ---- what happens when the job fails: retry or not, and who hears about it ----------------------
+def notify(alerts: list, level: str, message: str) -> None:
+    """Level 'log' = written down only. 'chat' = team chat, no sound. 'page' = a phone rings.
+    Here we only collect the messages. In real life this line would call LINE, Slack or email."""
+    alerts.append({"level": level, "message": message})
+
+
+def run_with_retry(job, waits_min=(0, 45, 30), sleep=time.sleep, alerts: list | None = None, name: str = "nightly pipeline") -> dict:
+    """Run a job. Retry only what can fix itself. Tell a human only when a retry will not help.
+
+    waits_min=(0, 45, 30) means: try at 06:30, again 45 minutes later (07:15), and a last time 30 minutes
+    after that (07:45). The owner needs the data at 08:00, so there is no point in a later try."""
+    alerts = [] if alerts is None else alerts
+    last = None
+    for attempt, wait in enumerate(waits_min, start=1):
+        if wait:
+            sleep(wait * 60)
+        try:
+            result = job()
+        except (LateFileError, OSError) as e:                  # may fix itself: late file, busy disk
+            last = e
+            notify(alerts, "log", f"{name}: try {attempt} failed ({e})")
+            continue
+        except QualityError as e:                              # bad data: same input, same failure. Do not retry
+            notify(alerts, "page", f"{name} STOPPED, bad data, not retried: {e}")
+            return {"status": "failed", "attempts": attempt, "alerts": alerts}
+        except Exception as e:                                 # our own bug: do not hide it behind retries
+            notify(alerts, "page", f"{name} CRASHED, probably our code: {e!r}")
+            return {"status": "failed", "attempts": attempt, "alerts": alerts}
+        if attempt > 1:
+            notify(alerts, "chat", f"{name} worked on try {attempt}. Nothing to do.")
+        return {"status": "ok", "attempts": attempt, "result": result, "alerts": alerts}
+    notify(alerts, "page", f"{name} still failing after {len(waits_min)} tries: {last}")
+    return {"status": "failed", "attempts": len(waits_min), "alerts": alerts}
+
+
+# ---- ordering stock: how far ahead must we forecast? -------------------------------------------
+def order_cycle(order_day: date, order_weekdays=(0, 3), lead_days: int = 1) -> dict:
+    """An order placed on order_day arrives lead_days later and must last until the NEXT order arrives."""
+    nxt = order_day + timedelta(days=1)
+    while nxt.weekday() not in order_weekdays:
+        nxt += timedelta(days=1)
+    first = order_day + timedelta(days=lead_days)
+    last = nxt + timedelta(days=lead_days) - timedelta(days=1)
+    return {"order_day": order_day, "first_day": first, "last_day": last,
+            "days_covered": (last - first).days + 1, "horizon_days": (last - order_day).days}
 
 
 def read_mart(lake: Path) -> pd.DataFrame:
