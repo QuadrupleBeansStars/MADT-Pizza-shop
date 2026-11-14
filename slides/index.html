@@ -617,7 +617,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
       <div class="nd"><b>Mart</b><i>Serve</i><p>One table per question</p></div><div class="ar">→</div>
       <div class="nd dash"><b>Dashboard</b><i>Show</i><p>What the owner sees</p></div>
     </div>
-    <div class="bands fade3"><div><b>CI/CD</b> checks every step before it goes live <em>· after the demo</em></div><div><b>MLOps</b> learns from sales to plan tomorrow <em>· after the demo</em></div></div>
+    <div class="bands fade3"><div><b>CI/CD</b> checks every step before it goes live <em>· after Process</em></div><div><b>MLOps</b> learns from sales to plan tomorrow <em>· after Mart</em></div></div>
     <div class="prin fade4">
       <div><b>1</b>Keep the raw copy</div><div><b>2</b>Clean it once, in one place</div><div><b>3</b>One star, one grain</div><div><b>4</b>One table per question</div>
     </div>
@@ -655,6 +655,33 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
     <div class="rl fade5"><b>RULE</b> Clean once, in one place. Nobody else cleans.</div>
   </section>
 
+  <section class="scene plain" id="s16" data-env="plain" data-label="CI/CD">
+    <div class="trk"><span class="on">Check and ship</span><span class="">When it breaks</span></div><div class="ph fade1"><div class="k">CI/CD · 1 of 2</div><h1>Check it, then ship it</h1><p class="sub">A robot checks every change. A release is easy to undo.</p></div><div class="body2"><div class="lc">
+      <div class="flow2 fade2">
+        <div class="nd"><b>Change</b><i>someone edits</i><p>Opens a pull request</p></div><div class="ar">→</div>
+        <div class="nd"><b>Robot</b><i>CI</i><p>21 checks, about 3 minutes</p></div><div class="ar">→</div>
+        <div class="nd ok"><b>Green</b><i>merge</i><p>Red blocks the merge</p></div><div class="ar">→</div>
+        <div class="nd"><b>Release</b><i>CD</i><p>New folder, like v0.3.0</p></div><div class="ar">→</div>
+        <div class="nd ok"><b>Go live</b><i>one switch</i><p>Point CURRENT at it</p></div></div>
+      <div class="two2 fade3">
+        <div class="c s2"><h4>CI · every change</h4><p>Does the code still do the right thing?</p><p><span class="note">an order at 00:40 counts for yesterday</span></p></div>
+        <div class="c s2"><h4>CD · when and how often</h4><p><b>02:30 to 05:30</b>, Monday to Wednesday nights.</p><p><b>1 to 2 releases</b> a week. Quiet nights only.</p></div></div>
+      <div class="c s2 fade3" style="background:#fdeee8;border-color:#e8b9a8"><h4>Something wrong?</h4><p>Point CURRENT back at v0.2.0. One line. Anyone on call can do it.</p></div>
+    </div><div class="who fade4" data-role="cashier" data-say="Red means nothing ships. Fix it first."></div></div><div class="rl fade5"><b>RULE</b> Check every change. Keep the old version, so going back is easy.</div>
+  </section>
+
+  <section class="scene plain" id="s18" data-env="plain" data-label="When it breaks">
+    <div class="trk"><span class="done">Check and ship</span><span class="on">When it breaks</span></div><div class="ph fade1"><div class="k">CI/CD · 2 of 2</div><h1>When the night goes wrong</h1><p class="sub">Retry what can fix itself. Tell a person only when a retry cannot help.</p></div><div class="body2"><div class="lc">
+      <div class="chips2 fade2"><span><b>06:30</b> first run</span><span><b>07:15</b> retry</span><span><b>07:45</b> last try, then page</span><span><b>08:00</b> owner needs data</span><span><b>10:00</b> doors open</span></div>
+      <table class="tb t fade3"><tr><th>What went wrong</th><th>Retry?</th><th>Who is told</th></tr>
+        <tr><td><b>A file is late</b><br>Grab has not sent it</td><td class="yes">Yes, twice</td><td>Nobody if it works. A page at 07:45 if not</td></tr>
+        <tr><td><b>The data is wrong</b><br>an app renamed an item</td><td class="no">No</td><td>Page the engineer now</td></tr>
+        <tr><td><b>Our own bug</b><br>last release is broken</td><td class="no">No</td><td>Page now, then go back a version</td></tr>
+        <tr><td><b>Numbers look odd</b><br>40% below last week</td><td>Not needed</td><td>A chat message. No page</td></tr></table>
+      <div class="c s2 fade3"><h4>Meanwhile, in the kitchen</h4><p>Yesterday's dashboard stays up, marked "as of Tuesday". After 08:00: prep from last week's same day.</p></div>
+    </div><div class="who fade4" data-role="chef" data-say="If the data is late, I prep from last week's sheet."></div></div><div class="rl fade5"><b>RULE</b> A retry fixes a late file. It cannot fix a wrong item name. Do not wait on that.</div>
+  </section>
+
   <section class="scene plain" id="s8" data-env="plain" data-label="Warehouse">
     <div class="trk"><span class="done">Ingest</span><span class="done">Raw</span><span class="done">Process</span><span class="on">Warehouse</span><span class="">Mart</span></div><div class="ph fade1"><div class="k">Step 4 of 5 · Warehouse</div><h1>Model the data</h1><p class="sub">Arrange the clean rows into one tidy shape: a star.</p></div>
     <div class="split fade2">
@@ -690,13 +717,35 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
     <div class="rl fade5"><b>RULE</b> One table per question. The dashboard only reads these tables.</div>
   </section>
 
-  <section class="scene plain" id="s10" data-env="plain" data-label="Coming soon">
-    <div class="ph fade1"><div class="k">Still to build</div><h1>Two more parts keep the line healthy</h1><p class="sub">They sit beside the line. We show them after the demo.</p></div>
-    <div class="soonrow fade2">
-      <div class="sc"><h3>CI/CD</h3><p>Checks every step before it goes live. Tests first, then deploy.</p><span>after the demo</span></div>
-      <div class="sc"><h3>MLOps</h3><p>Learns from past sales to plan tomorrow. Train, serve, watch.</p><span>after the demo</span></div>
-    </div>
-    <div class="rl fade4"><b>NEXT</b> Now let's try the line with your own orders.</div>
+  <section class="scene plain" id="s19" data-env="plain" data-label="The loop">
+    <div class="trk"><span class="on">The loop</span><span class="">Order cycle</span></div><div class="ph fade1"><div class="k">MLOps · 1 of 2</div><h1>MLOps: a forecast we can trust</h1><p class="sub">Treat the model like code: test it, release it, and watch it.</p></div><div class="body2"><div class="lc">
+      <div class="flow2 fade2">
+        <div class="nd"><b>Baseline</b><i>the rival</i><p>Same weekday, last week</p></div><div class="ar">→</div>
+        <div class="nd"><b>Train</b><i>try a few</i><p>Write every run down</p></div><div class="ar">→</div>
+        <div class="nd"><b>Promote</b><i>by a rule</i><p>Beat the rival. Keep the old one</p></div><div class="ar">→</div>
+        <div class="nd"><b>Forecast</b><i>07:00 daily</i><p>Save every forecast</p></div><div class="ar">→</div>
+        <div class="nd"><b>Watch</b><i>every day</i><p>Forecast vs what sold</p></div></div>
+      <div class="ex fade3" style="margin-top:14px"><div class="exl">What happened in our data</div>
+        <table class="tb t"><tr><th>When</th><th>What we saw</th><th>What we did</th></tr>
+          <tr><td><b>Day 65</b></td><td>Model error 0.27. The rival's is 0.39</td><td>Model v1 goes live</td></tr>
+          <tr><td><b>Day 66</b></td><td>A competitor opens. QR dine-in drops by 40%</td><td>Nothing yet</td></tr>
+          <tr><td><b>Later</b></td><td>Error is 0.38. Normal is 0.27. QR dine-in forecast is 65% too high</td><td class="hl">Alarm</td></tr>
+          <tr><td><b>Retrain</b></td><td>New model, recent days count more. 0.33 vs 0.39 on the same days</td><td class="nw">v2 goes live. v1 is kept</td></tr></table></div>
+      <div class="chips2 fade3"><span><b>Forecast</b> daily 07:00</span><span><b>Retrain</b> Monday 07:30, or on alarm</span><span><b>Review</b> monthly, with the owner</span></div>
+    </div><div class="who fade4" data-role="manager" data-say="A forecast is a promise. We check it every day."></div></div><div class="rl fade5"><b>RULE</b> A new model goes live only if it beats the rival and beats the current model by 2%.</div>
+  </section>
+
+  <section class="scene plain" id="s20" data-env="plain" data-label="Order cycle">
+    <div class="trk"><span class="done">The loop</span><span class="on">Order cycle</span></div><div class="ph fade1"><div class="k">MLOps · 2 of 2</div><h1>How far ahead? How much extra?</h1><p class="sub">We do not order every day, so the forecast must reach the end of each order cycle.</p></div><div class="body2"><div class="lc">
+      <table class="tb t fade2"><tr><th>Stock</th><th>Order on</th><th>Lasts until</th><th>Look ahead</th></tr>
+        <tr><td>Dough, cheese, toppings</td><td>Monday</td><td>Thursday</td><td><b>3 days</b></td></tr>
+        <tr><td>Dough, cheese, toppings</td><td>Thursday</td><td>Monday</td><td><b>4 days</b></td></tr>
+        <tr><td>Drinks and boxes</td><td>Monday</td><td>next Tuesday</td><td><b>8 days</b></td></tr></table>
+      <p class="fade2" style="margin:0"><span class="note">Assumed supplier terms. The owner confirms.</span></p>
+      <div class="two2 fade3">
+        <div class="c s2"><h4>Order too much</h4><p>Throw away food. Costs about <b>30%</b> of the price.</p><h4 style="margin-top:8px">Order too little</h4><p>Lose the sale. Costs about <b>70%</b>.</p></div>
+        <div class="c s2"><h4>So we order extra</h4><p>We cover 70% of past cycles. Hawaiian L: forecast 89, <b>order 130</b>.</p><p style="color:#6a6a60;font-size:14px">Error per day 0.30. Per cycle 0.16.</p></div></div>
+    </div><div class="who fade4" data-role="chef" data-say="I order Monday and Thursday. Look 4 days ahead."></div></div><div class="rl fade5"><b>RULE</b> Forecast to the end of the cycle. Order extra where running out costs more than waste.</div>
   </section>
 
   <section class="scene" id="s11" data-env="rail" data-label="Your orders">
@@ -717,119 +766,6 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
     <div class="plaque fade1"><div class="k">7 · The dashboard</div><h2>Today's result</h2></div>
     <div class="grid" id="dash"></div>
     <svg id="srv13" class="fade3" width="1280" height="720" viewBox="0 0 1280 720" style="position:absolute;left:0;top:0;pointer-events:none"></svg>
-  </section>
-
-  <section class="scene plain" id="s15" data-env="plain" data-label="The clock">
-    <div class="trk"><span class="on">Clock</span><span class="">CI</span><span class="">CD</span><span class="">Failures</span></div><div class="ph fade1"><div class="k">8 · CI/CD and MLOps</div><h1>Every job has a time</h1><p class="sub">Each job runs when its inputs are ready, and never while customers are busy.</p></div><div class="tl fade2">
-      <div class="lane"><span class="ln">The shop</span>
-        <div class="pill2" style="left:0">02:00 closes</div>
-        <div class="pill2" style="left:50.00%;transform:translateX(-50%)">06:00 delivery files land</div>
-        <div class="pill2" style="left:75.00%;transform:translateX(-50%);background:#fdeee8;border-color:#b03a16">08:00 owner needs data</div>
-        <div class="pill2" style="right:0">10:00 doors open</div></div>
-      <div class="lane"><span class="ln">Code</span><div class="bar2" style="left:6.25%;width:37.50%;background:#cfe8d3;border:2px solid #4a7a4f">Release window · Mon to Wed nights</div></div>
-      <div class="lane"><span class="ln">Data</span><div class="bar2" style="left:56.25%;width:6.25%;background:#cfe2f5;border:2px solid #3b82c4">Nightly</div>
-        <div class="pill2" style="left:65.62%;transform:translateX(-50%);padding:0 6px;font-size:11px">retry</div><div class="pill2" style="left:71.88%;transform:translateX(-50%);padding:0 6px;font-size:11px">last try</div></div>
-      <div class="lane"><span class="ln">Model</span><div class="bar2" style="left:62.50%;width:6.25%;background:#e4d9f7;border:2px solid #8a6ad0">Forecast</div><div class="bar2" style="left:68.75%;width:6.25%;background:#fbe3b0;border:2px solid #d6a23a">Retrain</div>
-        <span style="position:absolute;left:calc(75.00% + 8px);top:12px;font:600 13px var(--body);color:#55584f">Mon: retrain · Mon, Thu: order sheet</span></div>
-      <div class="axis"><span style="left:0.00%">02:00</span><span style="left:12.50%">03:00</span><span style="left:25.00%">04:00</span><span style="left:37.50%">05:00</span><span style="left:50.00%">06:00</span><span style="left:62.50%">07:00</span><span style="left:75.00%">08:00</span><span style="left:87.50%">09:00</span><span style="left:100.00%">10:00</span></div></div><table class="tb t fade3" style="margin-top:6px"><tr><th>Job</th><th>When</th><th>How often</th></tr>
-      <tr><td><b>CI tests</b></td><td>on every pull request, about 3 minutes</td><td>many times a day</td></tr>
-      <tr><td><b>Release (CD)</b></td><td>02:30 to 05:30, Monday to Wednesday nights</td><td>1 to 2 a week</td></tr>
-      <tr><td><b>Nightly pipeline</b></td><td>06:30. Retries at 07:15 and 07:45</td><td>every day</td></tr>
-      <tr><td><b>Forecast and monitor</b></td><td>07:00, looking 4 to 8 days ahead</td><td>every day</td></tr>
-      <tr><td><b>Retrain</b></td><td>Monday 07:30, or when the alarm fires</td><td>weekly, and when needed</td></tr>
-      <tr><td><b>Review with the owner</b></td><td>agree on the thresholds and the money numbers</td><td>monthly</td></tr></table><div class="rl fade5"><b>RULE</b> Release after closing, run after the files land, and be ready before the doors open.</div>
-  </section>
-
-  <section class="scene plain" id="s16" data-env="plain" data-label="CI">
-    <div class="trk"><span class="done">Clock</span><span class="on">CI</span><span class="">CD</span><span class="">Failures</span></div><div class="ph fade1"><div class="k">9 · CI/CD, part 1</div><h1>CI: a robot checks every change</h1><p class="sub">Nobody merges a change until the robot says green.</p></div><div class="body2"><div class="lc">
-      <div class="flow2 fade2">
-        <div class="nd"><b>Change</b><i>1</i><p>Someone edits the code and opens a pull request</p></div><div class="ar">→</div>
-        <div class="nd"><b>Robot</b><i>2</i><p>Runs 21 checks in about 3 minutes</p></div><div class="ar">→</div>
-        <div class="nd ok"><b>Green</b><i>3a</i><p>Safe to merge</p></div><div class="ar" style="width:30px;font-size:13px">or</div>
-        <div class="nd bad"><b>Red</b><i>3b</i><p>Fix it first. Merge is blocked</p></div></div>
-      <div class="two2 fade3">
-        <div class="c s2"><h4>Tests · on every change</h4><p>Does the code still do the right thing?</p><p><span class="note">order at 00:40 belongs to yesterday</span></p></div>
-        <div class="c s2"><h4>Quality gates · every night</h4><p>Is tonight's data fine?</p><p><span class="note">item with no menu key stops the job</span></p></div></div>
-      <div class="ex fade3" style="margin-top:14px"><div class="exl">Four things the checks protect</div>
-        <table class="tb t"><tr><td><b>Business rule</b></td><td>An order after midnight counts for the day before</td></tr>
-        <tr><td><b>Same answer</b></td><td>Run a day twice and get the same numbers</td></tr>
-        <tr><td><b>Bad data</b></td><td>A renamed item stops the job. Nothing is published</td></tr>
-        <tr><td><b>The model</b></td><td>A new model must beat "same weekday last week"</td></tr></table></div>
-    </div><div class="who fade4" data-role="cashier" data-say="Red means nothing ships. Fix it first."></div></div><div class="rl fade5"><b>RULE</b> Run it on every pull request, every time. It costs 3 minutes and saves a bad morning.</div>
-  </section>
-
-  <section class="scene plain" id="s17" data-env="plain" data-label="CD">
-    <div class="trk"><span class="done">Clock</span><span class="done">CI</span><span class="on">CD</span><span class="">Failures</span></div><div class="ph fade1"><div class="k">10 · CI/CD, part 2</div><h1>CD: ship the same way, undo in one line</h1><p class="sub">A release is a new folder. Going back means pointing at the old one.</p></div><div class="body2"><div class="lc">
-      <div class="flow2 fade2">
-        <div class="nd"><b>Merge</b><i>1</i><p>Checks are green</p></div><div class="ar">→</div>
-        <div class="nd"><b>Build</b><i>2</i><p>New folder, like v0.3.0, with a fingerprint</p></div><div class="ar">→</div>
-        <div class="nd"><b>Smoke test</b><i>3</i><p>A tiny run to see it breathes</p></div><div class="ar">→</div>
-        <div class="nd ok"><b>Go live</b><i>4</i><p>Point CURRENT at v0.3.0</p></div></div>
-      <div class="c s2 fade3" style="background:#fdeee8;border-color:#e8b9a8"><h4>Something wrong?</h4><p>Point CURRENT back at v0.2.0. One line, no rebuild, anyone on call can do it.</p></div>
-      <div class="two2 fade3">
-        <div class="c s2"><h4>When and how often</h4><p><b>02:30 to 05:30</b>, Monday to Wednesday nights.</p><p><b>1 to 2 releases</b> a week.</p><p>No releases Thursday to Sunday.</p></div>
-        <div class="c s2"><h4>Why those days</h4><div class="wk"><div class="q"><i style="height:41px"></i>Mon</div><div class="q"><i style="height:41px"></i>Tue</div><div class="q"><i style="height:46px"></i>Wed</div><div class="b"><i style="height:52px"></i>Thu</div><div class="b"><i style="height:70px"></i>Fri</div><div class="b"><i style="height:78px"></i>Sat</div><div class="b"><i style="height:62px"></i>Sun</div></div><p style="font-size:13px;color:#6a6a60;margin:4px 0 0">Typical busy level. Green = quietest days.</p></div></div>
-    </div><div class="who fade4" data-role="server" data-say="Going back is one line. Anyone on call can do it."></div></div><div class="rl fade5"><b>RULE</b> Always keep the old version. If going back is easy, nobody is afraid to ship.</div>
-  </section>
-
-  <section class="scene plain" id="s18" data-env="plain" data-label="When it breaks">
-    <div class="trk"><span class="done">Clock</span><span class="done">CI</span><span class="done">CD</span><span class="on">Failures</span></div><div class="ph fade1"><div class="k">11 · CI/CD, part 3</div><h1>When the night goes wrong</h1><p class="sub">Retry what can fix itself. Tell a person only when a retry cannot help.</p></div><div class="body2"><div class="lc">
-      <div class="chips2 fade2"><span><b>06:30</b> first run</span><span><b>07:15</b> retry</span><span><b>07:45</b> last try, then page</span><span><b>08:00</b> owner needs data</span><span><b>10:00</b> doors open</span></div>
-      <table class="tb t fade3"><tr><th>What went wrong</th><th>Retry?</th><th>Who is told</th></tr>
-        <tr><td><b>A file is late</b><br>Grab has not sent it</td><td class="yes">Yes, twice</td><td>Nobody if it works. A page at 07:45 if not</td></tr>
-        <tr><td><b>The data is wrong</b><br>an app renamed an item</td><td class="no">No</td><td>Page the engineer now</td></tr>
-        <tr><td><b>Our own bug</b><br>last release is broken</td><td class="no">No</td><td>Page now, then go back a version</td></tr>
-        <tr><td><b>Numbers look odd</b><br>40% below last week</td><td>Not needed</td><td>A chat message. No page</td></tr></table>
-      <div class="c s2 fade3"><h4>Meanwhile, in the kitchen</h4><p>Yesterday's dashboard stays up, marked "as of Tuesday". Nothing half-empty is ever published. After 08:00 the owner gets one message: prep from last week's same day.</p></div>
-    </div><div class="who fade4" data-role="chef" data-say="If the data is late, I prep from last week's sheet."></div></div><div class="rl fade5"><b>RULE</b> A retry fixes a late file. It cannot fix a wrong item name. Do not wait on that.</div>
-  </section>
-
-  <section class="scene plain" id="s19" data-env="plain" data-label="The loop">
-    <div class="trk"><span class="on">The loop</span><span class="">Order cycle</span><span class="">Cost</span></div><div class="ph fade1"><div class="k">12 · MLOps, part 1</div><h1>MLOps: a forecast we can trust</h1><p class="sub">Treat the model like code: test it, release it, and watch it.</p></div><div class="body2"><div class="lc">
-      <div class="flow2 fade2">
-        <div class="nd"><b>Baseline</b><i>the rival</i><p>Same weekday, last week</p></div><div class="ar">→</div>
-        <div class="nd"><b>Train</b><i>try a few</i><p>Write every run down</p></div><div class="ar">→</div>
-        <div class="nd"><b>Promote</b><i>by a rule</i><p>Beat the rival. Keep the old one</p></div><div class="ar">→</div>
-        <div class="nd"><b>Forecast</b><i>07:00 daily</i><p>Save every forecast</p></div><div class="ar">→</div>
-        <div class="nd"><b>Watch</b><i>every day</i><p>Forecast vs what sold</p></div></div>
-      <div class="ex fade3" style="margin-top:14px"><div class="exl">What happened in our data</div>
-        <table class="tb t"><tr><th>When</th><th>What we saw</th><th>What we did</th></tr>
-          <tr><td><b>Day 65</b></td><td>Model error 0.27. The rival's is 0.39</td><td>Model v1 goes live</td></tr>
-          <tr><td><b>Day 66</b></td><td>A competitor opens. QR dine-in drops by 40%</td><td>Nothing yet</td></tr>
-          <tr><td><b>Later</b></td><td>Error is 0.38. Normal is 0.27. QR dine-in forecast is 65% too high</td><td class="hl">Alarm</td></tr>
-          <tr><td><b>Retrain</b></td><td>New model, recent days count more. 0.33 vs 0.39 on the same days</td><td class="nw">v2 goes live. v1 is kept</td></tr></table></div>
-      <div class="chips2 fade3"><span><b>Forecast</b> daily 07:00</span><span><b>Retrain</b> Monday 07:30, or on alarm</span><span><b>Review</b> monthly, with the owner</span></div>
-    </div><div class="who fade4" data-role="manager" data-say="A forecast is a promise. We check it every day."></div></div><div class="rl fade5"><b>RULE</b> A new model goes live only if it beats the rival and beats the current model by 2%.</div>
-  </section>
-
-  <section class="scene plain" id="s20" data-env="plain" data-label="Order cycle">
-    <div class="trk"><span class="done">The loop</span><span class="on">Order cycle</span><span class="">Cost</span></div><div class="ph fade1"><div class="k">13 · MLOps, part 2</div><h1>How far ahead? Our order cycle decides</h1><p class="sub">We do not order every day, so the forecast must reach the end of each order cycle.</p></div><div class="body2"><div class="lc">
-      <table class="tb t fade2"><tr><th>Stock</th><th>Order on</th><th>Arrives</th><th>Must last until</th><th>Look ahead</th></tr>
-        <tr><td>Dough, cheese, toppings</td><td>Monday</td><td>Tuesday</td><td>Thursday</td><td><b>3 days</b></td></tr>
-        <tr><td>Dough, cheese, toppings</td><td>Thursday</td><td>Friday</td><td>Monday</td><td><b>4 days</b></td></tr>
-        <tr><td>Drinks and boxes</td><td>Monday</td><td>Wednesday</td><td>next Tuesday</td><td><b>8 days</b></td></tr></table>
-      <p class="fade2" style="margin:0"><span class="note">Assumed supplier terms. The owner confirms.</span></p>
-      <div class="ex fade3" style="margin-top:12px"><div class="exl">Thursday's order sheet</div>
-        <table class="tb t"><tr><th>Item</th><th>Forecast, Fri to Mon</th><th>Order</th></tr>
-          <tr><td>Pepperoni L</td><td>190</td><td><b>205</b></td></tr><tr><td>Pepperoni M</td><td>102</td><td><b>133</b></td></tr>
-          <tr><td>Hawaiian L</td><td>89</td><td><b>130</b></td></tr><tr><td>Margherita M</td><td>130</td><td><b>136</b></td></tr><tr><td>Coke</td><td>206</td><td><b>253</b></td></tr></table></div>
-      <div class="chips2 fade3"><span><b>Error per day</b> 0.30</span><span><b>Error per order cycle</b> 0.16</span><span>The misses cancel out over a cycle</span></div>
-    </div><div class="who fade4" data-role="chef" data-say="I order Monday and Thursday. Look 4 days ahead."></div></div><div class="rl fade5"><b>RULE</b> Forecast to the end of the cycle, then order extra where running out costs more than waste.</div>
-  </section>
-
-  <section class="scene plain" id="s21" data-env="plain" data-label="Cost">
-    <div class="trk"><span class="done">The loop</span><span class="done">Order cycle</span><span class="on">Cost</span></div><div class="ph fade1"><div class="k">14 · MLOps, part 3</div><h1>What a wrong forecast costs</h1><p class="sub">Two mistakes, two prices. The prices decide how careful we are.</p></div><div class="body2"><div class="lc">
-      <div class="two2 fade2">
-        <div class="c s2"><h4>Order too much</h4><p>We throw away dough and toppings.</p><p><b>Costs the ingredients</b>, about 30% of the price.</p></div>
-        <div class="c s2"><h4>Order too little</h4><p>We sell out and customers leave.</p><p><b>Costs the profit</b>, about 70% of the price.</p></div></div>
-      <p class="fade2" style="margin:0"><span class="note">Assumed numbers. The owner replaces them.</span> Running out costs more, so we cover 70% of past cycles.</p>
-      <div class="two2 fade3">
-        <div class="ex" style="margin-top:12px"><div class="exl">Baht lost a month</div>
-          <table class="tb t"><tr><td>Same weekday last week</td><td><b>฿197k</b></td></tr><tr><td>Model v1, stale</td><td><b>฿176k</b></td></tr><tr><td>Model v2, retrained</td><td><b>฿174k</b></td></tr></table></div>
-        <div class="ex" style="margin-top:12px"><div class="exl">Alarm window</div>
-          <table class="tb t"><tr><th>Days</th><th>Fires after</th><th>Lost</th></tr><tr><td>5</td><td>1 day</td><td>฿66</td></tr><tr><td>7</td><td>2 days</td><td>฿131</td></tr><tr><td>14</td><td>10 days</td><td>฿656</td></tr></table></div></div>
-      <div class="chk fade4"><div><b>The owner decides</b>release days, alarm window, food cost, order days</div><div><b>Automatic</b>promote a model when the rule says yes</div><div><b>Anyone on call</b>go back a version, any time</div></div>
-    </div><div class="who fade4" data-role="manager" data-say="A short alarm window reacts fast. A long one is calm. You choose."></div></div><div class="rl fade5"><b>RULE</b> A shorter alarm saves baht but rings more. That is a business choice, not only a technical one.</div>
   </section>
 
   <section class="scene dark-text" id="s14" data-env="street" data-cam="end" data-label="Closed" data-neon="CLOSED">
@@ -1250,7 +1186,7 @@ const NOTES_TXT=[
  'Zoom into the shop window and into the manager\'s room. Talk over the picture, no text needed. Six pillars of the shop: sales, orders, stock, staff, costs, customers. Each lives in a different place and format, so nobody sees the whole picture. Apps keep up to 30%, so commission hides in sales. Waste is a guess: extra cheese is used but nobody counts it. She wants to sell more, waste less, know by morning. Then the frame: the shop came to school, today is a popup, you are the customers, and your orders are the data.',
  'The owner is blind. Six systems, hidden commission, waste by guess. Goals: sell more, waste less. Then the frame: the shop came to school, today is a popup, you are the customers.',
  'The ticket rail. First show the tickets as they are. Press next three times to highlight the mess one kind at a time: yellow is the same item with many names, pink is time in many styles, blue is free text. The sticky notes are the other sources: stock, supplier, shifts.',
- 'Plain slides from here. Our solution in one view: sources, five layers, then the dashboard. CI/CD and MLOps run beside the line (coming soon). Four design rules. Each layer comes next.',
+ 'Plain slides from here. Our solution in one view: sources, five layers, then the dashboard. CI/CD comes after Process, and MLOps comes after Mart. Four design rules. Each layer comes next.',
  'Ingest: collect data from every source. Do not fix anything yet.','Raw: store every row as it arrived. Never edit, never delete. Re-run cleaning from here if a rule changes.',
  'Process: clean the data. Time, twins, names, options. Odd notes become an Invalid row so they are visible.',
  'Warehouse: model the data. One star. Commission split over lines and checked.','Mart: serve the data. Three tables, one question each.',
