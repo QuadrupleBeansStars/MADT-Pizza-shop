@@ -137,6 +137,9 @@ html,body{margin:0;height:100%;background:#0d0d0d;overflow:hidden;font-family:va
 .e-pass{background:linear-gradient(#1a120d,#2e1d12)}
 .e-pass .lampw{position:absolute;top:0;width:260px;height:300px;background:linear-gradient(#ffb02e66,transparent);clip-path:polygon(38% 0,62% 0,100% 100%,0 100%);animation:lampf 5s infinite}
 .e-pass .lampb{position:absolute;top:0;width:100px;height:14px;background:#e9a73a;border-radius:0 0 50px 50px;box-shadow:0 0 24px 8px #ffb02e}
+.e-store svg{position:absolute;inset:0}
+.steam{animation:steam 2.4s ease-in-out infinite}
+@keyframes steam{0%{opacity:0;transform:translateY(4px)}50%{opacity:.8}100%{opacity:0;transform:translateY(-8px)}}
 .e-pass .steel{position:absolute;left:0;right:0;bottom:0;height:100px;background:linear-gradient(#aab2b7,#5f676c);border-top:6px solid #e3e9ec}
 
 /* ---------- tone ---------- */
@@ -542,7 +545,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .chk b{display:block;font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ember);margin-bottom:3px}
 
 /* ---------- wrap-up scene (pizza theme) ---------- */
-#s22 .rc{position:absolute;left:340px;top:176px;width:600px;background:#fffdf5;color:#1b1d19;border:2px solid #1b1d19;border-radius:4px;padding:18px 26px 16px;box-shadow:6px 6px 0 rgba(0,0,0,.45);transform:rotate(-.8deg);font:700 15px/1.35 var(--mono)}
+#s22 .rc{position:absolute;left:370px;top:92px;width:540px;background:#fffdf5;color:#1b1d19;border:2px solid #1b1d19;border-radius:4px;padding:18px 26px 16px;box-shadow:6px 6px 0 rgba(0,0,0,.45);transform:rotate(-.8deg);font:700 15px/1.35 var(--mono)}
 #s22 .rc h3{font:400 26px var(--head);text-align:center;margin:0}
 #s22 .rc .sm{text-align:center;font:700 12px var(--mono);letter-spacing:.16em;color:#8a8a80;margin:2px 0 8px}
 #s22 .rc hr{border:0;border-top:2px dashed #b9b29c;margin:8px 0}
@@ -551,11 +554,13 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 #s22 .rc .it span{display:block;font:600 14px/1.35 var(--body);color:#55584f}
 #s22 .rc .it i{font-style:normal;color:#1f6b2a;font-weight:800;font-size:18px}
 #s22 .rc .tot{display:flex;justify-content:space-between;font:700 18px var(--mono)}
-#s22 .up{position:absolute;left:430px;top:560px;width:420px;background:var(--cheese);color:var(--ink);border:2px solid #1b1d19;border-radius:4px;padding:10px 18px;box-shadow:4px 4px 0 rgba(0,0,0,.45);transform:rotate(1deg);text-align:center;animation:rise .6s 3.6s both}
+#s22 .up{position:absolute;left:480px;top:370px;width:320px;background:var(--cheese);color:var(--ink);border:2px solid #1b1d19;border-radius:4px;padding:10px 18px;box-shadow:4px 4px 0 rgba(0,0,0,.45);transform:rotate(1deg);text-align:center;animation:rise .6s 3.6s both}
 #s22 .up small{display:block;font:700 12px var(--mono);letter-spacing:.2em;color:#7a3b13}
 #s22 .up b{font:400 26px var(--head)}
-#s22 .who{position:absolute;top:250px;width:250px}
-#s22 .who .say{background:#fff8e1;color:#1b1d19}
+#s22 .bub{position:absolute;width:250px;background:#fff8e1;color:#1b1d19;border:2px solid #1b1d19;border-radius:14px;padding:10px 14px;font:700 16px/1.3 var(--body);box-shadow:3px 3px 0 rgba(0,0,0,.4)}
+#s22 .bub::after{content:"";position:absolute;bottom:-11px;width:16px;height:16px;background:#fff8e1;border-right:2px solid #1b1d19;border-bottom:2px solid #1b1d19;transform:rotate(45deg)}
+#s22 .bub.l::after{left:186px}
+#s22 .bub.r::after{left:40px}
 </style>
 </head>
 <body>
@@ -574,6 +579,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
   <div class="env e-oven" data-env="oven"><div class="arch"><div class="fl" style="left:20px"></div><div class="fl" style="left:120px;height:260px;animation-delay:.3s"></div><div class="fl" style="left:230px;animation-delay:.6s"></div><div class="fl" style="left:320px;height:200px;animation-delay:.15s"></div></div></div>
   <div class="env e-box" data-env="box"><div class="bench"></div><div class="pbox" style="left:60px;bottom:150px">PIZZA</div><div class="pbox" style="left:70px;bottom:196px;transform:rotate(-2deg)">PIZZA</div><div class="pbox" style="left:50px;bottom:242px;transform:rotate(1.5deg)">PIZZA</div><div class="pbox" style="right:60px;bottom:150px">PIZZA</div><div class="pbox" style="right:70px;bottom:196px;transform:rotate(2deg)">PIZZA</div></div>
   <div class="env e-chalk" data-env="chalk"><div class="board"></div></div>
+  <div class="env e-store" data-env="store"><svg id="storeSvg" width="1280" height="720" viewBox="0 0 1280 720"></svg></div>
   <div class="env e-pass" data-env="pass"><div class="lampw" style="left:120px"></div><div class="lampb" style="left:200px"></div><div class="lampw" style="left:510px"></div><div class="lampb" style="left:590px"></div><div class="lampw" style="left:900px"></div><div class="lampb" style="left:980px"></div><div class="steel"></div></div>
 
   <!-- top bar -->
@@ -764,18 +770,18 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
     </div><div class="who fade4" data-role="chef" data-say="I order Monday and Thursday. Look 4 days ahead."></div></div><div class="rl fade5"><b>RULE</b> Forecast to the end of the cycle. Order extra where running out costs more than waste.</div>
   </section>
 
-  <section class="scene" id="s22" data-env="pass" data-label="Wrap up">
+  <section class="scene" id="s22" data-env="store" data-label="Wrap up">
     <div class="plaque fade1"><div class="k">Wrap up</div><h2>The shop is built</h2></div>
     <div class="rc fade2">
       <h3>MADT Pizza</h3><div class="sm">ORDER SUMMARY</div><hr>
-      <div class="it"><b>1×</b><div>The line<span>Ingest, Raw, Process, Warehouse, Mart, Dashboard. Messy tickets in, one clean answer out.</span></div><i>✓</i></div>
-      <div class="it"><b>1×</b><div>CI/CD<span>A robot checks every change. We ship at night and go back in one line.</span></div><i>✓</i></div>
-      <div class="it"><b>1×</b><div>MLOps<span>A forecast we can trust. It looks 3 to 4 days ahead, for the days we order.</span></div><i>✓</i></div>
+      <div class="it"><b>1×</b><div>The line<span>Messy tickets in, one clean answer out.</span></div><i>✓</i></div>
+      <div class="it"><b>1×</b><div>CI/CD<span>Checks every change. Ships at night. One-line undo.</span></div><i>✓</i></div>
+      <div class="it"><b>1×</b><div>MLOps<span>A forecast we trust. Looks 3 to 4 days ahead.</span></div><i>✓</i></div>
       <hr><div class="tot"><span>TOTAL</span><span>one clean answer</span></div>
     </div>
     <div class="up"><small>ORDER UP</small><b>Now, your orders →</b></div>
-    <div class="who fade3" style="left:36px" data-role="cashier" data-say="Orders come in messy. The line cleans them."></div>
-    <div class="who fade4" style="right:36px" data-role="server" data-say="Now let's cook with your orders."></div>
+    <div class="bub l fade3" style="left:44px;top:172px">Orders come in messy. The line cleans them.</div>
+    <div class="bub r fade4" style="right:44px;top:172px">Now let's cook with your orders.</div>
   </section>
 
   <section class="scene" id="s11" data-env="rail" data-label="Your orders">
@@ -1003,8 +1009,8 @@ function person(o){
 /* ---------- the four staff: Chef, Cashier, Server, Manager ---------- */
 const HEADS={chef:'heads/chef.png',cashier:'heads/cashier.png',server:'heads/server.png',manager:'heads/manager.png'};  // put a square photo here; missing file = plain face
 function staff(o){
- const sk='#f1c9a0',R=o.role,P=o.pants||'#2d3550',id='hc'+R+(o.uid||''),stk=(c,w)=>'stroke="'+c+'" stroke-width="'+w+'" stroke-linecap="round" fill="none"';
- const C={chef:'#fbfbf6',cashier:'#3b82c4',server:'#f4f4ee',manager:'#3d8fa5'}[R];
+ const sk=o.skin||'#f1c9a0',R=o.role,P=o.pants||'#2d3550',id='hc'+R+(o.uid||''),stk=(c,w)=>'stroke="'+c+'" stroke-width="'+w+'" stroke-linecap="round" fill="none"';
+ const C=o.coat||{chef:'#fbfbf6',cashier:'#3b82c4',server:'#f4f4ee',manager:'#3d8fa5'}[R];
  let g='<ellipse cx="0" cy="0" rx="30" ry="5" fill="#000" opacity=".3"/>'+
   '<rect x="-12" y="-54" width="10.5" height="50" rx="5" fill="'+P+'"/><rect x="1.5" y="-54" width="10.5" height="50" rx="5" fill="'+P+'"/>'+
   '<rect x="-15" y="-8" width="15" height="8" rx="4" fill="#1b1b1f"/><rect x="0" y="-8" width="15" height="8" rx="4" fill="#1b1b1f"/>'+
@@ -1029,16 +1035,54 @@ function staff(o){
   g+='<path d="M-9 -106L0 -86L9 -106Z" fill="#fff"/><path d="M-10 -106L0 -84L-12 -60" '+stk('#2b6f82',1.6)+'/><path d="M10 -106L0 -84L12 -60" '+stk('#2b6f82',1.6)+'/>';
   arm='<path d="M17 -98L29 -78L25 -88" '+stk(C,9)+'/><circle cx="25" cy="-86" r="5" fill="'+sk+'"/>';
   prop='<rect x="24" y="-112" width="24" height="32" rx="2.5" fill="#c98d58" stroke="#8a6230"/><rect x="27" y="-107" width="18" height="24" fill="#fff"/><rect x="31" y="-115" width="10" height="6" rx="2" fill="#555"/><path d="M30 -100H42M30 -94H42M30 -88H38" '+stk('#9aa0a8',1.6)+'/>';
+ }else{
+  arm='<path d="M17 -98L30 -80L'+(o.prop==='phone'?'34 -100':'28 -86')+'" '+stk(C,9)+'/><circle cx="'+(o.prop==='phone'?34:28)+'" cy="'+(o.prop==='phone'?-102:-84)+'" r="5" fill="'+sk+'"/>';
+  if(o.prop==='phone')prop='<rect x="31" y="-118" width="9" height="16" rx="2" fill="#222"/><rect x="32.5" y="-116" width="6" height="11" fill="#8fd3ff"/>';
+  if(o.prop==='box')prop='<rect x="14" y="-98" width="42" height="9" rx="1.5" fill="#cf9f62" stroke="#8a6230" stroke-width="1.5"/><ellipse cx="35" cy="-102" rx="17" ry="4.5" fill="#d9a441"/><ellipse cx="35" cy="-103" rx="14" ry="3.4" fill="#f6d27a"/><circle cx="30" cy="-103" r="2" fill="#c0392b"/><circle cx="40" cy="-103" r="2" fill="#c0392b"/>';
+  top='<path d="M-20 -129A20 20 0 0 1 20 -129Q10 -147 0 -143Q-10 -147 -20 -129Z" fill="'+(o.hair||'#2a1a12')+'"/>';
  }
- const head='<rect x="-4" y="-108" width="8" height="9" fill="'+sk+'"/><circle cx="0" cy="-128" r="20" fill="'+sk+'"/>'+
+ const head='<rect x="-4" y="-108" width="8" height="9" width="8" height="9" fill="'+sk+'"/><circle cx="0" cy="-128" r="20" fill="'+sk+'"/>'+
   '<circle cx="-7" cy="-130" r="2.4" fill="#222"/><circle cx="7" cy="-130" r="2.4" fill="#222"/><path d="M-6 -121Q0 -115 6 -121" '+stk('#5a3a2a',2)+'/>'+
-  '<clipPath id="'+id+'"><circle cx="0" cy="-128" r="20"/></clipPath><image href="'+HEADS[R]+'" x="-20" y="-148" width="40" height="40" preserveAspectRatio="xMidYMid slice" clip-path="url(#'+id+')" onerror="this.style.display=\'none\'"/>';
+  '<clipPath id="'+id+'"><circle cx="0" cy="-128" r="20"/></clipPath>'+(HEADS[R]?'<image href="'+HEADS[R]+'" x="-20" y="-148" width="40" height="40" preserveAspectRatio="xMidYMid slice" clip-path="url(#'+id+')" onerror="this.style.display=\'none\'"/>':'');
  const label=R.toUpperCase(),w=Math.max(62,label.length*10+22),tx=o.tagx||0,ty=o.tagy==null?24:o.tagy,fs=o.tagfs||13;
  const tag='<g transform="translate('+tx+','+ty+')"><rect x="'+(-w/2)+'" y="-12" width="'+w+'" height="24" rx="4" fill="#f4f4ee" stroke="#1c1c1c" stroke-width="2"/><text y="5" text-anchor="middle" font-family="Courier New,monospace" font-weight="700" font-size="'+fs+'" letter-spacing="1.5" fill="#b03a16">'+label+'</text></g>';
  return '<g transform="translate('+o.x+','+o.y+')"><g class="idle" style="animation-delay:-'+(o.ph||0)+'s"><g transform="scale('+(o.s||1)+')">'+g+arm+head+top+prop+'</g></g>'+(o.tag===false?'':tag)+'</g>';
 }
 function crewSVG(){
  return ['chef','cashier','server','manager'].map((r,i)=>'<g class="crew" style="--cd:'+(2.4+i*.35).toFixed(2)+'s">'+staff({role:r,x:400+i*160,y:616,s:1.25,uid:'e',ph:i*.4,tagy:34,tagfs:14})+'</g>').join('');
+}
+function buildStore(){
+ const r=rng(9);let g='';
+ g+='<defs><radialGradient id="stGlow"><stop offset="0" stop-color="#ffd98a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient><pattern id="stPlank" width="46" height="10" patternUnits="userSpaceOnUse"><path d="M0 0V10" stroke="#000" stroke-opacity=".18" stroke-width="2"/></pattern><pattern id="stTile" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M0 0H40M0 0V40" stroke="#000" stroke-opacity=".22" stroke-width="2" fill="none"/></pattern></defs>';
+ g+='<rect width="1280" height="720" fill="#4a2e20"/><rect width="1280" height="590" fill="#6b4029"/><rect width="1280" height="590" fill="url(#stPlank)"/>';
+ g+='<rect y="340" width="1280" height="250" fill="#8f3216"/><rect y="340" width="1280" height="250" fill="url(#stTile)"/><rect y="332" width="1280" height="12" fill="#2f1b10"/>';
+ // shelf with jars (left)
+ g+='<rect x="60" y="318" width="250" height="8" fill="#2f1b10"/>';
+ for(let i=0;i<7;i++){const c=['#d9a441','#b03a16','#6aa56d','#f4f4ee','#c0392b','#e8d9a8','#8a6230'][i];g+='<rect x="'+(72+i*34)+'" y="'+(286+(i%2)*6)+'" width="24" height="'+(32-(i%2)*6)+'" rx="4" fill="'+c+'" stroke="#0004"/><rect x="'+(76+i*34)+'" y="'+(280+(i%2)*6)+'" width="16" height="7" rx="2" fill="#2f1b10"/>'}
+ // pizza oven (right, behind the server)
+ g+='<rect x="1000" y="262" width="250" height="172" rx="10" fill="#7a3b22" stroke="#3a1c10" stroke-width="5"/><path d="M1040 434V350Q1040 296 1125 296Q1210 296 1210 350V434Z" fill="#2a0f0a" stroke="#9a4a30" stroke-width="6"/>';
+ [1085,1125,1165].forEach((x,i)=>{g+='<ellipse class="fl2" cx="'+x+'" cy="420" rx="14" ry="'+(26+i*4)+'" fill="#ff9a2e" style="animation-delay:'+(i*.2)+'s"/><ellipse class="fl2" cx="'+x+'" cy="428" rx="8" ry="14" fill="#ffe08a" style="animation-delay:'+(i*.2)+'s"/>'});
+ // pendant lamps
+ [330,640,950].forEach(x=>{g+='<circle cx="'+x+'" cy="86" r="150" fill="url(#stGlow)" opacity=".45"/><rect x="'+(x-1.5)+'" y="0" width="3" height="52" fill="#1b1410"/><path d="M'+(x-34)+' 74Q'+x+' 28 '+(x+34)+' 74Z" fill="#e9a73a"/><ellipse cx="'+x+'" cy="76" rx="20" ry="5" fill="#ffe3a0"/>'});
+ // floor
+ g+='<rect y="585" width="1280" height="135" fill="#e9dcc0"/>';
+ for(let i=0;i<24;i++)for(let j=0;j<3;j++)if((i+j)%2)g+='<rect x="'+(i*60)+'" y="'+(585+j*46)+'" width="60" height="46" fill="#b03a16" opacity=".85"/>';
+ // cashier and server stand BEHIND the counter (counter front hides their legs)
+ g+=staff({role:'cashier',x:250,y:548,s:1.3,uid:'s',tag:false,ph:.2});
+ g+='<g transform="translate(2060,0) scale(-1,1)">'+staff({role:'server',x:1030,y:548,s:1.3,uid:'s',tag:false,ph:.7})+'</g>';
+ // counter
+ g+='<rect x="90" y="436" width="1100" height="14" rx="3" fill="#d9a56a" stroke="#6a4424" stroke-width="2"/><rect x="100" y="450" width="1080" height="136" fill="#7a4a2b"/><rect x="100" y="450" width="1080" height="136" fill="url(#stPlank)"/><rect x="100" y="450" width="1080" height="8" fill="#000" opacity=".25"/><rect x="90" y="582" width="1100" height="8" fill="#3a2414"/>';
+ // things on the counter: till, pizzas served, boxes
+ g+='<rect x="330" y="418" width="46" height="20" rx="3" fill="#2b2f3a"/><rect x="336" y="404" width="34" height="18" rx="2" fill="#8fd3ff" stroke="#cfd4d8" stroke-width="1.5"/><path d="M342 414L348 418L360 408" fill="none" stroke="#1e8a55" stroke-width="2.4" stroke-linecap="round"/>';
+ const pz=(x,y,w)=>'<ellipse cx="'+x+'" cy="'+(y+5)+'" rx="'+(w+8)+'" ry="6" fill="#8a5a33"/><ellipse cx="'+x+'" cy="'+y+'" rx="'+w+'" ry="'+(w*.22).toFixed(1)+'" fill="#d9a441"/><ellipse cx="'+x+'" cy="'+(y-1)+'" rx="'+(w-5)+'" ry="'+((w-5)*.2).toFixed(1)+'" fill="#f6d27a"/>'+[-.5,0,.45].map((k,i)=>'<circle cx="'+(x+k*w)+'" cy="'+(y-1+(i%2)*2)+'" r="3" fill="#c0392b"/>').join('')+'<path class="steam" d="M'+(x-8)+' '+(y-8)+'q-6 -10 0 -18q6 -8 0 -16" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>';
+ g+=pz(418,426,34)+pz(908,428,32)+'<g transform="translate(838,426)"><rect x="-34" y="-8" width="68" height="10" fill="#cf9f62" stroke="#8a6230"/><rect x="-30" y="-18" width="60" height="10" fill="#d9ad72" stroke="#8a6230"/></g>'+pz(1010,426,34);
+ // role tags on the counter front
+ const tg=(x,t)=>'<g transform="translate('+x+',520)"><rect x="-48" y="-13" width="96" height="26" rx="4" fill="#f4f4ee" stroke="#1c1c1c" stroke-width="2"/><text y="5" text-anchor="middle" font-family="Courier New,monospace" font-weight="700" font-size="14" letter-spacing="1.5" fill="#b03a16">'+t+'</text></g>';
+ g+=tg(250,'CASHIER')+tg(1085,'SERVER');
+ // customers in front of the counter
+ const G=[{x:360,coat:'#e0533a',prop:'phone',skin:'#f1c9a0',hair:'#1b1d19'},{x:500,coat:'#3b82c4',skin:'#e3b184',hair:'#2a1a12'},{x:640,coat:'#f2c14e',skin:'#f1c9a0',hair:'#3a2418'},{x:800,coat:'#c7589a',skin:'#e8bb92',hair:'#222'},{x:930,coat:'#6aa56d',prop:'box',skin:'#e3b184',hair:'#111'}];
+ G.forEach((q,i)=>{g+=staff({role:'guest',x:q.x,y:628,s:1.2,uid:'g'+i,tag:false,coat:q.coat,pants:i%2?'#33384a':'#2d3550',prop:q.prop,skin:q.skin,hair:q.hair,ph:i*.5})});
+ $('#storeSvg').innerHTML=g;
 }
 function buildStreet(){
  const r=rng(5);let s='';
@@ -1340,7 +1384,7 @@ function buildDash(){
 }
 
 /* ================= boot ================= */
-buildQR();buildStreet();buildOffice();buildPantry();$$('.who').forEach(w=>{const r=w.dataset.role;w.innerHTML='<div class="say">'+w.dataset.say+'</div><svg viewBox="0 0 250 300">'+staff({role:r,x:125,y:262,s:1.25,uid:'w'+r,tagy:30,tagfs:13})+'</svg>'});$('#srv13').innerHTML=staff({role:'server',x:1128,y:178,s:.85,uid:'p',tagx:-66,tagy:-62,tagfs:12});
+buildQR();buildStore();buildStreet();buildOffice();buildPantry();$$('.who').forEach(w=>{const r=w.dataset.role;w.innerHTML='<div class="say">'+w.dataset.say+'</div><svg viewBox="0 0 250 300">'+staff({role:r,x:125,y:262,s:1.25,uid:'w'+r,tagy:30,tagfs:13})+'</svg>'});$('#srv13').innerHTML=staff({role:'server',x:1128,y:178,s:.85,uid:'p',tagx:-66,tagy:-62,tagfs:12});
 $('#dots').innerHTML=scenes.map((s,i)=>'<i title="'+LABELS[i]+'" data-i="'+i+'"></i>').join('');
 $('#dots').addEventListener('click',e=>{const i=e.target.dataset.i;if(i!==undefined)go(+i,0)});
 $('#bn').onclick=next;$('#bp').onclick=prev;
