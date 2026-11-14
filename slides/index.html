@@ -1062,15 +1062,17 @@ function staff(o){
   if(Q==='balloon')prop='<path d="M32 -106L28 -180" '+stk('#999',1.4)+'/><ellipse cx="28" cy="-194" rx="16" ry="19" fill="#d94f2b" stroke="#0003"/><path d="M26 -176L28 -172L30 -176Z" fill="#d94f2b"/>';
   if(Q==='bag')prop='<path d="M28 -84L22 -72" '+stk('#8a6230',2.4)+'/><rect x="14" y="-74" width="22" height="24" rx="3" fill="#e8d9a8" stroke="#8a6230" stroke-width="1.5"/><path d="M19 -62H31" '+stk('#b03a16',2.4)+'/>';
   if(Q==='box')prop='<rect x="14" y="-98" width="42" height="9" rx="1.5" fill="#cf9f62" stroke="#8a6230" stroke-width="1.5"/><ellipse cx="35" cy="-102" rx="17" ry="4.5" fill="#d9a441"/><ellipse cx="35" cy="-103" rx="14" ry="3.4" fill="#f6d27a"/><circle cx="30" cy="-103" r="2" fill="#c0392b"/><circle cx="40" cy="-103" r="2" fill="#c0392b"/>';
+  if(HS==='long')g+='<path d="M-23 -128Q-25 -128 -23 -118L-21 -84Q-14 -78 -6 -84L0 -96L6 -84Q14 -78 21 -84L23 -118Q25 -128 23 -128Q20 -152 0 -152Q-20 -152 -23 -128Z" fill="'+hair+'"/>';
   const cap='<path d="M-20 -129A20 20 0 0 1 20 -129Q10 -147 0 -143Q-10 -147 -20 -129Z" fill="'+hair+'"/>';
   top={short:cap,
-   long:cap+'<path d="M-21 -128Q-28 -96 -13 -84L-5 -92Q-10 -108 -9 -122Z" fill="'+hair+'"/><path d="M21 -128Q28 -96 13 -84L5 -92Q10 -108 9 -122Z" fill="'+hair+'"/>',
+   long:'<path d="M-20 -128A20 20 0 0 1 20 -128Q14 -139 0 -138Q-12 -139 -20 -128Z" fill="'+hair+'"/>',
    bun:cap+'<circle cx="0" cy="-152" r="8" fill="'+hair+'"/>',
-   cap:'<path d="M-20 -131A20 20 0 0 1 20 -131L20 -127H-20Z" fill="'+(o.capColor||'#b03a16')+'"/><rect x="10" y="-136" width="22" height="5" rx="2.4" fill="'+(o.capColor||'#b03a16')+'"/>',
-   curly:[-3,-2,-1,0,1,2,3].map(k=>'<circle cx="'+(k*6.4)+'" cy="'+(-145+Math.abs(k)*3.4)+'" r="7.5" fill="'+hair+'"/>').join(''),
+   cap:'<path d="M-18 -140A20 20 0 0 1 18 -140Z" fill="'+(o.capColor||'#b03a16')+'"/><rect x="-18" y="-141" width="38" height="5" rx="2" fill="'+(o.capColor||'#b03a16')+'"/><rect x="12" y="-141" width="22" height="5" rx="2.4" fill="'+(o.capColor||'#b03a16')+'"/>',
+   curly:[200,225,250,275,300,325,350].map(a=>{const r=a*Math.PI/180;return '<circle cx="'+(Math.cos(r)*21).toFixed(1)+'" cy="'+(-128+Math.sin(r)*21).toFixed(1)+'" r="8.5" fill="'+hair+'"/>'}).join('')+'<path d="M-17 -131Q0 -146 17 -131Q0 -138 -17 -131Z" fill="'+hair+'"/>',
    bald:'<circle cx="-20" cy="-128" r="3.4" fill="'+sk+'"/><circle cx="20" cy="-128" r="3.4" fill="'+sk+'"/>'}[HS];
   if(o.glasses)top+='<circle cx="-7" cy="-130" r="5.6" '+stk('#222',1.8)+'/><circle cx="7" cy="-130" r="5.6" '+stk('#222',1.8)+'/><path d="M-1.4 -130H1.4" '+stk('#222',1.8)+'/>';
  }
+ if(!top&&(R==='server'||R==='manager'))top='<path d="M-20 -129A20 20 0 0 1 20 -129Q12 -145 -2 -142Q-14 -143 -20 -129Z" fill="'+(R==='server'?'#2a1a12':'#4a4f58')+'"/>';
  const head='<rect x="-4" y="-108" width="8" height="9" width="8" height="9" fill="'+sk+'"/><circle cx="0" cy="-128" r="20" fill="'+sk+'"/>'+
   '<circle cx="-7" cy="-130" r="2.4" fill="#222"/><circle cx="7" cy="-130" r="2.4" fill="#222"/><path d="M-6 -121Q0 -115 6 -121" '+stk('#5a3a2a',2)+'/>'+
   '<clipPath id="'+id+'"><circle cx="0" cy="-128" r="20"/></clipPath>'+(HEADS[R]?'<image href="'+HEADS[R]+'" x="-20" y="-148" width="40" height="40" preserveAspectRatio="xMidYMid slice" clip-path="url(#'+id+')" onerror="this.style.display=\'none\'"/>':'');
