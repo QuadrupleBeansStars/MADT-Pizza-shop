@@ -755,7 +755,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
         <tr><td><b>Same answer</b></td><td>Run a day twice and get the same numbers</td></tr>
         <tr><td><b>Bad data</b></td><td>A renamed item stops the job. Nothing is published</td></tr>
         <tr><td><b>The model</b></td><td>A new model must beat "same weekday last week"</td></tr></table></div>
-    </div><div class="who fade4" data-role="engineer" data-say="Red means nothing ships. I fix it first."></div></div><div class="rl fade5"><b>RULE</b> Run it on every pull request, every time. It costs 3 minutes and saves a bad morning.</div>
+    </div><div class="who fade4" data-role="cashier" data-say="Red means nothing ships. Fix it first."></div></div><div class="rl fade5"><b>RULE</b> Run it on every pull request, every time. It costs 3 minutes and saves a bad morning.</div>
   </section>
 
   <section class="scene plain" id="s17" data-env="plain" data-label="CD">
@@ -769,7 +769,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
       <div class="two2 fade3">
         <div class="c s2"><h4>When and how often</h4><p><b>02:30 to 05:30</b>, Monday to Wednesday nights.</p><p><b>1 to 2 releases</b> a week.</p><p>No releases Thursday to Sunday.</p></div>
         <div class="c s2"><h4>Why those days</h4><div class="wk"><div class="q"><i style="height:41px"></i>Mon</div><div class="q"><i style="height:41px"></i>Tue</div><div class="q"><i style="height:46px"></i>Wed</div><div class="b"><i style="height:52px"></i>Thu</div><div class="b"><i style="height:70px"></i>Fri</div><div class="b"><i style="height:78px"></i>Sat</div><div class="b"><i style="height:62px"></i>Sun</div></div><p style="font-size:13px;color:#6a6a60;margin:4px 0 0">Typical busy level. Green = quietest days.</p></div></div>
-    </div><div class="who fade4" data-role="engineer" data-say="Going back is one line. Anyone on call can do it."></div></div><div class="rl fade5"><b>RULE</b> Always keep the old version. If going back is easy, nobody is afraid to ship.</div>
+    </div><div class="who fade4" data-role="server" data-say="Going back is one line. Anyone on call can do it."></div></div><div class="rl fade5"><b>RULE</b> Always keep the old version. If going back is easy, nobody is afraid to ship.</div>
   </section>
 
   <section class="scene plain" id="s18" data-env="plain" data-label="When it breaks">
@@ -814,7 +814,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
           <tr><td>Pepperoni L</td><td>190</td><td><b>205</b></td></tr><tr><td>Pepperoni M</td><td>102</td><td><b>133</b></td></tr>
           <tr><td>Hawaiian L</td><td>89</td><td><b>130</b></td></tr><tr><td>Margherita M</td><td>130</td><td><b>136</b></td></tr><tr><td>Coke</td><td>206</td><td><b>253</b></td></tr></table></div>
       <div class="chips2 fade3"><span><b>Error per day</b> 0.30</span><span><b>Error per order cycle</b> 0.16</span><span>The misses cancel out over a cycle</span></div>
-    </div><div class="who fade4" data-role="buyer" data-say="I order Monday and Thursday. Look 4 days ahead."></div></div><div class="rl fade5"><b>RULE</b> Forecast to the end of the cycle, then order extra where running out costs more than waste.</div>
+    </div><div class="who fade4" data-role="chef" data-say="I order Monday and Thursday. Look 4 days ahead."></div></div><div class="rl fade5"><b>RULE</b> Forecast to the end of the cycle, then order extra where running out costs more than waste.</div>
   </section>
 
   <section class="scene plain" id="s21" data-env="plain" data-label="Cost">
@@ -1035,10 +1035,10 @@ function person(o){
 }
 
 /* ---------- the four staff: Chef, Cashier, Server, Manager ---------- */
-const HEADS={chef:'heads/chef.png',cashier:'heads/cashier.png',server:'heads/server.png',manager:'heads/manager.png',engineer:'heads/engineer.png',buyer:'heads/buyer.png'};  // put a square photo here; missing file = plain face
+const HEADS={chef:'heads/chef.png',cashier:'heads/cashier.png',server:'heads/server.png',manager:'heads/manager.png'};  // put a square photo here; missing file = plain face
 function staff(o){
  const sk='#f1c9a0',R=o.role,P=o.pants||'#2d3550',id='hc'+R+(o.uid||''),stk=(c,w)=>'stroke="'+c+'" stroke-width="'+w+'" stroke-linecap="round" fill="none"';
- const C={chef:'#fbfbf6',cashier:'#3b82c4',server:'#f4f4ee',manager:'#3d8fa5',engineer:'#6a5aa8',buyer:'#6aa56d'}[R];
+ const C={chef:'#fbfbf6',cashier:'#3b82c4',server:'#f4f4ee',manager:'#3d8fa5'}[R];
  let g='<ellipse cx="0" cy="0" rx="30" ry="5" fill="#000" opacity=".3"/>'+
   '<rect x="-12" y="-54" width="10.5" height="50" rx="5" fill="'+P+'"/><rect x="1.5" y="-54" width="10.5" height="50" rx="5" fill="'+P+'"/>'+
   '<rect x="-15" y="-8" width="15" height="8" rx="4" fill="#1b1b1f"/><rect x="0" y="-8" width="15" height="8" rx="4" fill="#1b1b1f"/>'+
@@ -1063,15 +1063,6 @@ function staff(o){
   g+='<path d="M-9 -106L0 -86L9 -106Z" fill="#fff"/><path d="M-10 -106L0 -84L-12 -60" '+stk('#2b6f82',1.6)+'/><path d="M10 -106L0 -84L12 -60" '+stk('#2b6f82',1.6)+'/>';
   arm='<path d="M17 -98L29 -78L25 -88" '+stk(C,9)+'/><circle cx="25" cy="-86" r="5" fill="'+sk+'"/>';
   prop='<rect x="24" y="-112" width="24" height="32" rx="2.5" fill="#c98d58" stroke="#8a6230"/><rect x="27" y="-107" width="18" height="24" fill="#fff"/><rect x="31" y="-115" width="10" height="6" rx="2" fill="#555"/><path d="M30 -100H42M30 -94H42M30 -88H38" '+stk('#9aa0a8',1.6)+'/>';
- }else if(R==='engineer'){
-  g+='<path d="M-15 -106Q0 -92 15 -106L12 -98Q0 -86 -12 -98Z" fill="#54478a"/><rect x="-10" y="-74" width="20" height="13" rx="3" fill="#54478a"/><path d="M-4 -98V-84M4 -98V-84" '+stk('#d9d4ee',1.6)+'/>';
-  arm='<path d="M17 -98L30 -80L27 -88" '+stk(C,9)+'/><circle cx="27" cy="-86" r="5" fill="'+sk+'"/>';
-  prop='<rect x="22" y="-118" width="32" height="22" rx="2.5" fill="#2b2f3a" stroke="#cfd4d8" stroke-width="1.5"/><path d="M27 -112H42M27 -107H48M27 -102H38" '+stk('#6fe08f',1.8)+'/><rect x="18" y="-96" width="40" height="5" rx="2" fill="#aab2b7"/>';
-  top='<path d="M-21 -130A21 21 0 0 1 21 -130" '+stk('#333',3.5)+'/><circle cx="-21" cy="-128" r="5" fill="#333"/><circle cx="21" cy="-128" r="5" fill="#333"/>';
- }else{
-  g+='<path d="M-9 -106L0 -92L9 -106Z" fill="#fff"/><rect x="-14" y="-84" width="28" height="4" fill="#4a7a4f"/>';
-  arm='<path d="M17 -98L27 -80L30 -88" '+stk(C,9)+'/><circle cx="29" cy="-86" r="5" fill="'+sk+'"/>';
-  prop='<rect x="22" y="-100" width="34" height="26" rx="2" fill="#cf9f62" stroke="#8a6230" stroke-width="1.5"/><rect x="36" y="-100" width="6" height="26" fill="#e3c08a"/><path d="M26 -92H32M26 -86H32" '+stk('#8a6230',1.6)+'/>';
  }
  const head='<rect x="-4" y="-108" width="8" height="9" fill="'+sk+'"/><circle cx="0" cy="-128" r="20" fill="'+sk+'"/>'+
   '<circle cx="-7" cy="-130" r="2.4" fill="#222"/><circle cx="7" cy="-130" r="2.4" fill="#222"/><path d="M-6 -121Q0 -115 6 -121" '+stk('#5a3a2a',2)+'/>'+
@@ -1081,7 +1072,7 @@ function staff(o){
  return '<g transform="translate('+o.x+','+o.y+')"><g class="idle" style="animation-delay:-'+(o.ph||0)+'s"><g transform="scale('+(o.s||1)+')">'+g+arm+head+top+prop+'</g></g>'+(o.tag===false?'':tag)+'</g>';
 }
 function crewSVG(){
- return ['chef','cashier','server','manager','engineer','buyer'].map((r,i)=>'<g class="crew" style="--cd:'+(2.4+i*.3).toFixed(2)+'s">'+staff({role:r,x:315+i*130,y:616,s:1.15,uid:'e',ph:i*.4,tagy:34,tagfs:13})+'</g>').join('');
+ return ['chef','cashier','server','manager'].map((r,i)=>'<g class="crew" style="--cd:'+(2.4+i*.35).toFixed(2)+'s">'+staff({role:r,x:400+i*160,y:616,s:1.25,uid:'e',ph:i*.4,tagy:34,tagfs:14})+'</g>').join('');
 }
 function buildStreet(){
  const r=rng(5);let s='';
