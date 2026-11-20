@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MADT Pizza: order</title>
+<style>
+:root{--ink:#1b1d19;--paper:#fffaf0;--ember:#b03a16;--cheese:#f2c14e;--green:#2f7d3a}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:150px}
+header{background:var(--ember);color:#fff;padding:18px 16px 14px}header h1{margin:0;font-size:24px}header p{margin:4px 0 0;opacity:.9;font-size:14px}
+h2{margin:22px 16px 8px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ember)}
+.it{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #0001;background:#fff}
+.it .nm{flex:1;min-width:0}.it .nm b{display:block}.it .nm small{color:#666}
+.sz{display:flex;gap:4px;margin-top:6px}.sz button{border:1.5px solid #bbb;background:#fff;border-radius:14px;padding:3px 11px;font:600 13px system-ui,sans-serif}.sz button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.st{display:flex;align-items:center;gap:8px}.st button{width:36px;height:36px;border-radius:50%;border:0;background:var(--cheese);font:700 20px system-ui,sans-serif}.st button:disabled{opacity:.35}.st span{min-width:18px;text-align:center;font-weight:700}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid var(--ink);padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+.bar textarea{width:100%;height:44px;border:1.5px solid #bbb;border-radius:8px;padding:8px;font:inherit;resize:none}
+.bar .row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:12px}.bar .tot{font-size:13px;color:#555}.bar .tot b{display:block;font-size:20px;color:var(--ink)}
+.go{flex:none;border:0;background:var(--green);color:#fff;border-radius:26px;padding:13px 26px;font:700 17px system-ui,sans-serif}.go:disabled{background:#aaa}
+.done{display:none;padding:40px 24px;text-align:center}.done h2{font-size:28px;letter-spacing:0;text-transform:none;color:var(--green);margin:0 0 8px}.done p{margin:6px 0}.done button{margin-top:20px;border:2px solid var(--ink);background:#fff;border-radius:24px;padding:11px 24px;font:700 16px system-ui,sans-serif}
+.err{color:#b00020;font-size:14px;margin-top:6px}
+.ticket{margin:18px auto 0;max-width:320px;text-align:left;background:#fff;border:2px dashed #999;padding:12px 16px;font:14px ui-monospace,Menlo,monospace}
+</style></head><body>
+<header><h1>MADT Pizza</h1><p>Order anything. Messy notes are welcome: your order becomes our data.</p></header>
+<div id="menu"></div>
+<div class="bar" id="bar"><textarea id="note" maxlength="140" placeholder="Note (optional): no chili, extra cheese…"></textarea>
+<div class="row"><div class="tot"><span id="cnt">0 items</span><b id="tot">฿0</b></div><button class="go" id="go" disabled>Send order</button></div><div class="err" id="err"></div></div>
+<div class="done" id="done"><h2>Order sent!</h2><p>Look at the big screen.</p><div class="ticket" id="tk"></div><button id="again">Order again</button></div>
+<script>
+'use strict';
+var TOPIC=(new URLSearchParams(location.search)).get('t')||'madt-pizza-9ytv98sn';
+var CAT=null,cart={},size={},$=function(s){return document.querySelector(s)};
+var B=function(n){return '฿'+n.toLocaleString('en-US')};
+function half(x){return Math.floor(x+.5)}
+fetch('../pipeline/qr_menu_catalog.json').then(function(r){return r.json()}).then(function(c){CAT=c;render()}).catch(function(){$('#menu').innerHTML='<p style="padding:20px">Menu could not load. Check your connection and refresh.</p>'});
+var GROUPS=[['pizza','Pizza'],['pasta','Pasta'],['snack','Snacks'],['drink','Drinks']];
+function skuFor(base,sz){return base+'-'+sz}
+function render(){
+  var h='',byBase={};
+  GROUPS.forEach(function(g){
+    var items=CAT.items.filter(function(i){return i.category===g[0]});h+='<h2>'+g[1]+'</h2>';
+    if(g[0]==='pizza'){
+      var seen={};items.forEach(function(i){var base=i.sku.slice(0,3);if(seen[base])return;seen[base]=1;size[base]=size[base]||'M';
+        h+='<div class="it" data-base="'+base+'"><div class="nm"><b>'+i.name.replace(/ Pizza \(\w\)/,'')+' Pizza</b><small class="pr"></small><div class="sz">'+['S','M','L'].map(function(s){return '<button data-s="'+s+'">'+s+'</button>'}).join('')+'</div></div><div class="st"><button data-d="-1">−</button><span class="q">0</span><button data-d="1">+</button></div></div>'});
+    }else items.forEach(function(i){h+='<div class="it" data-sku="'+i.sku+'"><div class="nm"><b>'+i.name+'</b><small>'+B(i.price_thb)+'</small></div><div class="st"><button data-d="-1">−</button><span class="q">0</span><button data-d="1">+</button></div></div>'});
+  });
+  $('#menu').innerHTML=h;paint();
+}
+function curSku(el){return el.dataset.sku||skuFor(el.dataset.base,size[el.dataset.base])}
+function paint(){
+  document.querySelectorAll('.it').forEach(function(el){var sku=curSku(el),it=CAT.by?CAT.by[sku]:CAT.items.find(function(i){return i.sku===sku});
+    el.querySelector('.q').textContent=cart[sku]||0;
+    if(el.dataset.base){el.querySelector('.pr').textContent=B(it.price_thb);el.querySelectorAll('.sz button').forEach(function(b){b.classList.toggle('on',b.dataset.s===size[el.dataset.base])});
+      var other=['S','M','L'].filter(function(s){return s!==size[el.dataset.base]&&cart[skuFor(el.dataset.base,s)]}).map(function(s){return s+'×'+cart[skuFor(el.dataset.base,s)]});
+      el.querySelector('.pr').textContent=B(it.price_thb)+(other.length?'   · also '+other.join(', '):'')}
+    el.querySelector('[data-d="-1"]').disabled=!cart[sku]});
+  var n=0,sub=0;Object.keys(cart).forEach(function(k){if(!cart[k])return;n+=cart[k];sub+=cart[k]*CAT.items.find(function(i){return i.sku===k}).price_thb});
+  var t=totals(sub);$('#cnt').textContent=n+(n===1?' item':' items')+' · incl. service charge and VAT';$('#tot').textContent=B(t.total);$('#go').disabled=!n;
+}
+function totals(sub){var svc=half(sub*CAT.fees.service_charge_rate),vat=half((sub+svc)*CAT.fees.vat_rate);return {discount:0,svc:svc,vat:vat,total:sub+svc+vat}}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b||!CAT)return;var el=b.closest('.it');
+  if(el&&b.dataset.s){size[el.dataset.base]=b.dataset.s;paint();return}
+  if(el&&b.dataset.d){var sku=curSku(el);cart[sku]=Math.max(0,Math.min(20,(cart[sku]||0)+(+b.dataset.d)));paint()}
+});
+function iso7(t){return new Date(t+7*36e5).toISOString().slice(0,19)+'+07:00'}
+function rid(){var a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',s='';for(var i=0;i<5;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+function records(){
+  var t=Date.now(),tag=new Date(t+7*36e5-10*36e5).toISOString().slice(0,10).replace(/-/g,''),note=$('#note').value.trim();
+  var lines=Object.keys(cart).filter(function(k){return cart[k]}).map(function(k,i){var it=CAT.items.find(function(x){return x.sku===k});return {sku:k,qty:cart[k],unit_price:it.price_thb,modifiers:[],note:i===0?note:''}});
+  var sub=lines.reduce(function(s,l){return s+l.qty*l.unit_price},0),tt=totals(sub),id='P-'+tag+'-QR'+rid();
+  var base={pos_order_id:id,app_order_no:'#'+id.slice(-5),ordered_at:iso7(t),channel:'QR_DINEIN',lines:lines,discount_code:'',discount_thb:0,service_charge_thb:tt.svc,vat_thb:tt.vat,total_thb:tt.total,payment_method:'qr',note:note,table_no:null};
+  return ['PLACED','PAID'].map(function(st){return Object.assign({status:st},base)});
+}
+$('#go').onclick=function(){
+  var b=this;b.disabled=true;b.textContent='Sending…';$('#err').textContent='';
+  var recs=records();
+  try{var box=JSON.parse(localStorage.getItem('madt-qr-outbox')||'[]');localStorage.setItem('madt-qr-outbox',JSON.stringify(box.concat(recs).slice(-400)))}catch(e){}
+  try{var bc=new BroadcastChannel('madt-pizza-orders');bc.postMessage({type:'orders',records:recs});bc.close()}catch(e){}
+  fetch('https://ntfy.sh/'+encodeURIComponent(TOPIC),{method:'POST',body:JSON.stringify(recs)}).then(function(r){if(!r.ok)throw new Error(r.status);return r}).then(function(){
+    $('#tk').innerHTML=recs[0].app_order_no+'<br>'+recs[0].lines.map(function(l){return l.qty+' × '+l.sku}).join('<br>')+'<br>total '+B(recs[0].total_thb);
+    $('#menu').style.display=$('#bar').style.display='none';$('#done').style.display='block';window.scrollTo(0,0);
+  }).catch(function(){$('#err').textContent='Could not send. Check your connection and tap Send again.';b.disabled=false;b.textContent='Send order'});
+};
+$('#again').onclick=function(){cart={};$('#note').value='';$('#done').style.display='none';$('#menu').style.display=$('#bar').style.display='';$('#go').textContent='Send order';paint()};
+</script></body></html>

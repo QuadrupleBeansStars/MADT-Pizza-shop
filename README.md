@@ -15,6 +15,7 @@ ER model at each layer, and the decisions worth defending in a review.
 |---|---|
 | `README.md` | This document — the full write-up, with all six diagrams inline |
 | `README-minimal.md` | The minimal version: sales facts at line grain, options from a pick list, 3 aggregate tables, owner dashboard only |
+| `ordering-app/index.html` | Clickable UX/UI prototype of the QR dine-in ordering app (the source of dine-in orders). Thai and English. See `ordering-app/README.md` |
 | `docs/warehouse-minimal.html` / `docs/warehouse-minimal.th.html` | Presentation page for the minimal version. English and Thai |
 | `notebooks/warehouse_minimal.ipynb` | Runnable minimal build, from sources to the owner dashboard. English and Thai |
 | `diagrams/minimal-01-pipeline.mmd`, `diagrams/minimal-02-er-sales-star.mmd` | Minimal pipeline (2 sources → 2 facts → 3 aggregates → owner dashboard) and its star |
@@ -23,6 +24,9 @@ ER model at each layer, and the decisions worth defending in a review.
 | `docs/warehouse-design.html` / `docs/warehouse-design.th.html` | The project's warehouse spec, from staging to marts: layers and access rules, every dimension and fact table, the chapter 5 conventions each table follows, how the nightly load runs, the five data marts and their six aggregate tables, and build status. English and Thai |
 | `notebooks/data_flow_demo.ipynb` | The same flow as runnable code: fake POS / Grab / LINE MAN JSON exports → Landing → Raw (Parquet) → Trusted (DuckDB star schema) → Refined (marts), with dedupe, business day and replay from Raw. English with Thai notes |
 | `notebooks/warehouse_design.ipynb` | Why build a warehouse, how ours was designed (4 steps, conformance matrix, SCD2, special-case rows, surrogate key pipeline), and the fact table rules behind every `FCT_*` table, each shown as a small runnable demo. English and Thai, for study |
+| `notebooks/cicd_mlops_education.ipynb` | CI/CD and MLOps, for study (MADT8102 assignment). Tests as a CI robot, a release with smoke test and rollback, then a demand forecast with experiment tracking, a model registry, a promotion rule, monitoring and retraining. Nothing deploys: it all runs in a `_lab/` folder. English |
+| `pipeline/pizza_pipeline.py` | The whole pipeline in one file: fake sources, landing → raw → trusted → marts, quality gates, the forecast model, registry and monitoring. Plain pandas and numpy |
+| `pipeline/test_pizza_pipeline.py` | The 15 checks CI would run on every pull request. `pip install pytest pandas numpy`, then `pytest pipeline -q` |
 | `diagrams/01-pipeline-flow.mmd` | Source → raw → staging → dimensional warehouse → aggregates by data mart → consumer flow |
 | `diagrams/02-er-sales-orders.mmd` | ER: orders, lines and modifiers, with channels, customers and menu items |
 | `diagrams/03-er-inventory-supply.mmd` | ER: ingredients, recipes, stock movements, suppliers, POs |
