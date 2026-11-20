@@ -1125,13 +1125,40 @@ function hhmm(t){var d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes()
 function topsText(it){return TOPS.filter(function(t){return it.tops[t.id]}).map(function(t){return t.name}).join(', ')}
 function lineDone(l){return Date.now()>=l.readyAt}
 function placeOrder(){
-  var t=Date.now(),w=waitOf(),lines=[];
+  var t=Date.now(),w=waitOf(),lines=[],cart0=state.cart.slice(),pay0=state.pay;
   state.cart.forEach(function(it){var tp=it.cat===0?topsText(it):'';lines.push({name:lineName(it),qty:it.qty,price:unitOf(it)*it.qty,detail:tp?'เพิ่ม: '+tp:'',note:it.note||'',readyAt:t+minOf(it)*MIN_MS})});
   order={no:'#MADT-'+(2000+Math.floor(Math.random()*900)),at:t,wait:w,readyAt:t+w*MIN_MS,pz:state.cart.some(function(it){return it.cat===0}),lines:lines,discount:discount(),code:state.promo||'',svc:svcOf(net()),vat:vatOf(net()),total:total(),pay:PAY[state.pay][1],note:state.note};
   orders.unshift(order);saveOrders();
+  try{emitQrOrder(order,cart0,pay0)}catch(e){}
   state=fresh();cur=draft(cur.cat,cur.idx);noteIn.value='';promoIn.value='';$('#promoMsg').textContent='';renderExtras();
   try{localStorage.removeItem('madt-cart2')}catch(e){}
 }
+
+/* ---------- QR order feed: the same JSON the data pipeline reads (pipeline/qr_menu_catalog.json) ----------
+   Every confirmed order becomes two POS records (PLACED, then PAID) with item codes, saved to
+   localStorage 'madt-qr-outbox' and broadcast on 'madt-pizza-orders' (the slides listen on both). */
+var QR_SKU=[['NEA','TRU','HAW','MEA','SEA','CHE','PEP'],['SPG-CAR','SPG-BOL','SPG-SEA','SPG-PES'],['GAR-S','WNG-S','FRY-S','SAL-S'],['COKE','LTEA','WATR','SODA']];
+function skuOf(it){return it.cat===0?QR_SKU[0][it.idx]+'-'+it.size:QR_SKU[it.cat][it.idx]}
+function basePriceOf(it){var p=MENU[it.cat][it.idx].price;return it.cat===0?p+SIZE[it.size].d:p}
+function iso7(t){return new Date(t+7*36e5).toISOString().slice(0,19)+'+07:00'}
+function readOutbox(){try{var a=JSON.parse(localStorage.getItem('madt-qr-outbox')||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+function qrRecords(o,cart,pay,outbox){
+  var tag=new Date(o.at+7*36e5-10*36e5).toISOString().slice(0,10).replace(/-/g,'');   /* business day: the shop's day starts at 10:00 */
+  var seq=outbox.filter(function(r){return r.status==='PLACED'&&r.pos_order_id.indexOf('P-'+tag+'-QR')===0}).length+1;
+  var lines=cart.map(function(it){var mods=it.cat===0?TOPS.filter(function(t){return it.tops[t.id]}).map(function(t){return {code:'TOP-'+t.id.toUpperCase(),price:TOP_PRICE}}):[];
+    return {sku:skuOf(it),qty:it.qty,unit_price:basePriceOf(it),modifiers:mods,note:it.note||''}});
+  var base={pos_order_id:'P-'+tag+'-QR'+('00'+seq).slice(-3),app_order_no:o.no,ordered_at:iso7(o.at),channel:'QR_DINEIN',lines:lines,
+    discount_code:o.code||'',discount_thb:o.discount,service_charge_thb:o.svc,vat_thb:o.vat,total_thb:o.total,payment_method:PAY[pay][0],note:o.note||'',table_no:null};
+  return ['PLACED','PAID'].map(function(st){return Object.assign({status:st},base)});
+}
+function emitQrOrder(o,cart,pay){
+  var box=readOutbox(),recs=qrRecords(o,cart,pay,box);
+  box=box.concat(recs).slice(-400);
+  try{localStorage.setItem('madt-qr-outbox',JSON.stringify(box))}catch(e){}
+  window.MADT_QR_OUTBOX=box;
+  try{var bc=new BroadcastChannel('madt-pizza-orders');bc.postMessage({type:'orders',records:recs});bc.close()}catch(e){}
+}
+window.madtExportOrders=function(){return JSON.stringify(readOutbox(),null,1)};
 
 function saveOrders(){try{localStorage.setItem('madt-orders',JSON.stringify(orders.slice(0,20)))}catch(e){}}
 function restoreOrder(){

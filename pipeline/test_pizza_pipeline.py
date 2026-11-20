@@ -7,6 +7,7 @@ How to read a test: it has a name that says what must be true, then three steps.
     arrange (set up the data), act (run the code), assert (check the result).
 If one assert is false the test fails, the pull request turns red, and nobody can merge.
 """
+import json
 import shutil
 import sys
 from datetime import date, timedelta
@@ -181,3 +182,58 @@ def test_order_cycles_leave_no_gap_and_no_overlap():
             day += timedelta(days=1)
     assert covered == sorted(set(covered))
     assert all((b - a).days == 1 for a, b in zip(covered, covered[1:]))
+
+
+# ---------- the QR ordering app (ordering-app/index.html) ----------
+def _app_order(**over):
+    """An order shaped exactly like the one the ordering app emits (2 Pepperoni L + cheese, garlic bread, 3 Cola, MADT5)."""
+    rec = {"status": "PLACED", "pos_order_id": "P-20261120-QR001", "app_order_no": "#MADT-2132",
+           "ordered_at": "2026-11-20T18:45:53+07:00", "channel": "QR_DINEIN",
+           "lines": [{"sku": "PEP-L", "qty": 2, "unit_price": 359, "modifiers": [{"code": "TOP-CHEESE", "price": 15}], "note": ""},
+                     {"sku": "GAR-S", "qty": 1, "unit_price": 69, "modifiers": [], "note": ""},
+                     {"sku": "COKE", "qty": 3, "unit_price": 35, "modifiers": [], "note": ""}],
+           "discount_code": "MADT5", "payment_method": "qr", "note": "", "table_no": None}
+    rec.update(pp.qr_order_totals(rec["lines"], "MADT5"))
+    rec.update(over)
+    return rec
+
+
+def test_app_order_that_follows_the_menu_is_clean():
+    assert pp.validate_qr_order(_app_order()) == []
+
+
+def test_totals_match_the_hand_calculation():
+    # items 2x(359+15) + 69 + 3x35 = 922, promo -92, service 83, VAT 64  -> 977
+    t = pp.qr_order_totals(_app_order()["lines"], "MADT5")
+    assert t == {"discount_thb": 92, "service_charge_thb": 83, "vat_thb": 64, "total_thb": 977}
+
+
+def test_wrong_price_unknown_item_and_wrong_total_are_caught():
+    cheap = _app_order()
+    cheap["lines"][0]["unit_price"] = 300
+    assert any("price 300" in p for p in pp.validate_qr_order(cheap))
+    ghost = _app_order()
+    ghost["lines"][1]["sku"] = "PIZ-XXL"
+    assert any("unknown item code" in p for p in pp.validate_qr_order(ghost))
+    assert any("total_thb" in p for p in pp.validate_qr_order(_app_order(total_thb=1)))
+
+
+def test_toppings_only_on_pizza():
+    r = _app_order()
+    r["lines"][2]["modifiers"] = [{"code": "TOP-CHEESE", "price": 15}]
+    assert any("only go on pizzas" in p for p in pp.validate_qr_order(r))
+
+
+def test_pipeline_reads_an_app_order_without_changes():
+    rec = _app_order()
+    raw = pd.DataFrame({"payload": [json.dumps(rec)], "ingest_ts": [pd.Timestamp("2026-11-21", tz=pp.BKK)],
+                        "source_file": ["orders_20261120.json"]})
+    rows = pp.adapt_pos(raw)
+    assert list(rows.menu_item_nk) == ["PEP-L", "GAR-S", "COKE"] and list(rows.channel_code) == ["QR_DINEIN"] * 3
+
+
+def test_app_menu_and_pipeline_menu_share_their_codes():
+    cat = pp.load_qr_catalog()
+    shared = {"PEP-L", "PEP-M", "HAW-L", "COKE"}
+    assert shared <= set(cat["by_sku"]) and shared <= set(pp.SKUS)
+    assert len(cat["items"]) == 33

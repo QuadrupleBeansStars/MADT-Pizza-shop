@@ -66,6 +66,76 @@ def business_date(ts: pd.Series) -> pd.Series:
 
 
 # =====================================================================================
+# 1b. QR ORDERING APP  (the real source behind the QR_DINEIN channel)
+# =====================================================================================
+# ordering-app/index.html sends one POS-shaped record per order event (PLACED, then PAID).
+# qr_menu_catalog.json is the menu the app and this file agree on: item codes, prices,
+# toppings, service charge and VAT. validate_qr_order() is the contract check.
+QR_CATALOG_PATH = Path(__file__).parent / "qr_menu_catalog.json"
+
+
+def load_qr_catalog(path: Path = QR_CATALOG_PATH) -> dict:
+    cat = json.loads(Path(path).read_text(encoding="utf-8"))
+    cat["by_sku"] = {i["sku"]: i for i in cat["items"]}
+    cat["by_mod"] = {m["code"]: m for m in cat["modifiers"]}
+    return cat
+
+
+def _half_up(x: float) -> int:
+    """Round .5 up like the app's JavaScript Math.round (Python's round() goes to the even number)."""
+    return int(x + 0.5)
+
+
+def qr_order_totals(lines: list, promo: str = "", catalog: dict | None = None) -> dict:
+    """Recompute what the app should have charged: items + toppings, promo, 10% service, 7% VAT."""
+    cat = catalog or load_qr_catalog()
+    sub = sum(l["qty"] * (l["unit_price"] + sum(m["price"] for m in l.get("modifiers", []))) for l in lines)
+    discount = _half_up(sub * cat["promo_codes"].get(promo, 0))
+    net = sub - discount
+    svc = _half_up(net * cat["fees"]["service_charge_rate"])
+    vat = _half_up((net + svc) * cat["fees"]["vat_rate"])
+    return {"discount_thb": discount, "service_charge_thb": svc, "vat_thb": vat, "total_thb": net + svc + vat}
+
+
+def validate_qr_order(rec: dict, catalog: dict | None = None) -> list:
+    """Return a list of problems with one QR order record. An empty list means it is clean."""
+    cat = catalog or load_qr_catalog()
+    bad = []
+    if rec.get("channel") != "QR_DINEIN":
+        bad.append(f"channel is {rec.get('channel')!r}, expected QR_DINEIN")
+    if rec.get("status") not in ("PLACED", "PAID"):
+        bad.append(f"status is {rec.get('status')!r}")
+    try:
+        if pd.Timestamp(rec["ordered_at"]).utcoffset() != pd.Timedelta(hours=7):
+            bad.append("ordered_at is not Bangkok time (+07:00)")
+    except Exception:
+        bad.append("ordered_at is missing or not a timestamp")
+    if not rec.get("lines"):
+        bad.append("order has no lines")
+    for l in rec.get("lines", []):
+        item = cat["by_sku"].get(l.get("sku"))
+        if item is None:
+            bad.append(f"unknown item code {l.get('sku')!r}")
+            continue
+        if l.get("unit_price") != item["price_thb"]:
+            bad.append(f"{l['sku']}: price {l.get('unit_price')} but the menu says {item['price_thb']}")
+        if not isinstance(l.get("qty"), int) or l["qty"] < 1:
+            bad.append(f"{l['sku']}: quantity {l.get('qty')!r}")
+        for m in l.get("modifiers", []):
+            known = cat["by_mod"].get(m.get("code"))
+            if known is None or known["price_thb"] != m.get("price"):
+                bad.append(f"{l['sku']}: topping {m.get('code')!r} is not on the menu at that price")
+            if item["category"] != "pizza":
+                bad.append(f"{l['sku']}: toppings only go on pizzas")
+    if not bad:
+        want = qr_order_totals(rec["lines"], rec.get("discount_code", ""), cat)
+        for k, v in want.items():
+            if rec.get(k) != v:
+                bad.append(f"{k} is {rec.get(k)} but should be {v}")
+    return bad
+
+
+# =====================================================================================
 # 2. FAKE SOURCES  (what the outside world sends us)
 # =====================================================================================
 # The "truth" behind the fake sales. Real life has no such table; we use it here so we can

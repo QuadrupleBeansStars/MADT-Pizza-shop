@@ -1,0 +1,368 @@
+{
+ "version": 1,
+ "source": "ordering-app/index.html (PR #1); prices are placeholders",
+ "currency": "THB",
+ "channel": "QR_DINEIN",
+ "size_price_delta_thb": {
+  "S": -60,
+  "M": 0,
+  "L": 70
+ },
+ "modifiers": [
+  {
+   "code": "TOP-CHEESE",
+   "name": "Extra cheese",
+   "price_thb": 15,
+   "app_id": "cheese"
+  },
+  {
+   "code": "TOP-PEPPERONI",
+   "name": "Pepperoni",
+   "price_thb": 15,
+   "app_id": "pepperoni"
+  },
+  {
+   "code": "TOP-BACON",
+   "name": "Bacon",
+   "price_thb": 15,
+   "app_id": "bacon"
+  },
+  {
+   "code": "TOP-HAM",
+   "name": "Ham",
+   "price_thb": 15,
+   "app_id": "ham"
+  },
+  {
+   "code": "TOP-SAUSAGE",
+   "name": "Sausage",
+   "price_thb": 15,
+   "app_id": "sausage"
+  },
+  {
+   "code": "TOP-MUSHROOM",
+   "name": "Mushroom",
+   "price_thb": 15,
+   "app_id": "mushroom"
+  },
+  {
+   "code": "TOP-PINE",
+   "name": "Pineapple",
+   "price_thb": 15,
+   "app_id": "pine"
+  },
+  {
+   "code": "TOP-CORN",
+   "name": "Sweet corn",
+   "price_thb": 15,
+   "app_id": "corn"
+  }
+ ],
+ "fees": {
+  "service_charge_rate": 0.1,
+  "vat_rate": 0.07,
+  "vat_on": "net + service charge"
+ },
+ "promo_codes": {
+  "MADT5": 0.1
+ },
+ "items": [
+  {
+   "sku": "NEA-S",
+   "name": "Neapolitan Pizza (S)",
+   "category": "pizza",
+   "size": "S",
+   "price_thb": 199,
+   "app_cat": 0,
+   "app_idx": 0
+  },
+  {
+   "sku": "NEA-M",
+   "name": "Neapolitan Pizza (M)",
+   "category": "pizza",
+   "size": "M",
+   "price_thb": 259,
+   "app_cat": 0,
+   "app_idx": 0
+  },
+  {
+   "sku": "NEA-L",
+   "name": "Neapolitan Pizza (L)",
+   "category": "pizza",
+   "size": "L",
+   "price_thb": 329,
+   "app_cat": 0,
+   "app_idx": 0
+  },
+  {
+   "sku": "TRU-S",
+   "name": "Truffle Mushroom Pizza (S)",
+   "category": "pizza",
+   "size": "S",
+   "price_thb": 249,
+   "app_cat": 0,
+   "app_idx": 1
+  },
+  {
+   "sku": "TRU-M",
+   "name": "Truffle Mushroom Pizza (M)",
+   "category": "pizza",
+   "size": "M",
+   "price_thb": 309,
+   "app_cat": 0,
+   "app_idx": 1
+  },
+  {
+   "sku": "TRU-L",
+   "name": "Truffle Mushroom Pizza (L)",
+   "category": "pizza",
+   "size": "L",
+   "price_thb": 379,
+   "app_cat": 0,
+   "app_idx": 1
+  },
+  {
+   "sku": "HAW-S",
+   "name": "Hawaiian Pizza (S)",
+   "category": "pizza",
+   "size": "S",
+   "price_thb": 209,
+   "app_cat": 0,
+   "app_idx": 2
+  },
+  {
+   "sku": "HAW-M",
+   "name": "Hawaiian Pizza (M)",
+   "category": "pizza",
+   "size": "M",
+   "price_thb": 269,
+   "app_cat": 0,
+   "app_idx": 2
+  },
+  {
+   "sku": "HAW-L",
+   "name": "Hawaiian Pizza (L)",
+   "category": "pizza",
+   "size": "L",
+   "price_thb": 339,
+   "app_cat": 0,
+   "app_idx": 2
+  },
+  {
+   "sku": "MEA-S",
+   "name": "Meat Lovers Pizza (S)",
+   "category": "pizza",
+   "size": "S",
+   "price_thb": 279,
+   "app_cat": 0,
+   "app_idx": 3
+  },
+  {
+   "sku": "MEA-M",
+   "name": "Meat Lovers Pizza (M)",
+   "category": "pizza",
+   "size": "M",
+   "price_thb": 339,
+   "app_cat": 0,
+   "app_idx": 3
+  },
+  {
+   "sku": "MEA-L",
+   "name": "Meat Lovers Pizza (L)",
+   "category": "pizza",
+   "size": "L",
+   "price_thb": 409,
+   "app_cat": 0,
+   "app_idx": 3
+  },
+  {
+   "sku": "SEA-S",
+   "name": "Seafood Pizza (S)",
+   "category": "pizza",
+   "size": "S",
+   "price_thb": 269,
+   "app_cat": 0,
+   "app_idx": 4
+  },
+  {
+   "sku": "SEA-M",
+   "name": "Seafood Pizza (M)",
+   "category": "pizza",
+   "size": "M",
+   "price_thb": 329,
+   "app_cat": 0,
+   "app_idx": 4
+  },
+  {
+   "sku": "SEA-L",
+   "name": "Seafood Pizza (L)",
+   "category": "pizza",
+   "size": "L",
+   "price_thb": 399,
+   "app_cat": 0,
+   "app_idx": 4
+  },
+  {
+   "sku": "CHE-S",
+   "name": "Cheese Pizza (S)",
+   "category": "pizza",
+   "size": "S",
+   "price_thb": 179,
+   "app_cat": 0,
+   "app_idx": 5
+  },
+  {
+   "sku": "CHE-M",
+   "name": "Cheese Pizza (M)",
+   "category": "pizza",
+   "size": "M",
+   "price_thb": 239,
+   "app_cat": 0,
+   "app_idx": 5
+  },
+  {
+   "sku": "CHE-L",
+   "name": "Cheese Pizza (L)",
+   "category": "pizza",
+   "size": "L",
+   "price_thb": 309,
+   "app_cat": 0,
+   "app_idx": 5
+  },
+  {
+   "sku": "PEP-S",
+   "name": "Pepperoni Pizza (S)",
+   "category": "pizza",
+   "size": "S",
+   "price_thb": 229,
+   "app_cat": 0,
+   "app_idx": 6
+  },
+  {
+   "sku": "PEP-M",
+   "name": "Pepperoni Pizza (M)",
+   "category": "pizza",
+   "size": "M",
+   "price_thb": 289,
+   "app_cat": 0,
+   "app_idx": 6
+  },
+  {
+   "sku": "PEP-L",
+   "name": "Pepperoni Pizza (L)",
+   "category": "pizza",
+   "size": "L",
+   "price_thb": 359,
+   "app_cat": 0,
+   "app_idx": 6
+  },
+  {
+   "sku": "SPG-CAR",
+   "name": "Spaghetti Carbonara",
+   "category": "pasta",
+   "size": "-",
+   "price_thb": 189,
+   "app_cat": 1,
+   "app_idx": 0
+  },
+  {
+   "sku": "SPG-BOL",
+   "name": "Spaghetti Bolognese",
+   "category": "pasta",
+   "size": "-",
+   "price_thb": 159,
+   "app_cat": 1,
+   "app_idx": 1
+  },
+  {
+   "sku": "SPG-SEA",
+   "name": "Spaghetti Spicy Seafood",
+   "category": "pasta",
+   "size": "-",
+   "price_thb": 219,
+   "app_cat": 1,
+   "app_idx": 2
+  },
+  {
+   "sku": "SPG-PES",
+   "name": "Spaghetti Pesto",
+   "category": "pasta",
+   "size": "-",
+   "price_thb": 179,
+   "app_cat": 1,
+   "app_idx": 3
+  },
+  {
+   "sku": "GAR-S",
+   "name": "Garlic Bread",
+   "category": "snack",
+   "size": "-",
+   "price_thb": 69,
+   "app_cat": 2,
+   "app_idx": 0
+  },
+  {
+   "sku": "WNG-S",
+   "name": "Chicken Wings",
+   "category": "snack",
+   "size": "-",
+   "price_thb": 119,
+   "app_cat": 2,
+   "app_idx": 1
+  },
+  {
+   "sku": "FRY-S",
+   "name": "French Fries",
+   "category": "snack",
+   "size": "-",
+   "price_thb": 59,
+   "app_cat": 2,
+   "app_idx": 2
+  },
+  {
+   "sku": "SAL-S",
+   "name": "Garden Salad",
+   "category": "snack",
+   "size": "-",
+   "price_thb": 99,
+   "app_cat": 2,
+   "app_idx": 3
+  },
+  {
+   "sku": "COKE",
+   "name": "Cola",
+   "category": "drink",
+   "size": "-",
+   "price_thb": 35,
+   "app_cat": 3,
+   "app_idx": 0
+  },
+  {
+   "sku": "LTEA",
+   "name": "Lemon Iced Tea",
+   "category": "drink",
+   "size": "-",
+   "price_thb": 45,
+   "app_cat": 3,
+   "app_idx": 1
+  },
+  {
+   "sku": "WATR",
+   "name": "Water",
+   "category": "drink",
+   "size": "-",
+   "price_thb": 15,
+   "app_cat": 3,
+   "app_idx": 2
+  },
+  {
+   "sku": "SODA",
+   "name": "Fruit Soda",
+   "category": "drink",
+   "size": "-",
+   "price_thb": 49,
+   "app_cat": 3,
+   "app_idx": 3
+  }
+ ]
+}

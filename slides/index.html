@@ -749,9 +749,9 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
       <div class="c"><h4>mart_channel_daily</h4><p class="q">Which channel earns most, after commission?</p>
         <table class="tb s"><tr><th>channel</th><th>sales</th><th>fee</th><th>net</th></tr><tr><td>Line Man</td><td>359</td><td>107.7</td><td>251.3</td></tr><tr><td>Grab</td><td>468</td><td>140.4</td><td>327.6</td></tr><tr><td>QR</td><td>369</td><td>0</td><td>369</td></tr></table></div>
       <div class="c"><h4>mart_sales_daily</h4><p class="q">Which pizza sells best?</p>
-        <table class="tb s"><tr><th>item</th><th>sold</th></tr><tr><td>Pepperoni L</td><td>12</td></tr><tr><td>Hawaiian L</td><td>9</td></tr><tr><td>Margherita L</td><td>7</td></tr></table></div>
+        <table class="tb s"><tr><th>item</th><th>sold</th></tr><tr><td>Pepperoni L</td><td>12</td></tr><tr><td>Hawaiian L</td><td>9</td></tr><tr><td>Neapolitan L</td><td>7</td></tr></table></div>
       <div class="c"><h4>mart_option_daily</h4><p class="q">Which options do people pick?</p>
-        <table class="tb s"><tr><th>option</th><th>picked</th></tr><tr><td>no chilli</td><td>8</td></tr><tr><td>extra cheese</td><td>6</td></tr><tr><td>thin crust</td><td>4</td></tr></table></div>
+        <table class="tb s"><tr><th>option</th><th>picked</th></tr><tr><td>no chilli</td><td>8</td></tr><tr><td>extra cheese</td><td>6</td></tr><tr><td>extra bacon</td><td>4</td></tr></table></div>
     </div>
     <p class="cap2 fade3">Example numbers. The real ones come from your orders.</p>
     <div class="rl fade5"><b>RULE</b> One table per question. The dashboard only reads these tables.</div>
@@ -841,15 +841,44 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 (function(){
 'use strict';
 /* ================= data model ================= */
+/* the menu the ordering app sells: generated from pipeline/qr_menu_catalog.json */
 const MENU={
- 'PEP-L':{name:'Pepperoni L',price:379,cat:'Pizza',al:['PEP-L','Pepperoni L','pepperoni (large)','Pepperoni Large','pep l']},
- 'PEP-M':{name:'Pepperoni M',price:299,cat:'Pizza',al:['PEP-M','Pepperoni M','pepperoni (medium)','pep m']},
- 'HAW-L':{name:'Hawaiian L',price:359,cat:'Pizza',al:['HAW-L','Hawaiian L','hawaiian (large)','HAWAIIAN LRG']},
- 'MAR-L':{name:'Margherita L',price:329,cat:'Pizza',al:['MAR-L','Margherita L','margarita (large)','Margherita Large']},
- 'GAR-S':{name:'Garlic bread',price:109,cat:'Side',al:['GAR-S','Garlic bread','garlic bread','GARLIC BRD']}
+ 'NEA-S':{name:'Neapolitan S',price:199,cat:'Pizza',al:['NEA-S', 'Neapolitan S', 'neapolitan s']},
+ 'NEA-M':{name:'Neapolitan M',price:259,cat:'Pizza',al:['NEA-M', 'Neapolitan M', 'neapolitan m']},
+ 'NEA-L':{name:'Neapolitan L',price:329,cat:'Pizza',al:['NEA-L', 'Neapolitan L', 'neapolitan (large)', 'Neapolitan Large']},
+ 'TRU-S':{name:'Truffle Mushroom S',price:249,cat:'Pizza',al:['TRU-S', 'Truffle Mushroom S', 'truffle mushroom s']},
+ 'TRU-M':{name:'Truffle Mushroom M',price:309,cat:'Pizza',al:['TRU-M', 'Truffle Mushroom M', 'truffle mushroom m']},
+ 'TRU-L':{name:'Truffle Mushroom L',price:379,cat:'Pizza',al:['TRU-L', 'Truffle Mushroom L', 'truffle mushroom l']},
+ 'HAW-S':{name:'Hawaiian S',price:209,cat:'Pizza',al:['HAW-S', 'Hawaiian S', 'hawaiian s']},
+ 'HAW-M':{name:'Hawaiian M',price:269,cat:'Pizza',al:['HAW-M', 'Hawaiian M', 'hawaiian m']},
+ 'HAW-L':{name:'Hawaiian L',price:339,cat:'Pizza',al:['HAW-L', 'Hawaiian L', 'hawaiian (large)', 'HAWAIIAN LRG']},
+ 'MEA-S':{name:'Meat Lovers S',price:279,cat:'Pizza',al:['MEA-S', 'Meat Lovers S', 'meat lovers s']},
+ 'MEA-M':{name:'Meat Lovers M',price:339,cat:'Pizza',al:['MEA-M', 'Meat Lovers M', 'meat lovers m']},
+ 'MEA-L':{name:'Meat Lovers L',price:409,cat:'Pizza',al:['MEA-L', 'Meat Lovers L', 'meat lovers l']},
+ 'SEA-S':{name:'Seafood S',price:269,cat:'Pizza',al:['SEA-S', 'Seafood S', 'seafood s']},
+ 'SEA-M':{name:'Seafood M',price:329,cat:'Pizza',al:['SEA-M', 'Seafood M', 'seafood m']},
+ 'SEA-L':{name:'Seafood L',price:399,cat:'Pizza',al:['SEA-L', 'Seafood L', 'seafood l']},
+ 'CHE-S':{name:'Cheese S',price:179,cat:'Pizza',al:['CHE-S', 'Cheese S', 'cheese s']},
+ 'CHE-M':{name:'Cheese M',price:239,cat:'Pizza',al:['CHE-M', 'Cheese M', 'cheese m']},
+ 'CHE-L':{name:'Cheese L',price:309,cat:'Pizza',al:['CHE-L', 'Cheese L', 'cheese l']},
+ 'PEP-S':{name:'Pepperoni S',price:229,cat:'Pizza',al:['PEP-S', 'Pepperoni S', 'pepperoni s']},
+ 'PEP-M':{name:'Pepperoni M',price:289,cat:'Pizza',al:['PEP-M', 'Pepperoni M', 'pepperoni (medium)', 'pep m']},
+ 'PEP-L':{name:'Pepperoni L',price:359,cat:'Pizza',al:['PEP-L', 'Pepperoni L', 'pepperoni (large)', 'Pepperoni Large', 'pep l']},
+ 'SPG-CAR':{name:'Spaghetti Carbonara',price:189,cat:'Pasta',al:['SPG-CAR', 'Spaghetti Carbonara', 'spaghetti carbonara']},
+ 'SPG-BOL':{name:'Spaghetti Bolognese',price:159,cat:'Pasta',al:['SPG-BOL', 'Spaghetti Bolognese', 'spaghetti bolognese']},
+ 'SPG-SEA':{name:'Spaghetti Spicy Seafood',price:219,cat:'Pasta',al:['SPG-SEA', 'Spaghetti Spicy Seafood', 'spaghetti spicy seafood']},
+ 'SPG-PES':{name:'Spaghetti Pesto',price:179,cat:'Pasta',al:['SPG-PES', 'Spaghetti Pesto', 'spaghetti pesto']},
+ 'GAR-S':{name:'Garlic Bread',price:69,cat:'Side',al:['GAR-S', 'Garlic Bread', 'garlic bread', 'GARLIC BRD']},
+ 'WNG-S':{name:'Chicken Wings',price:119,cat:'Side',al:['WNG-S', 'Chicken Wings', 'chicken wings']},
+ 'FRY-S':{name:'French Fries',price:59,cat:'Side',al:['FRY-S', 'French Fries', 'french fries']},
+ 'SAL-S':{name:'Garden Salad',price:99,cat:'Side',al:['SAL-S', 'Garden Salad', 'garden salad']},
+ 'COKE':{name:'Cola',price:35,cat:'Drink',al:['COKE', 'Cola', 'cola']},
+ 'LTEA':{name:'Lemon Iced Tea',price:45,cat:'Drink',al:['LTEA', 'Lemon Iced Tea', 'lemon iced tea']},
+ 'WATR':{name:'Water',price:15,cat:'Drink',al:['WATR', 'Water', 'water']},
+ 'SODA':{name:'Fruit Soda',price:49,cat:'Drink',al:['SODA', 'Fruit Soda', 'fruit soda']}
 };
-const OPTS={CHEESE_EXTRA:{name:'Extra cheese',group:'Cheese',price:40},SPICE_NONE:{name:'No chili',group:'Spice',price:0},CRUST_THIN:{name:'Thin crust',group:'Crust',price:0}};
-const NOTES={CHEESE_EXTRA:['extra cheese','extra chez pls','more cheese!!','cheese+'],SPICE_NONE:['no chili','no chilli pls','not spicy','ไม่เผ็ด'],CRUST_THIN:['thin crust','thin pls','THIN']};
+const OPTS={CHEESE_EXTRA:{name:'Extra cheese',group:'Topping',price:15},SPICE_NONE:{name:'No chili',group:'Spice',price:0},BACON_EXTRA:{name:'Extra bacon',group:'Topping',price:15}};
+const NOTES={CHEESE_EXTRA:['extra cheese','extra chez pls','more cheese!!','cheese+'],SPICE_NONE:['no chili','no chilli pls','not spicy','ไม่เผ็ด'],BACON_EXTRA:['extra bacon','bacon pls','+bacon','more bacon']};
 const JUNK=['birthday! sing pls','table by the window','call me when ready','sorry late!!'];
 const CH={
  QR:{name:'QR dine-in',own:1,rate:0,pre:'QR',base:1040,fmt:'z',tot:'total',fee:null,money:n=>String(n)},
@@ -888,7 +917,7 @@ function gen(n,seed){
  for(let i=0;i<n;i++){
   const ch=pick(chans),c=CH[ch];t+=(60+Math.floor(r()*150))*1000;
   cnt[ch]=(cnt[ch]||c.base)+1;
-  const codes=['PEP-L','PEP-L','PEP-M','HAW-L','MAR-L'];
+  const codes=['PEP-L','PEP-L','PEP-M','HAW-L','NEA-L'];
   const lines=[{code:pick(codes),qty:r()<.12?2:1}];
   if(r()<.45)lines.push({code:'GAR-S',qty:1});
   let note='';
@@ -917,7 +946,7 @@ function pipeline(tix){
   const dateKey=bd.getUTCFullYear()*10000+(bd.getUTCMonth()+1)*100+bd.getUTCDate();
   const lines=t.lines.map(l=>{const code=ALIAS[norm(l.alias)];if(l.alias!==MENU[code].name)nameFix++;return {rawName:l.alias,code:code,qty:l.qty}});
   let opt=null,optRaw=t.note||'';
-  if(optRaw){const n=optRaw.toLowerCase();opt=/cheese|chez/.test(n)?'CHEESE_EXTRA':/chil|spicy|เผ็ด/.test(n)?'SPICE_NONE':/thin/.test(n)?'CRUST_THIN':'INVALID';if(opt==='INVALID'&&!dup)invalid++}
+  if(optRaw){const n=optRaw.toLowerCase();opt=/cheese|chez/.test(n)?'CHEESE_EXTRA':/chil|spicy|เผ็ด/.test(n)?'SPICE_NONE':/bacon/.test(n)?'BACON_EXTRA':'INVALID';if(opt==='INVALID'&&!dup)invalid++}
   return {t:t,dup:dup,ms:ms,tBkk:pad(b.getUTCHours())+':'+pad(b.getUTCMinutes()),bizDate:bd.getUTCFullYear()+'-'+pad(bd.getUTCMonth()+1)+'-'+pad(bd.getUTCDate()),dateKey:dateKey,lines:lines,opt:opt,optRaw:optRaw,src:t.src,id:t.id}});
  const clean=rows.filter(r=>!r.dup);
  const facts=[];const optFacts=[];let recOK=true;
@@ -946,6 +975,17 @@ function pipeline(tix){
   stats:{orders:clean.length,dupes:dupes,nameFix:nameFix,invalid:invalid,gross:r2(tg),comm:r2(tc),net:r2(tn),pz:pz,chz:chz,recOK:recOK}};
 }
 
+/* live orders from ordering-app (same browser origin): localStorage 'madt-qr-outbox' + BroadcastChannel 'madt-pizza-orders' */
+const LIVE_IDS=new Set();
+function ticketFromRecord(r){
+ const tops=[].concat(...r.lines.map(l=>(l.modifiers||[]).map(m=>m.code)));
+ const noteTxt=(r.lines.map(l=>l.note).find(Boolean)||r.note||'');
+ const note=noteTxt||(tops.includes('TOP-CHEESE')?'extra cheese':tops.includes('TOP-BACON')?'extra bacon':'');
+ const ms=Date.parse(r.ordered_at);
+ return {id:r.pos_order_id,src:'QR',fmt:'z',time:TF.z(ms),lines:r.lines.filter(l=>MENU[l.sku]).map(l=>({alias:l.sku,qty:l.qty})),note:note,totLabel:'total',totTxt:String(r.total_thb),feeLabel:null,feeTxt:'',sample:0,dup:false,live:1}}
+function absorbRecords(recs){let n=0;(recs||[]).forEach(r=>{if(!r||r.status!=='PLACED'||!r.pos_order_id||LIVE_IDS.has(r.pos_order_id)||!Array.isArray(r.lines))return;
+ const t=ticketFromRecord(r);if(!t.lines.length)return;LIVE_IDS.add(r.pos_order_id);(window.PIZZA_LIVE_ORDERS=window.PIZZA_LIVE_ORDERS||[]).push(t);n++});return n}
+try{absorbRecords(JSON.parse(localStorage.getItem('madt-qr-outbox')||'[]'))}catch(e){}
 const SRC=getOrders();let P=pipeline(SRC.list);
 function srcFile(t){const d='2026-11-11';return t.src==='QR'||t.src==='PHONE'?'pos_'+d+'.json':t.src.toLowerCase()+'_export_'+d+'.csv'}
 
@@ -1361,6 +1401,11 @@ function stepTo(i,s){
  if(i===3){const e=scenes[3].classList;e.toggle('show-name',s>=1);e.toggle('show-time',s>=2);e.toggle('show-note',s>=3)}
  if(i===I12)renderRun(s);
 }
+function refreshFromLive(){clearInterval(liveTimer);const o=getOrders();SRC.list=o.list;SRC.live=o.live;P=pipeline(SRC.list);
+ const el=$('#liveCount');if(el)el.textContent=SRC.live;$('#sample').style.display=SRC.live?'none':'';
+ if(cur===3)$('#rail3').innerHTML=railHTML(P.tix,true);if(cur===I11)enter(I11);if(cur===I13)buildDash();}
+try{const bc=new BroadcastChannel('madt-pizza-orders');bc.onmessage=e=>{if(e.data&&absorbRecords(e.data.records))refreshFromLive()}}catch(e){}
+window.addEventListener('storage',e=>{if(e.key==='madt-qr-outbox'){try{if(absorbRecords(JSON.parse(e.newValue||'[]')))refreshFromLive()}catch(x){}}});
 function startLive(){
  clearInterval(liveTimer);const el=$('#liveCount');const target=SRC.live||NMOCK;let n=SRC.live?target:0;el.textContent=n;
  if(!SRC.live){liveTimer=setInterval(()=>{if(cur!==0){return}if(n<target){n++;el.textContent=n}else clearInterval(liveTimer)},1800)}
