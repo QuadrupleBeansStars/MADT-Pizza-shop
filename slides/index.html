@@ -1415,6 +1415,8 @@ function refreshFromLive(){clearInterval(liveTimer);const o=getOrders();SRC.list
 /* live mode: slides/index.html?live  (or ?live=<topic>) listens on ntfy.sh; order/index.html posts there */
 const ORDER_URL="https://quadruplebeansstars.github.io/MADT-Pizza-shop/ordering-app/",DEFAULT_TOPIC="madt-pizza-9ytv98sn";
 const LIVE_TOPIC=QS.has('live')?(QS.get('live')||DEFAULT_TOPIC):'';
+/* a refresh starts clean: orders placed before this page loaded are ignored (add &replay to bring them back) */
+if(LIVE_TOPIC&&!QS.has('replay')){RESET_AT=Date.now()-20000;try{localStorage.setItem('madt-reset-at',String(RESET_AT))}catch(e){}}
 function setBadge(txt,on){const b=$('#sample');b.textContent=txt;b.style.display='';b.classList.toggle('livebadge',!!on)}
 function startFeed(){
  setBadge('LIVE · waiting for orders',1);
