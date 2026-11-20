@@ -152,6 +152,16 @@ html,body{margin:0;height:100%;background:#0d0d0d;overflow:hidden;font-family:va
 #s0 h1{font:400 74px/1.02 var(--head);margin:0 0 20px;color:#fff6e6;text-shadow:0 4px 0 #b03a16,0 8px 18px #000a}
 #s0 .lead{font-size:24px;line-height:1.4;max-width:600px;margin:0 0 22px;text-shadow:0 2px 6px #000}
 #sample.livebadge{background:#1f8a3d;color:#fff}
+#sample.livebadge,#sample.live-on{cursor:pointer}
+#livepanel{position:absolute;left:22px;bottom:64px;z-index:30;width:430px;background:#1a0d08f2;border:2px solid #ffffff44;border-radius:14px;padding:14px 16px;color:#fff;font:600 14px var(--body);box-shadow:0 10px 30px #000a}
+#livepanel[hidden]{display:none}
+#livepanel h5{margin:0 0 10px;font:700 12px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--cheese)}
+#livepanel .lp-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
+#livepanel code{font:600 12px var(--mono);color:#cfd;background:#0006;padding:3px 7px;border-radius:5px}
+#livepanel button{font:700 13px var(--body);color:#fff;background:#ffffff1f;border:1px solid #ffffff44;border-radius:8px;padding:7px 11px;cursor:pointer}
+#livepanel button.on{background:#1f8a3d;border-color:#43d17a}
+#livepanel .seg{display:flex;gap:6px}
+#lpmsg{margin:8px 0 0;min-height:18px;font-size:13px;color:#ffd9a0}
 #s0 .live{display:inline-flex;align-items:center;gap:10px;font:700 17px var(--mono);background:#000a;border:2px solid #ffffff55;border-radius:30px;padding:8px 18px}
 #s0 .live i{width:12px;height:12px;border-radius:50%;background:#43d17a;box-shadow:0 0 10px #43d17a;animation:pulse 1.4s infinite}
 @keyframes pulse{50%{opacity:.35}}
@@ -1416,7 +1426,12 @@ function refreshFromLive(){clearInterval(liveTimer);const o=getOrders();SRC.list
 const ORDER_URL="https://quadruplebeansstars.github.io/MADT-Pizza-shop/ordering-app/",DEFAULT_TOPIC="madt-pizza-9ytv98sn";
 const LIVE_TOPIC=QS.has('live')?(QS.get('live')||DEFAULT_TOPIC):'';
 /* a refresh starts clean: orders placed before this page loaded are ignored (add &replay to bring them back) */
-if(LIVE_TOPIC&&!QS.has('replay')){RESET_AT=Date.now()-20000;try{localStorage.setItem('madt-reset-at',String(RESET_AT))}catch(e){}}
+let LIVE_MODE='fresh';try{LIVE_MODE=localStorage.getItem('madt-live-mode')||'fresh'}catch(e){}
+if(QS.has('replay'))LIVE_MODE='replay';
+if(LIVE_TOPIC&&LIVE_MODE!=='replay')RESET_AT=Math.max(RESET_AT,Date.now()-20000);
+let PAUSED=false;const HELD=[];
+function feed(recs){if(PAUSED){HELD.push(...recs);setBadge('LIVE · paused ('+HELD.length+' held)',0);return}
+ if(absorbRecords(recs)){refreshFromLive();setBadge('LIVE · '+SRC.live+' orders',1)}}
 function setBadge(txt,on){const b=$('#sample');b.textContent=txt;b.style.display='';b.classList.toggle('livebadge',!!on)}
 function startFeed(){
  setBadge('LIVE · waiting for orders',1);
@@ -1424,8 +1439,8 @@ function startFeed(){
  es.onopen=()=>{if(!SRC.live)setBadge('LIVE · waiting for orders',1)};
  es.onerror=()=>setBadge('LIVE · reconnecting…',0);
  es.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.event&&d.event!=='message')return;const recs=JSON.parse(d.message);
-  if(absorbRecords(Array.isArray(recs)?recs:[recs])){refreshFromLive();setBadge('LIVE · '+SRC.live+' orders',1)}}catch(x){}}}
-try{const bc=new BroadcastChannel('madt-pizza-orders');bc.onmessage=e=>{if(e.data&&absorbRecords(e.data.records))refreshFromLive()}}catch(e){}
+  feed(Array.isArray(recs)?recs:[recs])}catch(x){}}}
+try{const bc=new BroadcastChannel('madt-pizza-orders');bc.onmessage=e=>{if(e.data&&e.data.records)feed(e.data.records)}}catch(e){}
 window.addEventListener('storage',e=>{if(e.key==='madt-qr-outbox'){try{if(absorbRecords(JSON.parse(e.newValue||'[]')))refreshFromLive()}catch(x){}}});
 function startLive(){
  clearInterval(liveTimer);const el=$('#liveCount');const target=SRC.live||NMOCK;let n=SRC.live||LIVE_TOPIC?SRC.live:0;el.textContent=n;
@@ -1497,6 +1512,23 @@ $('#bStart').onclick=()=>go(0,0);
 {const b=$('#bReset');let armed=0,t=0;b.onclick=()=>{if(!armed){armed=1;b.textContent='Tap again to clear';b.classList.add('warn');t=setTimeout(()=>{armed=0;b.textContent='Reset orders';b.classList.remove('warn')},3000)}
  else{clearTimeout(t);armed=0;resetOrders();b.textContent='Orders cleared ✓';b.classList.remove('warn');setTimeout(()=>{b.textContent='Reset orders'},1800)}}}
 if(LIVE_TOPIC)startFeed();else $('#sample').style.display=SRC.live?'none':'';
+/* live controls: click the green LIVE badge (or press L) */
+if(LIVE_TOPIC){
+ const pn=document.createElement('div');pn.id='livepanel';pn.hidden=true;
+ pn.innerHTML='<h5>Live orders</h5><div class="lp-row"><span>Channel</span><code>'+esc(LIVE_TOPIC)+'</code></div>'+
+  '<div class="lp-row"><span>On refresh</span><span class="seg"><button data-m="fresh">New orders only</button><button data-m="replay">Replay last 12 h</button></span></div>'+
+  '<div class="lp-row"><button data-a="pause">Pause feed</button><button data-a="undo">Remove last order</button><button data-a="clear">Clear all</button></div><p id="lpmsg"></p>';
+ $('#stage').appendChild(pn);const msg=t=>{$('#lpmsg').textContent=t};
+ const paint=()=>{pn.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',b.dataset.m===LIVE_MODE));pn.querySelector('[data-a=pause]').textContent=PAUSED?'Resume feed':'Pause feed'};
+ pn.onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.m){LIVE_MODE=b.dataset.m;try{localStorage.setItem('madt-live-mode',LIVE_MODE)}catch(x){}msg(LIVE_MODE==='replay'?'Next refresh brings back every order from the last 12 h.':'Next refresh starts empty.')}
+  else if(b.dataset.a==='pause'){PAUSED=!PAUSED;if(!PAUSED){const h=HELD.splice(0);feed(h);if(!h.length)setBadge(SRC.live?'LIVE · '+SRC.live+' orders':'LIVE · waiting for orders',1)}else setBadge('LIVE · paused',0);msg(PAUSED?'New orders are held, not shown.':'Resumed.')}
+  else if(b.dataset.a==='undo'){const a=window.PIZZA_LIVE_ORDERS||[];if(a.length){const t=a.pop();refreshFromLive();setBadge(SRC.live?'LIVE · '+SRC.live+' orders':'LIVE · waiting for orders',1);msg('Removed '+t.id+'. It will not come back until you replay.')}else msg('Nothing to remove.')}
+  else if(b.dataset.a==='clear'){resetOrders();msg('Cleared. Only orders from now on will show.')}
+  paint()};
+ $('#sample').onclick=()=>{pn.hidden=!pn.hidden;paint()};
+ document.addEventListener('keydown',e=>{if((e.key==='l'||e.key==='L')&&!e.ctrlKey&&!e.metaKey&&!/INPUT|TEXTAREA/.test(e.target.tagName)){pn.hidden=!pn.hidden;paint()}});
+}
 document.addEventListener('keydown',e=>{
  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'||e.key==='Enter'){e.preventDefault();next()}
  else if(e.key==='ArrowLeft'||e.key==='PageUp'||e.key==='Backspace'){e.preventDefault();prev()}
