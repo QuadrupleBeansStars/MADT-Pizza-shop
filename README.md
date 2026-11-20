@@ -15,6 +15,7 @@ ER model at each layer, and the decisions worth defending in a review.
 |---|---|
 | `README.md` | This document — the full write-up, with all six diagrams inline |
 | `README-minimal.md` | The minimal version: sales facts at line grain, options from a pick list, 3 aggregate tables, owner dashboard only |
+| `ordering-app/index.html` | Clickable UX/UI prototype of the QR dine-in ordering app (the source of dine-in orders). Thai and English. See `ordering-app/README.md` |
 | `docs/warehouse-minimal.html` / `docs/warehouse-minimal.th.html` | Presentation page for the minimal version. English and Thai |
 | `notebooks/warehouse_minimal.ipynb` | Runnable minimal build, from sources to the owner dashboard. English and Thai |
 | `diagrams/minimal-01-pipeline.mmd`, `diagrams/minimal-02-er-sales-star.mmd` | Minimal pipeline (2 sources → 2 facts → 3 aggregates → owner dashboard) and its star |
