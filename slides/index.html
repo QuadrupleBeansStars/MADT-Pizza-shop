@@ -151,6 +151,7 @@ html,body{margin:0;height:100%;background:#0d0d0d;overflow:hidden;font-family:va
 #s0 .kicker{font:700 14px var(--mono);letter-spacing:.2em;color:var(--cheese);text-transform:uppercase;margin-bottom:12px;text-shadow:0 2px 6px #000}
 #s0 h1{font:400 74px/1.02 var(--head);margin:0 0 20px;color:#fff6e6;text-shadow:0 4px 0 #b03a16,0 8px 18px #000a}
 #s0 .lead{font-size:24px;line-height:1.4;max-width:600px;margin:0 0 22px;text-shadow:0 2px 6px #000}
+#sample.livebadge{background:#1f8a3d;color:#fff}
 #s0 .live{display:inline-flex;align-items:center;gap:10px;font:700 17px var(--mono);background:#000a;border:2px solid #ffffff55;border-radius:30px;padding:8px 18px}
 #s0 .live i{width:12px;height:12px;border-radius:50%;background:#43d17a;box-shadow:0 0 10px #43d17a;animation:pulse 1.4s infinite}
 @keyframes pulse{50%{opacity:.35}}
@@ -453,6 +454,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .plainmode #dots i.cur{border-color:#1b1d19}
 .plainmode #pz{filter:none}
 .plainmode #sample{display:none}
+.plainmode #sample.livebadge{display:block}
 .plainmode .nb{background:#fff;color:#1b1d19;border-color:#1b1d19}
 .plainmode .nb:hover{background:var(--ember);color:#fff}
 .scene.plain{color:#1b1d19;padding:84px 56px 40px}
@@ -1018,10 +1020,11 @@ function railHTML(list,withPins){
 }
 
 /* ================= scene setup ================= */
-function buildQR(){const r=rng(11);let h='<rect width="29" height="29" fill="#fff"/>';
- const fp=(x,y)=>'<rect x="'+x+'" y="'+y+'" width="7" height="7" fill="#111"/><rect x="'+(x+1)+'" y="'+(y+1)+'" width="5" height="5" fill="#fff"/><rect x="'+(x+2)+'" y="'+(y+2)+'" width="3" height="3" fill="#111"/>';
- for(let y=0;y<29;y++)for(let x=0;x<29;x++){if((x<9&&y<9)||(x>19&&y<9)||(x<9&&y>19))continue;if(r()<.5)h+='<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="#111"/>'}
- h+=fp(1,1)+fp(21,1)+fp(1,21);$('#qr').innerHTML=h}
+/* a real QR code for ORDER_URL (33x33 modules, 1 = dark) */
+const QR_ROWS=["111111100100010000011001101111111", "100000101101111100101010001000001", "101110100111001000101101101011101", "101110101101000111010010001011101", "101110100010110011110101001011101", "100000101010011110100010101000001", "111111101010101010101010101111111", "000000000000110110001111100000000", "111110111110101101001010010101010", "000110000100000011011001001000111", "110011111101100101100100011101010", "011000010111001110101110100100100", "110001110101000101000010110011000", "001101001110111011011111001000011", "111100111000011101101110110000010", "111010010100110000100100010000100", "110010101100101111000010010010010", "001001001110000010111001001001011", "101010100001100110101100000111010", "111001010111001010001101101100100", "111000111011000001110010010010010", "111011010100111011111111001001011", "100001100100011110001110010101010", "101100011000110010011111110001100", "110010101010101001010010111111001", "000000001110000000010101100010101", "111111101011100101101001101011110", "100000100001001100011101100011100", "101110101101000111010000111111011", "101110101100111011111000010111111", "101110101100011110101011001001100", "100000101010110010100100000001100", "111111101010101001010011110100010"];
+function buildQR(){const N=QR_ROWS.length,pad=2;let h='<rect width="'+(N+pad*2)+'" height="'+(N+pad*2)+'" fill="#fff"/><path fill="#111" d="';
+ QR_ROWS.forEach((r,y)=>{for(let x=0;x<N;x++)if(r[x]==='1')h+='M'+(x+pad)+' '+(y+pad)+'h1v1h-1z'});
+ $('#qr').setAttribute('viewBox','0 0 '+(N+pad*2)+' '+(N+pad*2));$('#qr').innerHTML=h+'"/>'}
 function buildMap(){
  const ch=[['QR','at the table',1,40,10],['PHONE','call the shop',1,40,150],['GRAB','delivery app',0,40,290],['LINEMAN','delivery app',0,880,10],['SHOPEE','delivery app',0,880,150],['ROBINHOOD','delivery app',0,880,290]];
  let h='';ch.forEach((c,i)=>{h+='<div class="ch fade'+(2+(i%3))+(c[2]?' own':'')+'" style="left:'+c[3]+'px;top:'+c[4]+'px"><small>'+c[1]+'</small>'+CH[c[0]].name+'</div>';
@@ -1402,13 +1405,24 @@ function stepTo(i,s){
  if(i===I12)renderRun(s);
 }
 function refreshFromLive(){clearInterval(liveTimer);const o=getOrders();SRC.list=o.list;SRC.live=o.live;P=pipeline(SRC.list);
- const el=$('#liveCount');if(el)el.textContent=SRC.live;$('#sample').style.display=SRC.live?'none':'';
+ const el=$('#liveCount');if(el)el.textContent=SRC.live;if(!LIVE_TOPIC)$('#sample').style.display=SRC.live?'none':'';
  if(cur===3)$('#rail3').innerHTML=railHTML(P.tix,true);if(cur===I11)enter(I11);if(cur===I13)buildDash();}
+/* live mode: slides/index.html?live  (or ?live=<topic>) listens on ntfy.sh; order/index.html posts there */
+const ORDER_URL="https://quadruplebeansstars.github.io/madt-pizza-shop/order/",DEFAULT_TOPIC="madt-pizza-9ytv98sn";
+const LIVE_TOPIC=QS.has('live')?(QS.get('live')||DEFAULT_TOPIC):'';
+function setBadge(txt,on){const b=$('#sample');b.textContent=txt;b.style.display='';b.classList.toggle('livebadge',!!on)}
+function startFeed(){
+ setBadge('LIVE · waiting for orders',1);
+ let es;try{es=new EventSource('https://ntfy.sh/'+encodeURIComponent(LIVE_TOPIC)+'/sse?since=all')}catch(e){setBadge('LIVE · cannot connect',0);return}
+ es.onopen=()=>{if(!SRC.live)setBadge('LIVE · waiting for orders',1)};
+ es.onerror=()=>setBadge('LIVE · reconnecting…',0);
+ es.onmessage=e=>{try{const d=JSON.parse(e.data);if(d.event&&d.event!=='message')return;const recs=JSON.parse(d.message);
+  if(absorbRecords(Array.isArray(recs)?recs:[recs])){refreshFromLive();setBadge('LIVE · '+SRC.live+' orders',1)}}catch(x){}}}
 try{const bc=new BroadcastChannel('madt-pizza-orders');bc.onmessage=e=>{if(e.data&&absorbRecords(e.data.records))refreshFromLive()}}catch(e){}
 window.addEventListener('storage',e=>{if(e.key==='madt-qr-outbox'){try{if(absorbRecords(JSON.parse(e.newValue||'[]')))refreshFromLive()}catch(x){}}});
 function startLive(){
- clearInterval(liveTimer);const el=$('#liveCount');const target=SRC.live||NMOCK;let n=SRC.live?target:0;el.textContent=n;
- if(!SRC.live){liveTimer=setInterval(()=>{if(cur!==0){return}if(n<target){n++;el.textContent=n}else clearInterval(liveTimer)},1800)}
+ clearInterval(liveTimer);const el=$('#liveCount');const target=SRC.live||NMOCK;let n=SRC.live||LIVE_TOPIC?SRC.live:0;el.textContent=n;
+ if(!SRC.live&&!LIVE_TOPIC){liveTimer=setInterval(()=>{if(cur!==0){return}if(n<target){n++;el.textContent=n}else clearInterval(liveTimer)},1800)}
 }
 
 /* ---- run the line ---- */
@@ -1472,7 +1486,7 @@ buildQR();buildStore();buildStreet();buildOffice();buildPantry();$$('.who').forE
 $('#dots').innerHTML=scenes.map((s,i)=>'<i title="'+LABELS[i]+'" data-i="'+i+'"></i>').join('');
 $('#dots').addEventListener('click',e=>{const i=e.target.dataset.i;if(i!==undefined)go(+i,0)});
 $('#bn').onclick=next;$('#bp').onclick=prev;
-$('#sample').style.display=SRC.live?'none':'';
+if(LIVE_TOPIC)startFeed();else $('#sample').style.display=SRC.live?'none':'';
 document.addEventListener('keydown',e=>{
  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'||e.key==='Enter'){e.preventDefault();next()}
  else if(e.key==='ArrowLeft'||e.key==='PageUp'||e.key==='Backspace'){e.preventDefault();prev()}
