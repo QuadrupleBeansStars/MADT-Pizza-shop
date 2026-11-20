@@ -382,6 +382,10 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
 .badge{opacity:0;transform-box:fill-box;transform-origin:50% 50%}
 #cam.out .badge{animation:pop .5s cubic-bezier(.3,1.6,.5,1) var(--bd) both}
 @keyframes pop{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}
+.endbtns{position:absolute;right:56px;top:206px;display:flex;flex-direction:column;gap:10px;z-index:6;width:174px}
+.endbtns button{font:700 15px var(--mono);padding:11px 14px;border-radius:24px;border:2px solid #fff;background:#0007;color:#fff;cursor:pointer;animation:rise .6s var(--d) both;box-shadow:3px 4px 0 rgba(0,0,0,.35)}
+.endbtns button:hover{background:#fff;color:var(--ink)}
+.endbtns button.warn{background:var(--ember);border-color:var(--ember)}
 .legend3{position:absolute;right:56px;top:96px;display:flex;flex-direction:column;gap:10px;z-index:5}
 .lg{background:var(--paper);border:2px solid var(--ink);border-radius:30px;padding:8px 20px 8px 10px;font:800 18px var(--body);box-shadow:3px 4px 0 rgba(0,0,0,.35);animation:rise .6s var(--d) both;display:flex;align-items:center;gap:10px}
 .lg i{font:700 15px var(--mono);font-style:normal;width:28px;height:28px;border-radius:50%;background:var(--ember);color:#fff;display:flex;align-items:center;justify-content:center}
@@ -827,6 +831,7 @@ table.rt{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
     <div class="legend3">
       <div class="lg" style="--d:4.9s"><i>?</i>Questions?</div>
     </div>
+    <div class="endbtns"><button id="bStart" style="--d:5.4s">↺ Back to start</button><button id="bReset" style="--d:5.8s">Reset orders</button></div>
   </section>
 
   </div>
@@ -982,7 +987,8 @@ function ticketFromRecord(r){
  const note=noteTxt||(tops.includes('TOP-CHEESE')?'extra cheese':tops.includes('TOP-BACON')?'extra bacon':'');
  const ms=Date.parse(r.ordered_at);
  return {id:r.pos_order_id,src:'QR',fmt:'z',time:TF.z(ms),lines:r.lines.filter(l=>MENU[l.sku]).map(l=>({alias:l.sku,qty:l.qty})),note:note,totLabel:'total',totTxt:String(r.total_thb),feeLabel:null,feeTxt:'',sample:0,dup:false,live:1}}
-function absorbRecords(recs){let n=0;(recs||[]).forEach(r=>{if(!r||r.status!=='PLACED'||!r.pos_order_id||LIVE_IDS.has(r.pos_order_id)||!Array.isArray(r.lines))return;
+let RESET_AT=0;try{RESET_AT=+localStorage.getItem('madt-reset-at')||0}catch(e){}
+function absorbRecords(recs){let n=0;(recs||[]).forEach(r=>{if(!r||Date.parse(r.ordered_at)<RESET_AT||r.status!=='PLACED'||!r.pos_order_id||LIVE_IDS.has(r.pos_order_id)||!Array.isArray(r.lines))return;
  const t=ticketFromRecord(r);if(!t.lines.length)return;LIVE_IDS.add(r.pos_order_id);(window.PIZZA_LIVE_ORDERS=window.PIZZA_LIVE_ORDERS||[]).push(t);n++});return n}
 try{absorbRecords(JSON.parse(localStorage.getItem('madt-qr-outbox')||'[]'))}catch(e){}
 const SRC=getOrders();let P=pipeline(SRC.list);
@@ -1401,6 +1407,8 @@ function stepTo(i,s){
  if(i===3){const e=scenes[3].classList;e.toggle('show-name',s>=1);e.toggle('show-time',s>=2);e.toggle('show-note',s>=3)}
  if(i===I12)renderRun(s);
 }
+function resetOrders(){RESET_AT=Date.now();try{localStorage.setItem('madt-reset-at',String(RESET_AT));localStorage.removeItem('madt-qr-outbox')}catch(e){}
+ window.PIZZA_LIVE_ORDERS=[];LIVE_IDS.clear();refreshFromLive();if(LIVE_TOPIC)setBadge('LIVE · waiting for orders',1)}
 function refreshFromLive(){clearInterval(liveTimer);const o=getOrders();SRC.list=o.list;SRC.live=o.live;P=pipeline(SRC.list);
  const el=$('#liveCount');if(el)el.textContent=SRC.live;if(!LIVE_TOPIC)$('#sample').style.display=SRC.live?'none':'';
  if(cur===3)$('#rail3').innerHTML=railHTML(P.tix,true);if(cur===I11)enter(I11);if(cur===I13)buildDash();}
@@ -1483,6 +1491,9 @@ buildQR();buildStore();buildStreet();buildOffice();buildPantry();$$('.who').forE
 $('#dots').innerHTML=scenes.map((s,i)=>'<i title="'+LABELS[i]+'" data-i="'+i+'"></i>').join('');
 $('#dots').addEventListener('click',e=>{const i=e.target.dataset.i;if(i!==undefined)go(+i,0)});
 $('#bn').onclick=next;$('#bp').onclick=prev;
+$('#bStart').onclick=()=>go(0,0);
+{const b=$('#bReset');let armed=0,t=0;b.onclick=()=>{if(!armed){armed=1;b.textContent='Tap again to clear';b.classList.add('warn');t=setTimeout(()=>{armed=0;b.textContent='Reset orders';b.classList.remove('warn')},3000)}
+ else{clearTimeout(t);armed=0;resetOrders();b.textContent='Orders cleared ✓';b.classList.remove('warn');setTimeout(()=>{b.textContent='Reset orders'},1800)}}}
 if(LIVE_TOPIC)startFeed();else $('#sample').style.display=SRC.live?'none':'';
 document.addEventListener('keydown',e=>{
  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'||e.key==='Enter'){e.preventDefault();next()}
