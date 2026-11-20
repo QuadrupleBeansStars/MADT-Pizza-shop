@@ -992,13 +992,17 @@ function pipeline(tix){
 /* live orders from ordering-app (same browser origin): localStorage 'madt-qr-outbox' + BroadcastChannel 'madt-pizza-orders' */
 const LIVE_IDS=new Set();
 function ticketFromRecord(r){
- const tops=[].concat(...r.lines.map(l=>(l.modifiers||[]).map(m=>m.code)));
- const noteTxt=(r.lines.map(l=>l.note).find(Boolean)||r.note||'');
+ /* phone data is untrusted: keep only known SKUs, whole quantities 1-99, a finite total, a short note */
+ const raw=r.lines.filter(l=>l&&typeof l==='object'&&MENU[l.sku]);
+ const lines=raw.map(l=>({alias:l.sku,qty:Math.round(+l.qty)})).filter(l=>Number.isFinite(l.qty)&&l.qty>=1).map(l=>({alias:l.alias,qty:Math.min(99,l.qty)}));
+ const tops=[].concat(...raw.map(l=>Array.isArray(l.modifiers)?l.modifiers.map(m=>m&&m.code):[]));
+ const noteTxt=String(raw.map(l=>l.note).find(Boolean)||r.note||'').slice(0,140);
  const note=noteTxt||(tops.includes('TOP-CHEESE')?'extra cheese':tops.includes('TOP-BACON')?'extra bacon':'');
  const ms=Date.parse(r.ordered_at);
- return {id:r.pos_order_id,src:'QR',fmt:'z',time:TF.z(ms),lines:r.lines.filter(l=>MENU[l.sku]).map(l=>({alias:l.sku,qty:l.qty})),note:note,totLabel:'total',totTxt:String(r.total_thb),feeLabel:null,feeTxt:'',sample:0,dup:false,live:1}}
+ const tot=Number.isFinite(+r.total_thb)&&r.total_thb!==null&&r.total_thb!==''?+r.total_thb:lines.reduce((s,l)=>s+MENU[l.alias].price*l.qty,0);
+ return {id:String(r.pos_order_id).slice(0,40),src:'QR',fmt:'z',time:TF.z(ms),lines:lines,note:note,totLabel:'total',totTxt:String(Math.round(tot)),feeLabel:null,feeTxt:'',sample:0,dup:false,live:1}}
 let RESET_AT=0;try{RESET_AT=+localStorage.getItem('madt-reset-at')||0}catch(e){}
-function absorbRecords(recs){let n=0;(recs||[]).forEach(r=>{if(!r||Date.parse(r.ordered_at)<RESET_AT||r.status!=='PLACED'||!r.pos_order_id||LIVE_IDS.has(r.pos_order_id)||!Array.isArray(r.lines))return;
+function absorbRecords(recs){let n=0;(recs||[]).forEach(r=>{if(!r||typeof r!=='object'||!(Date.parse(r.ordered_at)>=RESET_AT)||r.status!=='PLACED'||!r.pos_order_id||LIVE_IDS.has(r.pos_order_id)||!Array.isArray(r.lines))return;
  const t=ticketFromRecord(r);if(!t.lines.length)return;LIVE_IDS.add(r.pos_order_id);(window.PIZZA_LIVE_ORDERS=window.PIZZA_LIVE_ORDERS||[]).push(t);n++});return n}
 try{absorbRecords(JSON.parse(localStorage.getItem('madt-qr-outbox')||'[]'))}catch(e){}
 const SRC=getOrders();let P=pipeline(SRC.list);
@@ -1008,11 +1012,11 @@ function srcFile(t){const d='2026-11-11';return t.src==='QR'||t.src==='PHONE'?'p
 const $=s=>document.querySelector(s),$$=s=>Array.from(document.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function slip(t,i,x,y,rot,marks){
- const c=CH[t.src];const names=t.lines.map(l=>'<mark class="m-name" style="--md:'+(.2+i*.08)+'s">'+esc(l.alias)+'</mark> x'+l.qty).join('<br>');
+ const c=CH[t.src];const more=t.lines.length>5?'<br>+ '+(t.lines.length-5)+' more items':'';const names=t.lines.slice(0,5).map(l=>'<mark class="m-name" style="--md:'+(.2+i*.08)+'s">'+esc(l.alias)+'</mark> x'+l.qty).join('<br>')+more;
  return '<div class="slip" style="left:'+x+'px;top:'+y+'px;--i:'+i+';--r:'+rot+'deg"><div class="clip"></div>'+
  '<div class="shd">'+esc(c.name.toUpperCase())+' · '+esc(t.id)+'</div>'+
  '<div class="st"><mark class="m-time" style="--md:'+(.4+i*.08)+'s">'+esc(t.time)+'</mark></div>'+
- '<div>'+names+'</div>'+(t.note?'<div class="sn"><mark class="m-note" style="--md:'+(.6+i*.08)+'s">'+esc(t.note)+'</mark></div>':'')+
+ '<div>'+names+'</div>'+(t.note?'<div class="sn"><mark class="m-note" style="--md:'+(.6+i*.08)+'s">'+esc(t.note.length>44?t.note.slice(0,43)+'…':t.note)+'</mark></div>':'')+
  '<div class="sf">'+esc(t.totLabel)+' '+esc(t.totTxt)+(t.feeLabel?'<br>'+esc(t.feeLabel)+' '+esc(t.feeTxt):'')+'</div></div>';
 }
 function pinned(kind,i,x,y,rot){
