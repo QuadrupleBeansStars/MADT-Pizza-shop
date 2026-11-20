@@ -19,4 +19,4 @@ prices, toppings, discount, service charge and VAT. They are saved in `localStor
 broadcast on `BroadcastChannel('madt-pizza-orders')`, and available from the console with
 `madtExportOrders()`. The menu codes and prices are in `pipeline/qr_menu_catalog.json`;
 `pipeline/pizza_pipeline.py` has `validate_qr_order()` to check a record against that menu.
-`slides/index.html` listens on the same channel when both pages share an origin.
+Each order is also posted to a public ntfy.sh channel (`madt-pizza-9ytv98sn`, or `?t=<channel>`); `slides/index.html?live` listens there.

@@ -1157,7 +1157,11 @@ function emitQrOrder(o,cart,pay){
   try{localStorage.setItem('madt-qr-outbox',JSON.stringify(box))}catch(e){}
   window.MADT_QR_OUTBOX=box;
   try{var bc=new BroadcastChannel('madt-pizza-orders');bc.postMessage({type:'orders',records:recs});bc.close()}catch(e){}
+  sendLive(recs,0);
 }
+/* live feed: post the order to a public ntfy.sh channel; slides/index.html?live listens there. Retries 3 times. */
+var QR_TOPIC=(new URLSearchParams(location.search)).get('t')||'madt-pizza-9ytv98sn';
+function sendLive(recs,n){try{fetch('https://ntfy.sh/'+encodeURIComponent(QR_TOPIC),{method:'POST',body:JSON.stringify(recs)}).then(function(r){if(!r.ok)throw 0}).catch(function(){if(n<3)setTimeout(function(){sendLive(recs,n+1)},2500*(n+1))})}catch(e){}}
 window.madtExportOrders=function(){return JSON.stringify(readOutbox(),null,1)};
 
 function saveOrders(){try{localStorage.setItem('madt-orders',JSON.stringify(orders.slice(0,20)))}catch(e){}}
