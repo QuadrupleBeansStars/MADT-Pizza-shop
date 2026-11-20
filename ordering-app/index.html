@@ -591,11 +591,6 @@ input{font:inherit;color:inherit;-webkit-appearance:none;appearance:none}
     </header>
     <div class="scroll">
       <div id="items"></div>
-      <div class="card promo" id="promo">
-        <input id="promoIn" type="text" placeholder="โค้ดส่วนลด เช่น MADT5" aria-label="โค้ดส่วนลด" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" maxlength="12">
-        <button id="promoBtn">ใช้โค้ด</button>
-      </div>
-      <p class="pmsg" id="promoMsg" role="status"></p>
       <div class="card note">
         <label for="note">โน้ตเพิ่มเติม</label>
         <textarea id="note" rows="2" maxlength="140" placeholder="พิมพ์ข้อความถึงร้าน (ถ้ามี)"></textarea>
@@ -934,7 +929,7 @@ function restore(){
       n.note=typeof it.note==='string'?it.note.slice(0,80):'';
       state.cart.push(n);
     });
-    state.promo=(d.promo===PROMO||d.promo===atob(SECRET))&&state.cart.length>0?d.promo:false;state.note=typeof d.note==='string'?d.note.slice(0,140):'';
+    state.promo=false;state.note=typeof d.note==='string'?d.note.slice(0,140):'';
   }catch(e){}
 }
 
@@ -1102,8 +1097,6 @@ function renderOrder(full_){
     shown=shown.filter(function(r){return document.body.contains(r.el)});
   }
   $$('.item',list).forEach(function(el,i){var it=state.cart[i];num($('.p',el),unitOf(it)*it.qty,'฿');$('.q',el).textContent=it.qty;});
-  var pm=$('#promoMsg');if(state.promo){pm.className='pmsg';pm.textContent='ใช้โค้ด '+state.promo+' แล้ว · ลด '+Math.round(rateOf(state.promo)*100)+'%'+(foodOnly(state.promo)?' ทุกเมนูอาหาร':'')+' (−'+B(discount())+')';if(state.promo===PROMO){pm.appendChild(document.createElement('br'));var sp=document.createElement('span');sp.className='pnote';sp.textContent='หมายเหตุ : ถ้าอาจารย์เช็คให้ A ลดไปเลย 50%';pm.appendChild(sp);}}
-  $('#promo').classList.toggle('ok',!!state.promo);$('#promoBtn').textContent=state.promo?'เอาออก':'ใช้โค้ด';
   num($('#oTotal'),total(),'฿');
 }
 function renderCheckout(){if(!$('#payOpts'))return;
@@ -1130,7 +1123,7 @@ function placeOrder(){
   order={no:'#MADT-'+(2000+Math.floor(Math.random()*900)),at:t,wait:w,readyAt:t+w*MIN_MS,pz:state.cart.some(function(it){return it.cat===0}),lines:lines,discount:discount(),code:state.promo||'',svc:svcOf(net()),vat:vatOf(net()),total:total(),pay:PAY[state.pay][1],note:state.note};
   orders.unshift(order);saveOrders();
   try{emitQrOrder(order,cart0,pay0)}catch(e){}
-  state=fresh();cur=draft(cur.cat,cur.idx);noteIn.value='';promoIn.value='';$('#promoMsg').textContent='';renderExtras();
+  state=fresh();cur=draft(cur.cat,cur.idx);noteIn.value='';renderExtras();
   try{localStorage.removeItem('madt-cart2')}catch(e){}
 }
 
@@ -1339,9 +1332,8 @@ noteIn.addEventListener('input',function(){state.note=noteIn.value.trim();save()
 
 
 $('#confirm').onclick=function(){
-  var b=this;if(b.classList.contains('loading')||!state.cart.length)return;
-  var keep=b.innerHTML;b.classList.add('loading');b.innerHTML='<i class="spin"></i><span>กำลังส่งออเดอร์เข้าครัว…</span>';SFX.tap();
-  setTimeout(function(){b.classList.remove('loading');b.innerHTML=keep;if(screen==='order'&&state.cart.length){placeOrder();go('success',true);}},1100);
+  if(!state.cart.length||screen!=='order')return;
+  SFX.tap();placeOrder();go('success',true);
 };
 
 if($('#payOpts'))$('#payOpts').addEventListener('click',function(e){var o=e.target.closest('[data-pay]');if(o){state.pay=+o.getAttribute('data-pay');SFX.tap();renderCheckout();}});
@@ -1349,17 +1341,6 @@ if($('#payOpts'))$('#payOpts').addEventListener('click',function(e){var o=e.targ
   [[0,0],[14,0],[0,14]].forEach(function(c){s+='<path d="M'+c[0]+' '+c[1]+'h7v7h-7z M'+(c[0]+1)+' '+(c[1]+1)+'v5h5v-5z" fill-rule="evenodd"/><rect x="'+(c[0]+2)+'" y="'+(c[1]+2)+'" width="3" height="3"/>'});
   if($('#qrSvg'))$('#qrSvg').innerHTML=s;})();
 
-var promoIn=$('#promoIn');
-promoIn.addEventListener('input',function(){var a=promoIn.selectionStart,b=promoIn.selectionEnd,u=promoIn.value.toUpperCase();if(u!==promoIn.value){promoIn.value=u;try{promoIn.setSelectionRange(a,b)}catch(e){}}});
-function applyPromo(){
-  var v=promoIn.value.trim().toUpperCase(),pm=$('#promoMsg');promoIn.blur();
-  if(state.promo){state.promo=false;promoIn.value='';pm.textContent='';SFX.tap();sync();return;}
-  if(v===PROMO){state.promo=PROMO;SFX.cart();sync();}
-  else if(v===atob(SECRET)){state.promo=v;SFX.success();buzz([20,60,20,60,30]);sync();bibi();}
-  else{state.promo=false;pm.className='pmsg bad';pm.textContent=v?'โค้ดนี้ใช้ไม่ได้':'กรุณากรอกโค้ดส่วนลดก่อน';restart($('#promo'),'bad');SFX.error();buzz(40);sync();}
-}
-$('#promoBtn').onclick=applyPromo;
-promoIn.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();applyPromo();}});
 function openHistory(){histBack=screen;go('history')}
 $('#tOrb').onclick=function(){newItem()};
 $('#tReceipt').onclick=openHistory;$('#tOrder').onclick=openHistory;$('#histBtn').onclick=openHistory;
@@ -1463,7 +1444,7 @@ $('#langSw').addEventListener('click',function(e){var b=e.target.closest('button
 /* ---------- start ---------- */
 if(/[?&]reset\b/.test(location.search))clearAllOrders();
 restoreOrder();restore();sortCart();
-noteIn.value=state.note;if(state.promo)promoIn.value=state.promo;
+noteIn.value=state.note;
 sync();layout();
 if(order)go('track',true);
 requestAnimationFrame(function(){requestAnimationFrame(function(){stage.classList.remove('noanim')})});
